@@ -799,11 +799,14 @@ function Sellers() {
         <div className="admin-seller-details">
           <section className="admin-seller-details__wide"><h4>Shop description</h4><p>{detailsTarget.description || 'No description provided.'}</p></section>
           <section><h4>Contact information</h4><p><strong>Email:</strong> {detailsTarget.contact_email || 'Not provided'}</p><p><strong>Phone:</strong> {detailsTarget.phone || 'Not provided'}</p></section>
+          <section><h4>Identity and business details</h4><p><strong>Business type:</strong> {detailsTarget.vendor_type?.replace(/_/g, ' ') || 'Not provided'}</p><p><strong>Owner full legal name:</strong> {detailsTarget.owner_full_name || 'Not provided'}</p><p><strong>CNIC number:</strong> {detailsTarget.cnic_number || 'Not provided'}</p><p><strong>Shop location details:</strong> {detailsTarget.shop_location_text || 'Not provided'}</p></section>
           <section><h4>Application status</h4><p><strong>Status:</strong> {detailsTarget.status}</p><p><strong>Submitted:</strong> {formatDate(detailsTarget.created_at)}</p>{detailsTarget.vendor_locked && <p>Vendor account is locked.</p>}{detailsTarget.rejection_reason && <p><strong>Review note:</strong> {detailsTarget.rejection_reason}</p>}</section>
           <section><h4>Current address</h4><p>{detailsTarget.current_address || 'Not provided'}</p></section>
           <section><h4>Complete address</h4><p>{detailsTarget.complete_address || 'Not provided'}</p></section>
           <section><h4>Shop location</h4><p><strong>Area / map label:</strong> {detailsTarget.shop_location_label || 'Not provided'}</p><p><strong>Coordinates:</strong> {detailsTarget.shop_lat != null && detailsTarget.shop_lng != null ? `${detailsTarget.shop_lat}, ${detailsTarget.shop_lng}` : 'Not captured'}</p>{detailsTarget.shop_lat != null && detailsTarget.shop_lng != null && <a href={`https://www.google.com/maps?q=${detailsTarget.shop_lat},${detailsTarget.shop_lng}`} target="_blank" rel="noreferrer">Open shop location in Google Maps</a>}</section>
-          <section><h4>Verification document</h4>{detailsTarget.document_path ? <><p>Private verification document is available.</p><SellerDocumentLink path={detailsTarget.document_path} /></> : <p>No verification document uploaded.</p>}</section>
+          <section><h4>CNIC front image</h4>{detailsTarget.cnic_front_path ? <><p>Private CNIC front image is available.</p><SellerDocumentLink path={detailsTarget.cnic_front_path} label="View CNIC front" /></> : <p>No CNIC front image uploaded.</p>}</section>
+          <section><h4>CNIC back image</h4>{detailsTarget.cnic_back_path ? <><p>Private CNIC back image is available.</p><SellerDocumentLink path={detailsTarget.cnic_back_path} label="View CNIC back" /></> : <p>No CNIC back image uploaded.</p>}</section>
+          <section><h4>Identity / business registration document</h4>{detailsTarget.document_path ? <><p>Private verification document is available.</p><SellerDocumentLink path={detailsTarget.document_path} label="View verification document" /></> : <p>No verification document uploaded.</p>}</section>
         </div>
       </section>
     </div>}
@@ -944,7 +947,7 @@ function Customers() {
   </section>
 }
 
-function SellerDocumentLink({ path }: { path: string | null }) {
+function SellerDocumentLink({ path, label = 'View document' }: { path: string | null; label?: string }) {
   const { push } = useToast()
   const [opening, setOpening] = useState(false)
   async function open() {
@@ -959,7 +962,7 @@ function SellerDocumentLink({ path }: { path: string | null }) {
     } finally { setOpening(false) }
   }
   if (!path) return <small>No verification document uploaded</small>
-  return <button className="admin-small-button" onClick={() => void open()} disabled={opening}>{opening ? 'Opening…' : 'View document'}</button>
+  return <button className="admin-small-button" onClick={() => void open()} disabled={opening}>{opening ? 'Opening…' : label}</button>
 }
 
 type FoodMapPoint = { lat: number; lng: number }

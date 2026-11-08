@@ -720,7 +720,6 @@ function Sellers() {
   const [reasonTarget, setReasonTarget] = useState<{ item: AdminSeller; status: 'rejected' | 'suspended' } | null>(null)
   const [reason, setReason] = useState('')
   const [savingReview, setSavingReview] = useState(false)
-  const ownerAccountId = '74f4ccd5-04b0-485e-b776-eab4c2ca1371'
   const load = () => {
     setError(null)
     void listSellerApplications(status).then(setItems).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Seller applications could not be loaded.'))
@@ -901,6 +900,7 @@ function SupportTickets() {
 }
 
 function Customers() {
+  const ownerAccountId = '74f4ccd5-04b0-485e-b776-eab4c2ca1371'
   const { push } = useToast()
   const [items, setItems] = useState<AdminCustomer[]>([])
   const [suspensions, setSuspensions] = useState<Map<string, AdminAccountSuspension>>(new Map())

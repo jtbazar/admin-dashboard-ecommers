@@ -637,9 +637,9 @@ export async function confirmOrdersWithDeliveryBatch(input: {
   order_ids: string[]
   email_order_ids?: string[]
   ready_item_ids: string[]
-  expected_delivery_date: string
-  delivery_window_start: string
-  delivery_window_end: string
+  expected_delivery_date: string | null
+  delivery_window_start: string | null
+  delivery_window_end: string | null
   delivery_note?: string | null
   delivery_fee_override?: number | null
   fee_adjustment_reason?: string | null

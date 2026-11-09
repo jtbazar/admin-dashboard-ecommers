@@ -666,9 +666,9 @@ export async function confirmOrdersWithDeliveryBatch(input: {
 export async function createFollowupDeliveryBatch(input: {
   order_id: string
   item_ids: string[]
-  expected_delivery_date: string
-  delivery_window_start: string
-  delivery_window_end: string
+  expected_delivery_date: string | null
+  delivery_window_start: string | null
+  delivery_window_end: string | null
   delivery_note?: string | null
 }): Promise<string> {
   const { data, error } = await (getSupabase() as any).rpc('admin_create_followup_delivery_batch', {

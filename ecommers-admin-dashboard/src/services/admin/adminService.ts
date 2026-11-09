@@ -343,6 +343,46 @@ export async function uploadProductImage(productId: string, file: File, draft = 
   }
 }
 
+export async function deleteAdminProductImage(imageId: string, productId: string) {
+  const client = getSupabase()
+  const { data: image, error: readError } = await client
+    .from('product_images')
+    .select('id, product_id, storage_path, is_primary')
+    .eq('id', imageId)
+    .eq('product_id', productId)
+    .maybeSingle()
+  assertError(readError)
+  if (!image) throw new Error('This product image no longer exists. Refresh and try again.')
+
+  const { error: deleteError } = await client
+    .from('product_images')
+    .delete()
+    .eq('id', imageId)
+    .eq('product_id', productId)
+  assertError(deleteError)
+
+  if (image.storage_path) {
+    const bucket = getProductImageBucket(image.storage_path, productId)
+    const { error: storageError } = await client.storage.from(bucket).remove([image.storage_path])
+    if (storageError) throw new Error(`Image record removed, but its storage file could not be deleted: ${storageError.message}`)
+  }
+
+  const { data: remaining, error: remainingError } = await client
+    .from('product_images')
+    .select('id, is_primary')
+    .eq('product_id', productId)
+    .order('sort_order', { ascending: true })
+    .limit(100)
+  assertError(remainingError)
+  if (remaining?.length && !remaining.some((row) => row.is_primary)) {
+    const { error: primaryError } = await client
+      .from('product_images')
+      .update({ is_primary: true })
+      .eq('id', remaining[0].id)
+    assertError(primaryError)
+  }
+}
+
 export async function uploadAdditionalProductImage(productId: string, file: File, draft = true) {
   if (file.size > 10 * 1024 * 1024) throw new Error('Product images must be 10 MB or smaller.')
   if (!['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(file.type)) throw new Error('Choose a JPG, PNG, WebP or AVIF product image.')

@@ -72,6 +72,11 @@ export interface AdminPromotion {
   priority: number
   coupon_code: string | null
   discount_percent: number | null
+  target_platform: 'website' | 'android' | 'both'
+  campaign_type: 'banner' | 'popup'
+  show_on_launch: boolean
+  starts_at: string | null
+  ends_at: string | null
   created_at: string
   updated_at: string
 }

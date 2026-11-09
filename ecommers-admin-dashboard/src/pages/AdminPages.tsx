@@ -12,7 +12,7 @@ import '../admin.css'
 const nav = [
   { to: '/admin', label: 'Overview', icon: LayoutDashboard },
   { to: '/admin/heroes', label: 'Heroes', icon: ImageIcon },
-  { to: '/admin/promotions', label: 'Promotions', icon: Tag },
+  { to: '/admin/promotions', label: 'Banners & Ads', icon: Tag },
   { to: '/admin/products', label: 'Products', icon: Package },
   { to: '/admin/categories', label: 'Categories', icon: FolderTree },
   { to: '/admin/orders', label: 'Orders', icon: ClipboardList },
@@ -1281,6 +1281,11 @@ function Promotions() {
           is_platform_wide: data.get('is_platform_wide') === 'on',
           status: String(data.get('status') ?? 'approved') as AdminPromotion['status'],
           display_position: String(data.get('display_position') ?? 'hero_banner'),
+          target_platform: String(data.get('target_platform') ?? 'both') as AdminPromotion['target_platform'],
+          campaign_type: String(data.get('campaign_type') ?? 'banner') as AdminPromotion['campaign_type'],
+          show_on_launch: data.get('show_on_launch') === 'on',
+          starts_at: String(data.get('starts_at') ?? '').trim() || null,
+          ends_at: String(data.get('ends_at') ?? '').trim() || null,
           priority: Number(data.get('priority') ?? 0),
           coupon_code: String(data.get('coupon_code') ?? '').trim() || null,
           discount_percent: data.get('discount_percent') ? Number(data.get('discount_percent')) : null,
@@ -1312,7 +1317,7 @@ function Promotions() {
       <div className="admin-page-heading">
         <div>
           <p className="admin-kicker">Campaign management</p>
-          <h2>Promotions & Offers</h2>
+          <h2>Banners & Ads Manager</h2>
         </div>
         <button
           className="admin-button"
@@ -1362,6 +1367,30 @@ function Promotions() {
                 <option value="product_strip">Product Strip</option>
                 <option value="offer_section">Offer Section</option>
               </select>
+            </label>
+            <label>
+              Campaign type
+              <select name="campaign_type" defaultValue={editingPromo?.campaign_type ?? 'banner'}>
+                <option value="banner">Homepage banner</option>
+                <option value="popup">Opening popup ad</option>
+              </select>
+            </label>
+            <label>
+              Show on
+              <select name="target_platform" defaultValue={editingPromo?.target_platform ?? 'both'}>
+                <option value="both">Website + Android app</option>
+                <option value="website">Website only</option>
+                <option value="android">Android app only</option>
+              </select>
+            </label>
+            <label>
+              Start date/time <input name="starts_at" type="datetime-local" defaultValue={editingPromo?.starts_at?.slice(0, 16) ?? ''} />
+            </label>
+            <label>
+              End date/time <input name="ends_at" type="datetime-local" defaultValue={editingPromo?.ends_at?.slice(0, 16) ?? ''} />
+            </label>
+            <label className="admin-check">
+              <input name="show_on_launch" type="checkbox" defaultChecked={editingPromo?.show_on_launch ?? false} /> Show popup on fresh app/website opening
             </label>
             <label>
               Priority <input name="priority" type="number" defaultValue={editingPromo?.priority ?? 0} />

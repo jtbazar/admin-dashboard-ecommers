@@ -486,7 +486,7 @@ function Orders() {
       setDefaultDeliveryFee(settings.free_delivery_enabled ? 0 : Number(settings.delivery_fee))
       const rows = [order, ...related]
       const [details, batchRows] = await Promise.all([Promise.all(rows.map((row) => getAdminOrderDetail(row.id))), Promise.all(related.map((row) => listOrderDeliveryBatches(row.id)))])
-      setExistingDeliveryBatchOrderIds(related.filter((row, index) => batchRows[index].some((batch: any) => batch.status === 'scheduled')).map((row) => row.id))
+      setExistingDeliveryBatchOrderIds(related.filter((_, index) => batchRows[index].some((batch: any) => batch.status === 'scheduled')).map((row) => row.id))
       setConfirmationDetails(details)
     } catch (cause) {
       push(cause instanceof Error ? cause.message : 'Customer orders could not be loaded for delivery confirmation.', 'error')
@@ -710,7 +710,7 @@ function OrderDetailPage({ orderId }: { orderId: string }) {
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Delivery batch could not be marked delivered.') }
     finally { setFollowupSaving(false) }
   }
-  useEffect(load, [orderId])
+  useEffect(() => { void load() }, [orderId])
   if (loading) return <div className="admin-content"><Loading /></div>
   if (error || !detail) return <div className="admin-content"><ErrorState message={error ?? 'Order not found.'} retry={load} /></div>
   const { order, items } = detail

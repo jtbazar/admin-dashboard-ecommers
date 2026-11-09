@@ -23,7 +23,7 @@ ecommers-admin-dashboard/
 └── README.md
 ```
 
-Database migrations are not duplicated here. The canonical chain is [`../paperloom/supabase/migrations`](../paperloom/supabase/migrations); apply those files in ascending order.
+The canonical database migration chain remains [`../paperloom/supabase/migrations`](../paperloom/supabase/migrations). The admin delivery-batch SQL snapshot is documented at [`docs/database/20261109_manual_delivery_batches.sql`](docs/database/20261109_manual_delivery_batches.sql); the live migration was applied to the shared Supabase project.
 
 ## Local development
 
@@ -54,12 +54,12 @@ See the [Supabase README](../paperloom/supabase/README.md) for the trusted SQL t
 - **Heroes and promotions** — create, edit, publish and delete homepage content.
 - **Products** — search all products (including drafts) through `admin_list_products()`, edit details, upload images, manage variants, publish/unpublish and moderate.
 - **Categories** — create and edit catalog categories.
-- **Orders** — view order details, delivery location, line items and vendor fulfilment state; update order status and add notes.
+- **Orders** — view order details, delivery location, line items and vendor fulfilment state; manually group a customer's active orders into one delivery batch without merging their order records; schedule ready items first and create zero-duplicate-fee follow-up deliveries for pending items.
 - **Inventory** — view stock records and adjust quantities with an audit reason.
 - **Sellers** — review applications, inspect private verification documents through short-lived signed URLs, approve/reject/suspend shops.
 - **Cases** — review buyer/vendor returns and complaints and record marketplace decisions.
 - **Customers** — customer email, phone, order count and lifetime value from `admin_customer_summary()`.
-- **Store settings** — store name, support email/phone/WhatsApp, delivery fee, COD availability and return window. These values are read by the storefront.
+- **Store settings** — store name, support email/phone/WhatsApp, standard delivery fee, free-delivery toggle, additional-delivery fee, COD availability and return window. Delivery fee changes are audited.
 - **Audit log** — administrative actions recorded by database triggers/functions.
 
 ## Verification

@@ -439,7 +439,7 @@ export async function getAdminOrderDetail(id: string) {
   const client = getSupabase()
   const [order, items, notes, history] = await Promise.all([
     client.from('orders').select('id, order_number, customer_id, customer_name, customer_phone, customer_email, shipping_address_snapshot, customer_note, currency, subtotal, delivery_fee, discount_amount, total, order_status, payment_method, payment_status, delivery_lat, delivery_lng, delivery_location_name, delivery_location_captured_at, expected_delivery_date, delivery_window_start, delivery_window_end, delivery_note, delivery_timing_confirmed_at, delivery_timing_confirmed_by, created_at, updated_at').eq('id', id).single(),
-    client.from('order_items').select('id, order_id, product_id, variant_id, seller_id, seller_name_snapshot, product_name_snapshot, sku_snapshot, variant_snapshot, product_snapshot, quantity, unit_price, line_total, vendor_fulfillment_status, tracking_number, tracking_url, vendor_note, vendor_updated_at, created_at').eq('order_id', id).order('created_at').limit(100),
+    client.from('order_items').select('id, order_id, product_id, variant_id, seller_id, seller_name_snapshot, product_name_snapshot, sku_snapshot, variant_snapshot, product_snapshot, quantity, unit_price, line_total, vendor_fulfillment_status, delivery_status, tracking_number, tracking_url, vendor_note, vendor_updated_at, created_at').eq('order_id', id).order('created_at').limit(100),
     client.from('admin_order_notes').select('id, order_id, created_by, note, created_at').eq('order_id', id).order('created_at', { ascending: false }).limit(100),
     client.from('admin_audit_logs').select('id, action, entity, entity_id, details, created_at').eq('entity', 'orders').eq('entity_id', id).order('created_at', { ascending: false }).limit(100),
   ])
@@ -590,7 +590,7 @@ export async function setAdminAccountSuspension(userId: string, action: 'suspend
 export async function getAdminStoreSettings(): Promise<AdminStoreSettings> {
   const { data, error } = await getSupabase()
     .from('store_settings')
-    .select('id, store_name, support_email, support_phone, support_whatsapp, delivery_fee, cod_enabled, return_window_days, updated_at')
+    .select('id, store_name, support_email, support_phone, support_whatsapp, delivery_fee, free_delivery_enabled, additional_delivery_fee, cod_enabled, return_window_days, updated_at')
     .eq('id', 'default')
     .single()
   assertError(error)
@@ -603,12 +603,103 @@ export async function updateAdminStoreSettings(input: {
   support_phone: string | null
   support_whatsapp: string | null
   delivery_fee: number
+  free_delivery_enabled: boolean
+  additional_delivery_fee: number
   cod_enabled: boolean
   return_window_days: number
 }): Promise<AdminStoreSettings> {
   const { data, error } = await getSupabase().rpc('admin_update_store_settings', { p_settings: input })
   assertError(error)
   return data as AdminStoreSettings
+}
+
+
+export type AdminDeliveryCandidate = {
+  id: string
+  order_number: string
+  customer_name: string
+  customer_phone: string
+  subtotal: number
+  delivery_fee: number
+  total: number
+  order_status: Database['public']['Tables']['orders']['Row']['order_status']
+  created_at: string
+  expected_delivery_date: string | null
+}
+
+export async function findCustomerDeliveryOrders(orderId: string): Promise<AdminDeliveryCandidate[]> {
+  const { data, error } = await (getSupabase() as any).rpc('admin_find_customer_delivery_orders', { p_order_id: orderId })
+  assertError(error)
+  return (data ?? []) as AdminDeliveryCandidate[]
+}
+
+export async function confirmOrdersWithDeliveryBatch(input: {
+  order_ids: string[]
+  email_order_ids?: string[]
+  ready_item_ids: string[]
+  expected_delivery_date: string
+  delivery_window_start: string
+  delivery_window_end: string
+  delivery_note?: string | null
+  delivery_fee_override?: number | null
+  fee_adjustment_reason?: string | null
+}): Promise<{ batchId: string; emailSent: boolean }> {
+  const client = getSupabase()
+  const { data, error } = await (client as any).rpc('admin_confirm_orders_with_delivery_batch', {
+    p_order_ids: input.order_ids,
+    p_ready_item_ids: input.ready_item_ids,
+    p_expected_delivery_date: input.expected_delivery_date,
+    p_delivery_window_start: input.delivery_window_start,
+    p_delivery_window_end: input.delivery_window_end,
+    p_delivery_note: input.delivery_note ?? null,
+    p_delivery_fee_override: input.delivery_fee_override ?? null,
+    p_fee_adjustment_reason: input.fee_adjustment_reason ?? null,
+  })
+  assertError(error)
+  const emailResults = await Promise.all((input.email_order_ids ?? input.order_ids).map((order_id) => client.functions.invoke('commerce-email', {
+    body: { event: 'order_status', order_id, status: 'confirmed' },
+  })))
+  const emailSent = emailResults.every((result) => !result.error && result.data?.sent)
+  return { batchId: String(data), emailSent }
+}
+
+export async function createFollowupDeliveryBatch(input: {
+  order_id: string
+  item_ids: string[]
+  expected_delivery_date: string
+  delivery_window_start: string
+  delivery_window_end: string
+  delivery_note?: string | null
+}): Promise<string> {
+  const { data, error } = await (getSupabase() as any).rpc('admin_create_followup_delivery_batch', {
+    p_order_id: input.order_id,
+    p_item_ids: input.item_ids,
+    p_expected_delivery_date: input.expected_delivery_date,
+    p_delivery_window_start: input.delivery_window_start,
+    p_delivery_window_end: input.delivery_window_end,
+    p_delivery_note: input.delivery_note ?? null,
+  })
+  assertError(error)
+  return String(data)
+}
+
+export async function markDeliveryBatchDelivered(batchId: string): Promise<void> {
+  const { error } = await (getSupabase() as any).rpc('admin_mark_delivery_batch_delivered', { p_batch_id: batchId })
+  assertError(error)
+}
+
+export async function listOrderDeliveryBatches(orderId: string) {
+  const { data, error } = await (getSupabase() as any)
+    .from('delivery_batch_orders')
+    .select('batch_id, fee_allocated, delivery_batches(id, batch_number, status, delivery_fee, expected_delivery_date, delivery_window_start, delivery_window_end, delivery_note, delivery_batch_items(order_item_id))')
+    .eq('order_id', orderId)
+    .order('created_at', { ascending: true })
+  assertError(error)
+  return (data ?? []).map((row: any) => ({
+    batch_id: row.batch_id,
+    fee_allocated: Number(row.fee_allocated ?? 0),
+    ...(Array.isArray(row.delivery_batches) ? row.delivery_batches[0] : row.delivery_batches),
+  }))
 }
 
 export async function getAdminFoodDeliverySettings(): Promise<AdminFoodDeliverySettings> {

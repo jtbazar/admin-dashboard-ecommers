@@ -684,7 +684,14 @@ function formatVariantSnapshot(snapshot: unknown): string {
 function OrderDetailPage({ orderId }: { orderId: string }) {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [detail, setDetail] = useState<Awaited<ReturnType<typeof getAdminOrderDetail>> | null>(null); const [deliveries, setDeliveries] = useState<any[]>([]); const [selectedFollowupItemIds, setSelectedFollowupItemIds] = useState<string[]>([]); const [followupDate, setFollowupDate] = useState(new Date(Date.now() + 86400000).toLocaleDateString('en-CA')); const [followupStart, setFollowupStart] = useState('09:00'); const [followupEnd, setFollowupEnd] = useState('21:00'); const [followupNote, setFollowupNote] = useState(''); const [followupSaving, setFollowupSaving] = useState(false); const [error, setError] = useState<string | null>(null); const [loading, setLoading] = useState(true)
-  const load = () => { setLoading(true); setError(null); void Promise.all([getAdminOrderDetail(orderId), listOrderDeliveryBatches(orderId)]).then(([nextDetail, nextDeliveries]) => { setDetail(nextDetail); setDeliveries(nextDeliveries) }).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Order details could not be loaded.')).finally(() => setLoading(false)) }
+  const load = async () => {
+    setLoading(true); setError(null)
+    try {
+      const [nextDetail, nextDeliveries] = await Promise.all([getAdminOrderDetail(orderId), listOrderDeliveryBatches(orderId)])
+      setDetail(nextDetail); setDeliveries(nextDeliveries)
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Order details could not be loaded.') }
+    finally { setLoading(false) }
+  }
   async function scheduleFollowupDelivery() {
     if (!detail || !selectedFollowupItemIds.length) return
     if (!followupDate || !followupStart || !followupEnd || followupEnd <= followupStart) { setError('Choose a valid date and delivery time window.'); return }
@@ -694,7 +701,6 @@ function OrderDetailPage({ orderId }: { orderId: string }) {
       setSelectedFollowupItemIds([])
       setFollowupNote('')
       await load()
-      setError(null)
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Follow-up delivery could not be scheduled.') }
     finally { setFollowupSaving(false) }
   }

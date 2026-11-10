@@ -223,6 +223,30 @@ export async function deleteProductVariant(id: string) {
   assertError(error)
 }
 
+export async function updateProductsHotDeal(productIds: string[], discountPercent: number) {
+  const ids = Array.from(new Set(productIds)).filter(Boolean)
+  if (ids.length === 0) throw new Error('Select at least one product.')
+  if (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 90) throw new Error('Hot deal discount must be between 0 and 90%.')
+  const client = getSupabase()
+  const { error } = await client.from('products').update({ discount_percent: discountPercent }).in('id', ids)
+  assertError(error)
+  const { data, error: verifyError } = await client.rpc('admin_list_products', { p_search: '' })
+  assertError(verifyError)
+  const verified = new Set((data ?? []).filter((row) => ids.includes(row.id) && Number(row.discount_percent) === discountPercent).map((row) => row.id))
+  if (verified.size !== ids.length) throw new Error('The deal update could not be verified for every selected product. Refresh the list before retrying.')
+}
+
+
+export async function setAdminProductFeatured(productId: string, featured: boolean): Promise<void> {
+  const client = getSupabase()
+  const { error } = await client.from('products').update({ is_featured: featured }).eq('id', productId)
+  assertError(error)
+  const { data, error: verifyError } = await client.rpc('admin_list_products', { p_search: '' })
+  assertError(verifyError)
+  const row = (data ?? []).find((item) => item.id === productId)
+  if (!row || Boolean(row.is_featured) !== featured) throw new Error('Featured status could not be verified. Refresh and check the product.')
+}
+
 export async function updateProductStatus(id: string, publication_status: Database['public']['Tables']['products']['Row']['publication_status']) {
   if (publication_status === 'published') await publishProductImages(id)
   const { error } = await getSupabase().from('products').update({ publication_status }).eq('id', id)

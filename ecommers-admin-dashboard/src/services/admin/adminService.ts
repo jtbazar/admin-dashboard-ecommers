@@ -236,6 +236,17 @@ export async function updateProductsHotDeal(productIds: string[], discountPercen
   if (verified.size !== ids.length) throw new Error('The deal update could not be verified for every selected product. Refresh the list before retrying.')
 }
 
+
+export async function setAdminProductFeatured(productId: string, featured: boolean): Promise<void> {
+  const client = getSupabase()
+  const { error } = await client.from('products').update({ is_featured: featured }).eq('id', productId)
+  assertError(error)
+  const { data, error: verifyError } = await client.rpc('admin_list_products', { p_search: '' })
+  assertError(verifyError)
+  const row = (data ?? []).find((item) => item.id === productId)
+  if (!row || Boolean(row.is_featured) !== featured) throw new Error('Featured status could not be verified. Refresh and check the product.')
+}
+
 export async function updateProductStatus(id: string, publication_status: Database['public']['Tables']['products']['Row']['publication_status']) {
   if (publication_status === 'published') await publishProductImages(id)
   const { error } = await getSupabase().from('products').update({ publication_status }).eq('id', id)

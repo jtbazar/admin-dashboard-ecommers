@@ -242,8 +242,7 @@ function Overview() {
     if (!finance) return
     const headers = ['Date', 'Order Number', 'Customer', 'Source', 'Order Status', 'Payment Status', 'Order Total (PKR)', 'Paid (PKR)', 'Outstanding (PKR)']
     const csv = [headers, ...finance.rows.map((row) => [new Date(row.date).toLocaleDateString('en-CA'), row.number, row.customer, row.source, row.status, row.paymentStatus, row.total, row.paid, row.outstanding])]
-      .map((line) => line.map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('
-')
+      .map((line) => line.map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\\n')
     const url = URL.createObjectURL(new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8;' }))
     const anchor = document.createElement('a')
     anchor.href = url

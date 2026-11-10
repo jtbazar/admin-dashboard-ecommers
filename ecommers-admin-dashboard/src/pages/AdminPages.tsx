@@ -395,7 +395,7 @@ function HotDeals() {
   useAutoRefresh(load)
 
   const eligible = items.filter((item) => item.publication_status === 'published' && item.moderation_status === 'approved' && (!item.track_inventory || item.inventory > 0) && Number(item.discount_percent) === 0)
-  const removableDeals = items.filter((item) => item.publication_status === 'published' && item.moderation_status === 'approved' && (!item.track_inventory || item.inventory > 0) && Number(item.discount_percent) > 0)
+  const removableDeals = items.filter((item) => item.publication_status === 'published' && item.moderation_status === 'approved' && Number(item.discount_percent) > 0)
   const visible = view === 'deals' ? items.filter((item) => Number(item.discount_percent) > 0) : items.filter((item) => Number(item.discount_percent) === 0)
   const visibleEligible = view === 'deals' ? visible.filter((item) => removableDeals.some((row) => row.id === item.id)) : visible.filter((item) => eligible.some((row) => row.id === item.id))
   const activeCount = items.filter((item) => item.discount_percent > 0).length

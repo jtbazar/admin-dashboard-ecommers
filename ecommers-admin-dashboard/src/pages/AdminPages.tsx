@@ -14,7 +14,7 @@ const nav = [
   { to: '/admin/heroes', label: 'Heroes', icon: ImageIcon },
   { to: '/admin/promotions', label: 'Banners & Ads', icon: Tag },
   { to: '/admin/products', label: 'Products', icon: Package },
-  { to: '/admin/hot-deals', label: 'Hot Deals', icon: Tag },
+  { to: '/admin/hot-deals', label: 'Campaign Manager', icon: Tag },
   { to: '/admin/categories', label: 'Categories', icon: FolderTree },
   { to: '/admin/orders', label: 'Orders', icon: ClipboardList },
   { to: '/admin/reviews', label: 'Customer reviews', icon: Star },

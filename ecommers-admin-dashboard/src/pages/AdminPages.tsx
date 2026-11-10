@@ -484,7 +484,7 @@ function HotDeals() {
 
     <section className="admin-panel">
       <div className="admin-panel-heading"><div><p className="admin-kicker">Create campaign</p><h3>New website campaign</h3><p className="admin-copy">Choose products without an existing product discount. Scheduled campaigns publish automatically when their start time arrives.</p></div></div>
-      <form onSubmit={createCampaign} className="admin-form-grid">
+      <form onSubmit={createCampaign} className="admin-form admin-form-grid">
         <label className="admin-field"><span>Campaign type</span><select value={campaignType} onChange={(event) => setCampaignType(event.target.value as ProductCampaignAdminRow['campaign_type'])}><option value="flash_sale">Flash Sale</option><option value="bogo">Buy One Get One (BOGO)</option><option value="bundle">Bundle Deal</option><option value="seasonal">Seasonal (Eid / Ramadan / 11.11)</option><option value="custom">Custom campaign</option></select></label>
         <label className="admin-field"><span>Internal campaign name</span><input value={campaignName} onChange={(event) => setCampaignName(event.target.value)} placeholder="e.g. 11.11 Kitchen Sale" maxLength={120} required/></label>
         <label className="admin-field"><span>Website section title</span><input value={campaignTitle} onChange={(event) => setCampaignTitle(event.target.value)} placeholder="e.g. 11.11 Mega Deals" maxLength={120} required/></label>

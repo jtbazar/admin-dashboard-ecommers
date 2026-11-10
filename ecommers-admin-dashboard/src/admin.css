@@ -535,3 +535,16 @@
   font-size: 10px;
   color: var(--admin-muted, #64748b);
 }
+
+/* Product campaign builder */
+.admin-field--wide{grid-column:1/-1}
+.admin-form-grid.admin-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.admin-form-grid.admin-form .admin-field{display:grid;gap:7px;min-width:0;color:#686a63;font-size:11px;font-weight:700}
+.admin-form-grid.admin-form .admin-field input,.admin-form-grid.admin-form .admin-field select{width:100%;min-width:0;padding:10px 11px;border:1px solid #ddd9d1;border-radius:7px;color:#20231f;background:#fff;font:inherit;font-size:13px}
+.admin-campaign-product-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;max-height:300px;overflow:auto;padding:10px;border:1px solid #e7e3dc;border-radius:9px;background:#fbfaf7}
+.admin-campaign-product-option{display:flex!important;align-items:flex-start;gap:8px!important;min-width:0;padding:9px;border:1px solid #e7e3dc;border-radius:7px;background:#fff;cursor:pointer}
+.admin-campaign-product-option input{width:15px!important;min-width:15px;margin:2px 0 0;accent-color:#a45b3f}
+.admin-campaign-product-option span{display:grid;gap:4px;min-width:0;color:#30332e;font-size:11px;line-height:1.35;overflow-wrap:anywhere}
+.admin-campaign-product-option small{color:#77786f;font-size:10px;font-weight:500}
+@media(max-width:850px){.admin-campaign-product-picker{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.admin-form-grid.admin-form{grid-template-columns:1fr}.admin-field--wide{grid-column:auto}.admin-campaign-product-picker{grid-template-columns:1fr}.admin-form-actions{flex-wrap:wrap}}

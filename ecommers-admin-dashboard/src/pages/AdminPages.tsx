@@ -1198,16 +1198,104 @@ function Cases() {
 function SupportTickets() {
   const { push } = useToast()
   const [items, setItems] = useState<AdminSupportInboxTicket[]>([])
+  const [selected, setSelected] = useState<AdminSupportInboxTicket | null>(null)
+  const [reply, setReply] = useState('')
+  const [status, setStatus] = useState<AdminSupportInboxTicket['status']>('open')
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const load = () => { setError(null); void listAdminSupportTickets().then(setItems).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Support tickets could not be loaded.')) }
   useEffect(load, [])
   useAutoRefresh(load)
-  async function save(item: AdminSupportInboxTicket, form: HTMLFormElement) {
-    const data = new FormData(form)
-    try { const emailed = await updateAdminSupportTicket(item, String(data.get('status')) as AdminSupportInboxTicket['status'], String(data.get('admin_response') ?? '')); push(emailed ? 'Ticket updated and reply emailed.' : 'Ticket updated. Email notification could not be sent.', emailed ? 'success' : 'error'); load() }
-    catch (cause) { push(cause instanceof Error ? cause.message : 'Ticket update failed.', 'error') }
+
+  function openChat(item: AdminSupportInboxTicket) {
+    setSelected(item)
+    setReply('')
+    setStatus(item.status)
   }
-  return <section className="admin-content"><div className="admin-page-heading"><div><p className="admin-kicker">Customer and seller inbox</p><h2>Support tickets</h2></div><button className="admin-button admin-button--outline" onClick={() => load()}><RefreshCw size={15} /> Refresh</button></div>{error ? <ErrorState message={error} retry={load} /> : items.length === 0 ? <Empty title="No support tickets" detail="Customer and seller support requests will appear here." /> : <div className="admin-table-wrap"><TableTools /><table className="admin-table"><thead><tr><th>Requester</th><th>Subject</th><th>Request</th><th>Status</th><th>Marketplace reply</th><th>Action</th></tr></thead><tbody>{items.map((item) => <tr key={`${item.ticket_kind}-${item.id}`}><td><strong>{item.requester_name}</strong><small>{item.ticket_kind} · {item.requester_email}</small></td><td><strong>{item.subject}</strong><small>{formatDate(item.created_at)}</small></td><td>{item.message}</td><td><select name="status" defaultValue={item.status} form={`support-ticket-${item.ticket_kind}-${item.id}`}><option value="open">Open</option><option value="in_progress">In progress</option><option value="resolved">Resolved</option></select></td><td><textarea name="admin_response" form={`support-ticket-${item.ticket_kind}-${item.id}`} defaultValue={item.admin_response ?? ''} rows={3} /></td><td><form id={`support-ticket-${item.ticket_kind}-${item.id}`} onSubmit={(event) => { event.preventDefault(); void save(item, event.currentTarget) }}><button className="admin-small-button">Save reply</button></form></td></tr>)}</tbody></table></div>}</section>
+
+  async function sendReply(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!selected || !reply.trim() || saving) return
+    setSaving(true)
+    try {
+      const message = reply.trim()
+      const emailed = await updateAdminSupportTicket(selected, status, message)
+      const updated = { ...selected, status, admin_response: message, updated_at: new Date().toISOString() }
+      setSelected(updated)
+      setItems((current) => current.map((item) => item.id === updated.id && item.ticket_kind === updated.ticket_kind ? updated : item))
+      setReply('')
+      push(emailed ? 'Reply sent and customer notified.' : 'Reply saved, but the email notification could not be sent.', emailed ? 'success' : 'error')
+      void listAdminSupportTickets().then(setItems).catch(() => undefined)
+    } catch (cause) {
+      push(cause instanceof Error ? cause.message : 'Reply could not be sent.', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function saveStatus(nextStatus: AdminSupportInboxTicket['status']) {
+    if (!selected || saving) return
+    setStatus(nextStatus)
+    setSaving(true)
+    try {
+      const emailed = await updateAdminSupportTicket(selected, nextStatus, selected.admin_response ?? '')
+      const updated = { ...selected, status: nextStatus, updated_at: new Date().toISOString() }
+      setSelected(updated)
+      setItems((current) => current.map((item) => item.id === updated.id && item.ticket_kind === updated.ticket_kind ? updated : item))
+      push(emailed ? 'Ticket status updated.' : 'Status updated. Email notification was not sent.', emailed ? 'success' : 'error')
+    } catch (cause) {
+      setStatus(selected.status)
+      push(cause instanceof Error ? cause.message : 'Ticket status could not be updated.', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return <section className="admin-content">
+    <div className="admin-page-heading">
+      <div><p className="admin-kicker">Customer and seller inbox</p><h2>Support inbox</h2><p className="admin-copy">Open a ticket to read the conversation and reply to the customer or seller.</p></div>
+      <button className="admin-button admin-button--outline" onClick={() => load()}><RefreshCw size={15} /> Refresh</button>
+    </div>
+    <div className="admin-support-summary">
+      <div><span>Total tickets</span><strong>{items.length}</strong></div>
+      <div><span>Open</span><strong>{items.filter((item) => item.status === 'open').length}</strong></div>
+      <div><span>In progress</span><strong>{items.filter((item) => item.status === 'in_progress').length}</strong></div>
+      <div><span>Resolved</span><strong>{items.filter((item) => item.status === 'resolved').length}</strong></div>
+    </div>
+    {error ? <ErrorState message={error} retry={load} /> : items.length === 0 ? <Empty title="No support tickets" detail="Customer and seller support requests will appear here." /> : <div className="admin-table-wrap admin-support-table-wrap">
+      <TableTools />
+      <table className="admin-table admin-support-table">
+        <thead><tr><th>Requester</th><th>Ticket</th><th>Latest message</th><th>Status</th><th>Last activity</th><th>Conversation</th></tr></thead>
+        <tbody>{items.map((item) => <tr key={`${item.ticket_kind}-${item.id}`}>
+          <td><div className="admin-support-requester"><span className="admin-support-avatar">{(item.requester_name || 'U').slice(0, 1).toUpperCase()}</span><span><strong>{item.requester_name}</strong><small>{item.ticket_kind === 'seller' ? 'Seller' : 'Customer'} · {item.requester_email || 'No email'}</small></span></div></td>
+          <td><strong>{item.subject}</strong><small>Created {formatDate(item.created_at)}</small></td>
+          <td><span className="admin-support-preview">{item.admin_response ? `JTBazar: ${item.admin_response}` : item.message}</span></td>
+          <td><em className={statusClass(item.status)}>{item.status.replace('_', ' ')}</em></td>
+          <td>{formatDate(item.updated_at)}</td>
+          <td><button type="button" className="admin-small-button admin-support-open" onClick={() => openChat(item)}><MessageSquare size={14} /> Open chat</button></td>
+        </tr>)}</tbody>
+      </table>
+    </div>}
+    {selected && <div className="admin-modal-backdrop admin-chat-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setSelected(null) }}>
+      <section className="admin-chat-modal" role="dialog" aria-modal="true" aria-labelledby="support-chat-title">
+        <header className="admin-chat-header">
+          <div className="admin-chat-person"><span className="admin-support-avatar admin-support-avatar--large">{(selected.requester_name || 'U').slice(0, 1).toUpperCase()}</span><div><p className="admin-kicker">{selected.ticket_kind === 'seller' ? 'Seller support' : 'Customer support'}</p><h3 id="support-chat-title">{selected.requester_name}</h3><small>{selected.requester_email}</small></div></div>
+          <button type="button" className="admin-icon-button" aria-label="Close support conversation" disabled={saving} onClick={() => setSelected(null)}><X size={18} /></button>
+        </header>
+        <div className="admin-chat-ticket-meta"><div><small>SUBJECT</small><strong>{selected.subject}</strong></div><div><small>CREATED</small><strong>{formatDate(selected.created_at)}</strong></div><label><small>TICKET STATUS</small><select value={status} disabled={saving} onChange={(event) => void saveStatus(event.target.value as AdminSupportInboxTicket['status'])}><option value="open">Open</option><option value="in_progress">In progress</option><option value="resolved">Resolved</option></select></label></div>
+        <div className="admin-chat-thread">
+          <div className="admin-chat-day"><span>Ticket conversation</span></div>
+          <article className="admin-chat-message admin-chat-message--customer"><div className="admin-chat-message-label"><strong>{selected.requester_name}</strong><small>{formatDate(selected.created_at)}</small></div><p>{selected.message}</p></article>
+          {selected.admin_response ? <article className="admin-chat-message admin-chat-message--admin"><div className="admin-chat-message-label"><strong>JTBazar Support</strong><small>{formatDate(selected.updated_at)}</small></div><p>{selected.admin_response}</p></article> : <div className="admin-chat-empty"><MessageSquare size={22} /><strong>No reply sent yet</strong><span>Write a reply below to continue this conversation.</span></div>}
+        </div>
+        <form className="admin-chat-composer" onSubmit={(event) => void sendReply(event)}>
+          <label htmlFor="support-chat-reply">Your reply</label>
+          <textarea id="support-chat-reply" value={reply} onChange={(event) => setReply(event.target.value)} rows={3} maxLength={4000} placeholder="Write a helpful reply to the customer or seller…" required />
+          <div className="admin-chat-composer-footer"><small>{reply.length}/4000 characters · Reply will also be emailed when delivery is available.</small><button className="admin-button" disabled={saving || !reply.trim()}>{saving ? 'Sending…' : <><Send size={15} /> Send reply</>}</button></div>
+        </form>
+      </section>
+    </div>}
+  </section>
 }
 
 function Customers() {

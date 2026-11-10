@@ -26,6 +26,7 @@ export type AdminCommissionSettings = { default_percent: number; category_rates:
 export type AdminNotification = Database['public']['Tables']['notifications']['Row']
 export type AdminSupportTicket = Database['public']['Tables']['support_tickets']['Row']
 export type AdminSupportInboxTicket = { id: string; ticket_kind: 'seller' | 'customer'; requester_name: string; requester_email: string; subject: string; message: string; status: 'open' | 'in_progress' | 'resolved'; admin_response: string | null; created_at: string; updated_at: string }
+export type AdminSupportChatMessage = Database['public']['Tables']['support_ticket_messages']['Row']
 
 export interface AdminHero {
   id: string
@@ -903,6 +904,25 @@ export async function listAdminSupportTickets(): Promise<AdminSupportInboxTicket
     return { ...ticket, ticket_kind: 'seller' as const, requester_name: data?.shop_name ?? 'Seller', requester_email: data?.contact_email ?? '' }
   }))
   return [...sellerTickets, ...(customerResult.data ?? []).map((ticket) => ({ ...ticket, ticket_kind: 'customer' as const }))].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 100)
+}
+
+export async function listAdminSellerSupportMessages(ticketId: string): Promise<AdminSupportChatMessage[]> {
+  const { data, error } = await getSupabase().from('support_ticket_messages')
+    .select('*').eq('ticket_id', ticketId).order('created_at', { ascending: true }).limit(500)
+  assertError(error)
+  return data ?? []
+}
+
+export async function sendAdminSellerSupportMessage(ticketId: string, message: string): Promise<AdminSupportChatMessage> {
+  const client = getSupabase()
+  const { data: { user }, error: authError } = await client.auth.getUser()
+  if (authError || !user) throw new Error('Admin sign-in is required to reply.')
+  const { data, error } = await client.from('support_ticket_messages')
+    .insert({ ticket_id: ticketId, sender_id: user.id, sender_role: 'admin', message: message.trim() })
+    .select('*').single()
+  assertError(error)
+  if (!data) throw new Error('Support reply could not be confirmed.')
+  return data
 }
 
 export async function setAdminSupportTicketStatus(item: AdminSupportInboxTicket, status: AdminSupportInboxTicket['status']): Promise<void> {

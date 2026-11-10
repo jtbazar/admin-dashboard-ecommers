@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { Archive, ArrowLeft, BarChart3, Bell, Boxes, Check, CheckCheck, ChevronLeft, ChevronRight, CircleAlert, ClipboardList, Edit2, FolderTree, Eye, EyeOff, Image as ImageIcon, Info, LayoutDashboard, LogOut, MapPin, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen, MessageSquare, Package, Plus, Printer, RefreshCw, Search, Send, Settings, ShieldAlert, Star, Store, Tag, Trash2, Users, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
-import { adjustInventory, decideMarketplaceCase, deleteAdminHero, deleteAdminPromotion, deleteProductVariant, getAdminOrderDetail, getAdminProductEditor, getAdminStoreSettings, getAdminFoodDeliverySettings, getAdminCommissionSettings, getAdminSummary, getVendorDocumentSignedUrl, listAdminCategories, listAdminAccountSuspensions, listAdminCustomers, listAdminHeroes, listAdminInventory, listAdminNotifications, listAdminOrders, listAdminOrderVendors, listAdminVendorPickups, markAdminVendorPickedUp, listAdminProducts, listAdminPromotions, listAdminCustomerReviews, setAdminCustomerReviewStatus, listAdminSupportTickets, listAdminSellerSupportMessages, sendAdminSellerSupportMessage, listAuditLogs, listMarketplaceCases, listSellerApplications, markAdminNotificationRead, markAllAdminNotificationsRead, moderateProduct, deleteAdminProductImage, deleteAdminProductPermanently, listAdminProductDeletionRequests, reviewAdminProductDeletion, reviewSellerApplication, setAdminVendorLock, setAdminSupportTicketStatus, saveAdminHero, saveAdminPromotion, saveCategory, saveProduct, saveProductVariant, saveAdminProductInventory, setAdminAccountSuspension, updateAdminStoreSettings, updateAdminFoodDeliverySettings, updateAdminCommissionSettings, updateAdminSupportTicket, updateOrder, saveDeliveryCollection, addOrderNote, rejectAdminOrder, findCustomerDeliveryOrders, confirmOrdersWithDeliveryBatch, createFollowupDeliveryBatch, markDeliveryBatchDelivered, listOrderDeliveryBatches, updateProductStatus, updateProductsHotDeal, setAdminProductFeatured, uploadAdditionalProductImage, uploadPublicMedia, type AdminCaseDetail, type AdminCategory, type AdminCustomerReview, type AdminAccountSuspension, type AdminCustomer, type AdminHero, type AdminInventory, type AdminNotification, type AdminOrder, type AdminOrderVendor, type AdminProduct, type AdminProductDeletionRequest, type AdminPromotion, type AdminSeller, type AdminStoreSettings, type AdminFoodDeliverySettings, type AdminCommissionSettings, type AdminSummary, type AdminSupportInboxTicket, type AdminSupportChatMessage, type AdminVariant } from '../services/admin/adminService'
+import { adjustInventory, decideMarketplaceCase, deleteAdminHero, deleteAdminPromotion, deleteProductVariant, getAdminOrderDetail, getAdminProductEditor, getAdminStoreSettings, getAdminFoodDeliverySettings, getAdminCommissionSettings, getAdminSummary, getVendorDocumentSignedUrl, listAdminCategories, listAdminAccountSuspensions, listAdminCustomers, listAdminHeroes, listAdminInventory, listAdminNotifications, listAdminOrders, listAdminOrderVendors, listAdminVendorPickups, markAdminVendorPickedUp, listAdminProducts, listAdminPromotions, listAdminCustomerReviews, setAdminCustomerReviewStatus, listAdminSupportTickets, listAdminSellerSupportMessages, sendAdminSellerSupportMessage, listAdminCustomerSupportMessages, sendAdminCustomerSupportMessage, listAuditLogs, listMarketplaceCases, listSellerApplications, markAdminNotificationRead, markAllAdminNotificationsRead, moderateProduct, deleteAdminProductImage, deleteAdminProductPermanently, listAdminProductDeletionRequests, reviewAdminProductDeletion, reviewSellerApplication, setAdminVendorLock, setAdminSupportTicketStatus, saveAdminHero, saveAdminPromotion, saveCategory, saveProduct, saveProductVariant, saveAdminProductInventory, setAdminAccountSuspension, updateAdminStoreSettings, updateAdminFoodDeliverySettings, updateAdminCommissionSettings, updateAdminSupportTicket, updateOrder, saveDeliveryCollection, addOrderNote, rejectAdminOrder, findCustomerDeliveryOrders, confirmOrdersWithDeliveryBatch, createFollowupDeliveryBatch, markDeliveryBatchDelivered, listOrderDeliveryBatches, updateProductStatus, updateProductsHotDeal, setAdminProductFeatured, uploadAdditionalProductImage, uploadPublicMedia, type AdminCaseDetail, type AdminCategory, type AdminCustomerReview, type AdminAccountSuspension, type AdminCustomer, type AdminHero, type AdminInventory, type AdminNotification, type AdminOrder, type AdminOrderVendor, type AdminProduct, type AdminProductDeletionRequest, type AdminPromotion, type AdminSeller, type AdminStoreSettings, type AdminFoodDeliverySettings, type AdminCommissionSettings, type AdminSummary, type AdminSupportInboxTicket, type AdminSupportChatMessage, type AdminVariant } from '../services/admin/adminService'
 import type { Database } from '../types/database'
 import { getSupabase } from '../lib/supabase'
 import { isValidEmail, isValidPakistaniMobile, normalizePakistaniMobile } from '../utils/contactValidation'
@@ -1210,11 +1210,11 @@ function SupportTickets() {
   useAutoRefresh(load)
 
   useEffect(() => {
-    if (!selected || selected.ticket_kind !== 'seller') { setChatMessages([]); return }
+    if (!selected) { setChatMessages([]); return }
     let active = true
     const refreshMessages = async () => {
       try {
-        const rows = await listAdminSellerSupportMessages(selected.id)
+        const rows = selected.ticket_kind === 'seller' ? await listAdminSellerSupportMessages(selected.id) : await listAdminCustomerSupportMessages(selected.id)
         if (active) setChatMessages(rows)
       } catch (cause) {
         if (active) push(cause instanceof Error ? cause.message : 'Chat messages could not be loaded.', 'error')
@@ -1238,10 +1238,8 @@ function SupportTickets() {
     setSaving(true)
     try {
       const message = reply.trim()
-      if (selected.ticket_kind === 'seller') {
-        const chatMessage = await sendAdminSellerSupportMessage(selected.id, message)
-        setChatMessages((current) => [...current, chatMessage])
-      }
+      const chatMessage = selected.ticket_kind === 'seller' ? await sendAdminSellerSupportMessage(selected.id, message) : await sendAdminCustomerSupportMessage(selected.id, message)
+      setChatMessages((current) => [...current, chatMessage])
       const emailed = await updateAdminSupportTicket(selected, status, message)
       const updated = { ...selected, status, admin_response: message, updated_at: new Date().toISOString() }
       setSelected(updated)
@@ -1309,11 +1307,10 @@ function SupportTickets() {
         <div className="admin-chat-thread">
           <div className="admin-chat-day"><span>Ticket conversation</span></div>
           <article className="admin-chat-message admin-chat-message--customer"><div className="admin-chat-message-label"><strong>{selected.requester_name}</strong><small>{formatDate(selected.created_at)}</small></div><p>{selected.message}</p></article>
-          {selected.ticket_kind === 'seller' ? <>
-            {chatMessages.map((message) => <article className={`admin-chat-message admin-chat-message--${message.sender_role === 'admin' ? 'admin' : 'customer'}`} key={message.id}><div className="admin-chat-message-label"><strong>{message.sender_role === 'admin' ? 'JTBazar Support' : selected.requester_name}</strong><small>{formatDate(message.created_at)}</small></div><p>{message.message}</p></article>)}
-            {chatLoading && <div className="admin-chat-empty">Loading conversation…</div>}
-            {!chatLoading && chatMessages.length === 0 && <div className="admin-chat-empty"><MessageSquare size={22}/><strong>No replies yet</strong><span>Send the first reply to start the conversation.</span></div>}
-          </> : selected.admin_response ? <article className="admin-chat-message admin-chat-message--admin"><div className="admin-chat-message-label"><strong>JTBazar Support</strong><small>{formatDate(selected.updated_at)}</small></div><p>{selected.admin_response}</p></article> : <div className="admin-chat-empty"><MessageSquare size={22} /><strong>No reply sent yet</strong><span>Write a reply below to continue this conversation.</span></div>}
+          {chatMessages.map((message) => <article className={`admin-chat-message admin-chat-message--${message.sender_role === 'admin' ? 'admin' : 'customer'}`} key={message.id}><div className="admin-chat-message-label"><strong>{message.sender_role === 'admin' ? 'JTBazar Support' : selected.requester_name}</strong><small>{formatDate(message.created_at)}</small></div><p>{message.message}</p></article>)}
+          {chatLoading && <div className="admin-chat-empty">Loading conversation…</div>}
+          {!chatLoading && chatMessages.length === 0 && selected.admin_response && <article className="admin-chat-message admin-chat-message--admin"><div className="admin-chat-message-label"><strong>JTBazar Support</strong><small>{formatDate(selected.updated_at)}</small></div><p>{selected.admin_response}</p></article>}
+          {!chatLoading && chatMessages.length === 0 && !selected.admin_response && <div className="admin-chat-empty"><MessageSquare size={22}/><strong>No replies yet</strong><span>Send the first reply to start the conversation.</span></div>}
         </div>
         <form className="admin-chat-composer" onSubmit={(event) => void sendReply(event)}>
           <label htmlFor="support-chat-reply">Your reply</label>

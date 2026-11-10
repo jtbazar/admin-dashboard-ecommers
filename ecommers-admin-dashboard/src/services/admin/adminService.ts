@@ -658,7 +658,7 @@ export async function setAdminAccountSuspension(userId: string, action: 'suspend
 }
 
 export async function getAdminStoreSettings(): Promise<AdminStoreSettings> {
-  const { data, error } = await getSupabase()
+  const { data, error } = await (getSupabase() as any)
     .from('store_settings')
     .select('id, store_name, support_email, support_phone, support_whatsapp, delivery_fee, free_delivery_enabled, additional_delivery_fee, cod_enabled, return_window_days, marketplace_hours, updated_at')
     .eq('id', 'default')
@@ -679,7 +679,7 @@ export async function updateAdminStoreSettings(input: {
   return_window_days: number
   marketplace_hours?: Record<string, { enabled: boolean; open: string; close: string; close_day_offset: number }>
 }): Promise<AdminStoreSettings> {
-  const { data, error } = await getSupabase().rpc('admin_update_store_settings', { p_settings: input })
+  const { data, error } = await (getSupabase() as any).rpc('admin_update_store_settings', { p_settings: input })
   assertError(error)
   return data as AdminStoreSettings
 }

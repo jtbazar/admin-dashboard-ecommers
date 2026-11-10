@@ -22,6 +22,7 @@ export type AdminCaseDetail = AdminCase & {
 }
 export type AdminStoreSettings = Database['public']['Tables']['store_settings']['Row']
 export type AdminFoodDeliverySettings = { hub_lat: number | null; hub_lng: number | null; radius_km: number; updated_at: string }
+export type AdminCommissionSettings = { default_percent: number; category_rates: Record<string, number>; updated_at: string | null }
 export type AdminNotification = Database['public']['Tables']['notifications']['Row']
 export type AdminSupportTicket = Database['public']['Tables']['support_tickets']['Row']
 export type AdminSupportInboxTicket = { id: string; ticket_kind: 'seller' | 'customer'; requester_name: string; requester_email: string; subject: string; message: string; status: 'open' | 'in_progress' | 'resolved'; admin_response: string | null; created_at: string; updated_at: string }
@@ -659,7 +660,7 @@ export async function setAdminAccountSuspension(userId: string, action: 'suspend
 export async function getAdminStoreSettings(): Promise<AdminStoreSettings> {
   const { data, error } = await getSupabase()
     .from('store_settings')
-    .select('id, store_name, support_email, support_phone, support_whatsapp, delivery_fee, free_delivery_enabled, additional_delivery_fee, cod_enabled, return_window_days, updated_at')
+    .select('id, store_name, support_email, support_phone, support_whatsapp, delivery_fee, free_delivery_enabled, additional_delivery_fee, cod_enabled, return_window_days, marketplace_hours, updated_at')
     .eq('id', 'default')
     .single()
   assertError(error)
@@ -676,12 +677,29 @@ export async function updateAdminStoreSettings(input: {
   additional_delivery_fee: number
   cod_enabled: boolean
   return_window_days: number
+  marketplace_hours?: Record<string, { enabled: boolean; open: string; close: string; close_day_offset: number }>
 }): Promise<AdminStoreSettings> {
   const { data, error } = await getSupabase().rpc('admin_update_store_settings', { p_settings: input })
   assertError(error)
   return data as AdminStoreSettings
 }
 
+
+
+export async function getAdminCommissionSettings(): Promise<AdminCommissionSettings> {
+  const { data, error } = await (getSupabase() as any).rpc('admin_get_commission_settings')
+  assertError(error)
+  return data as AdminCommissionSettings
+}
+
+export async function updateAdminCommissionSettings(input: { default_percent: number; category_rates: Record<string, number> }): Promise<AdminCommissionSettings> {
+  const { data, error } = await (getSupabase() as any).rpc('admin_update_commission_settings', {
+    p_default_percent: input.default_percent,
+    p_category_rates: input.category_rates,
+  })
+  assertError(error)
+  return data as AdminCommissionSettings
+}
 
 export type AdminDeliveryCandidate = {
   id: string

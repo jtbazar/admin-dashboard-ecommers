@@ -423,9 +423,14 @@ function HotDeals() {
     event.preventDefault()
     if (!campaignName.trim() || !campaignTitle.trim()) { push('Enter a campaign name and storefront title.', 'error'); return }
     if (!campaignProductIds.length) { push('Select at least one eligible product.', 'error'); return }
+    if (campaignProductIds.some((id) => !campaignEligible.some((item) => item.id === id))) { push('Refresh the product list and select only currently eligible products.', 'error'); return }
     if (campaignType === 'bundle' && campaignProductIds.length < 2) { push('A bundle must include at least two different products.', 'error'); return }
     if (['flash_sale','seasonal','custom'].includes(campaignType) && (Number(campaignDiscount) < 1 || Number(campaignDiscount) > 90)) { push('Campaign discount must be between 1% and 90%.', 'error'); return }
-    if (campaignType === 'bundle' && (!Number.isFinite(Number(bundlePrice)) || Number(bundlePrice) <= 0)) { push('Enter a valid bundle price.', 'error'); return }
+    if (campaignType === 'bogo' && (!Number.isInteger(Number(buyQuantity)) || !Number.isInteger(Number(getQuantity)) || Number(buyQuantity) < 1 || Number(buyQuantity) > 99 || Number(getQuantity) < 1 || Number(getQuantity) > 99)) { push('BOGO quantities must be between 1 and 99.', 'error'); return }
+    if (campaignType === 'bundle') {
+      const baseTotal = campaignProductIds.reduce((sum, id) => sum + Number(campaignEligible.find((item) => item.id === id)?.price ?? 0), 0)
+      if (!Number.isFinite(Number(bundlePrice)) || Number(bundlePrice) <= 0 || Number(bundlePrice) >= baseTotal) { push('Bundle price must be positive and lower than the selected products total.', 'error'); return }
+    }
     if (startsAt && endsAt && new Date(endsAt).getTime() <= new Date(startsAt).getTime()) { push('Campaign end must be after its start.', 'error'); return }
     setCampaignSaving(true)
     const client = getSupabase() as any

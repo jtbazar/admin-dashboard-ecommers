@@ -186,11 +186,6 @@ function Overview() {
   const [reportLoading, setReportLoading] = useState(false)
   const load = () => { setError(null); void Promise.all([getAdminSummary(), listAdminOrders('', 'all', 0, 6)]).then(([nextSummary, nextOrders]) => { setSummary(nextSummary); setOrders(nextOrders.items) }).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'The overview could not be loaded.')) }
   useEffect(load, [])
-  useEffect(() => {
-    void Promise.all([getAdminCommissionSettings(), listAdminCategories()])
-      .then(([commission, categories]) => { setCommissionSettings(commission); setCommissionCategories(categories.filter((category) => category.is_active)) })
-      .catch((cause: unknown) => push(cause instanceof Error ? cause.message : 'Commission settings could not be loaded.', 'error'))
-  }, [])
   useAutoRefresh(load)
 
   useEffect(() => {
@@ -1407,6 +1402,11 @@ function StoreSettings() {
   const load = () => { setError(null); void getAdminStoreSettings().then(setSettings).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Store settings could not be loaded.')) }
   useEffect(load, [])
   useEffect(() => {
+    void Promise.all([getAdminCommissionSettings(), listAdminCategories()])
+      .then(([commission, categories]) => { setCommissionSettings(commission); setCommissionCategories(categories.filter((category) => category.is_active)) })
+      .catch((cause: unknown) => push(cause instanceof Error ? cause.message : 'Commission settings could not be loaded.', 'error'))
+  }, [])
+  useEffect(() => {
     void getAdminFoodDeliverySettings()
       .then((settings) => {
         setFoodLocation(settings)
@@ -1452,7 +1452,7 @@ function StoreSettings() {
       const open = String(data.get(`hours_open_${day}`) ?? '07:00')
       const close = String(data.get(`hours_close_${day}`) ?? '00:00')
       const close_day_offset = Number(data.get(`hours_offset_${day}`) ?? 1)
-      if (enabled && (!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(open) || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(close) || ![0, 1].includes(close_day_offset) || (close_day_offset === 0 && close <= open))) {
+      if (enabled && (!/^([01]\d|2[0-3]):[0-5]\d$/.test(open) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(close) || ![0, 1].includes(close_day_offset) || (close_day_offset === 0 && close <= open))) {
         throw new Error(`Check the opening and closing times for ${day}.`)
       }
       return [day, { enabled, open, close, close_day_offset }]

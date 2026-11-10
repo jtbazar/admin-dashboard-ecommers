@@ -1315,7 +1315,7 @@ function SupportTickets() {
         <form className="admin-chat-composer" onSubmit={(event) => void sendReply(event)}>
           <label htmlFor="support-chat-reply">Your reply</label>
           <textarea id="support-chat-reply" value={reply} onChange={(event) => setReply(event.target.value)} rows={3} maxLength={4000} placeholder="Write a helpful reply to the customer or seller…" required />
-          <div className="admin-chat-composer-footer"><small>{reply.length}/4000 characters · Reply will also be emailed when delivery is available.</small><button className="admin-button" disabled={saving || !reply.trim()}>{saving ? 'Sending…' : <><Send size={15} /> Send reply</>}</button></div>
+          <div className="admin-chat-composer-footer"><small>{reply.length}/4000 characters · Reply will also be emailed when delivery is available.</small><button className="admin-button" disabled={saving || !reply.trim() || status === 'resolved'}>{saving ? 'Sending…' : <><Send size={15} /> Send reply</>}</button></div>
         </form>
       </section>
     </div>}

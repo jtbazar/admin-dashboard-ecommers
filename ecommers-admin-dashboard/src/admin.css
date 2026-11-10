@@ -548,3 +548,11 @@
 .admin-campaign-product-option small{color:#77786f;font-size:10px;font-weight:500}
 @media(max-width:850px){.admin-campaign-product-picker{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.admin-form-grid.admin-form{grid-template-columns:1fr}.admin-field--wide{grid-column:auto}.admin-campaign-product-picker{grid-template-columns:1fr}.admin-form-actions{flex-wrap:wrap}}
+
+.admin-hours-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0 18px}
+.admin-hours-row{display:grid;grid-template-columns:1.05fr repeat(3,minmax(90px,1fr));align-items:end;gap:9px;padding:12px;border:1px solid #e7e3dc;border-radius:9px;background:#fbfaf7}
+.admin-hours-grid>label{display:grid;gap:7px;min-width:0;color:#686a63;font-size:11px;font-weight:700}
+.admin-hours-grid input:not([type=checkbox]),.admin-hours-grid select{width:100%;min-width:0;padding:9px 10px;border:1px solid #ddd9d1;border-radius:7px;color:#20231f;background:#fff;font:inherit;font-size:13px}
+.admin-hours-row .admin-check{display:flex;align-items:center;gap:7px}
+@media(max-width:900px){.admin-hours-row{grid-template-columns:1fr 1fr}.admin-hours-grid{grid-template-columns:1fr}}
+@media(max-width:520px){.admin-hours-row{grid-template-columns:1fr 1fr}.admin-hours-row .admin-check{grid-column:1/-1}}

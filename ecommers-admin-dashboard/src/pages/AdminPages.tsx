@@ -1404,7 +1404,7 @@ function StoreSettings() {
   useEffect(load, [])
   useEffect(() => {
     void Promise.all([getAdminCommissionSettings(), listAdminCategories()])
-      .then(([commission, categories]) => { setCommissionSettings(commission); setCommissionCategories(categories.filter((category) => category.is_active)) })
+      .then(([commission, categories]) => { setCommissionSettings(commission); setCommissionCategories(categories) })
       .catch((cause: unknown) => push(cause instanceof Error ? cause.message : 'Commission settings could not be loaded.', 'error'))
   }, [])
   useEffect(() => {

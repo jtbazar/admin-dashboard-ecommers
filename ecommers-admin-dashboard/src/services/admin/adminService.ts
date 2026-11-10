@@ -905,6 +905,12 @@ export async function listAdminSupportTickets(): Promise<AdminSupportInboxTicket
   return [...sellerTickets, ...(customerResult.data ?? []).map((ticket) => ({ ...ticket, ticket_kind: 'customer' as const }))].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 100)
 }
 
+export async function setAdminSupportTicketStatus(item: AdminSupportInboxTicket, status: AdminSupportInboxTicket['status']): Promise<void> {
+  const table = item.ticket_kind === 'seller' ? 'support_tickets' : 'customer_support_tickets'
+  const { error } = await getSupabase().from(table).update({ status, updated_at: new Date().toISOString() }).eq('id', item.id)
+  assertError(error)
+}
+
 export async function updateAdminSupportTicket(item: AdminSupportInboxTicket, status: AdminSupportInboxTicket['status'], admin_response: string): Promise<boolean> {
   const client = getSupabase()
   const table = item.ticket_kind === 'seller' ? 'support_tickets' : 'customer_support_tickets'

@@ -96,17 +96,17 @@ export function DriverManagement() {
           <option value="">Choose a customer</option>
           {filteredCustomers.map(c => <option key={c.user_id} value={c.user_id}>{c.full_name || 'Customer'} — {c.email}{c.driver_enabled ? ' (Enabled)' : ''}</option>)}
         </select>
-        {selected && <div className="admin-customer-access">
+        {selected && <div className="driver-customer-access">
           <div><strong>{selected.full_name || 'Customer'}</strong><p>{selected.email} {selected.phone ? `· ${selected.phone}` : ''}</p><span className={selected.driver_enabled ? 'admin-status admin-status--success' : 'admin-status'}>{selected.driver_enabled ? 'Driver access enabled' : 'Driver access disabled'}</span></div>
           <button className={selected.driver_enabled ? 'admin-button admin-button--danger' : 'admin-button'} disabled={busy} onClick={() => void setCustomerAccess(selected)}>{selected.driver_enabled ? 'Disable for this customer' : 'Enable for this customer'}</button>
         </div>}
         {!loading && customers.length === 0 && <p className="driver-empty">No customer accounts were returned.</p>}
       </section>
 
-      <section className="admin-card" style={{marginBottom:24}}>
-        <div className="admin-section-heading"><div><h2>Driver applications</h2><p>Review applications submitted by customers who were given access.</p></div><ShieldCheck size={22}/></div>
+      <section className="admin-panel driver-panel">
+        <div className="admin-panel-heading driver-panel-heading"><div><h2>Driver applications</h2><p>Review applications submitted by customers who were given access.</p></div><ShieldCheck size={22}/></div>
         <div className="admin-table-wrap driver-table-wrap"><table className="admin-table driver-table"><thead><tr><th>Applicant</th><th>Vehicle</th><th>Status</th><th>Admin note</th><th>Actions</th></tr></thead>
-          <tbody>{applications.map(app => <tr key={app.id}><td><strong>{app.full_name}</strong><br/><small>{app.phone}</small></td><td>{app.vehicle_type}</td><td><span className="admin-status">{app.status}</span></td><td><input className="driver-control" value={notes[app.id] ?? ''} onChange={e => setNotes(v => ({...v,[app.id]:e.target.value}))} placeholder="Optional note"/></td><td className="admin-actions">
+          <tbody>{applications.map(app => <tr key={app.id}><td><strong>{app.full_name}</strong><br/><small>{app.phone}</small></td><td>{app.vehicle_type}</td><td><span className="admin-status">{app.status}</span></td><td><input className="driver-control" value={notes[app.id] ?? ''} onChange={e => setNotes(v => ({...v,[app.id]:e.target.value}))} placeholder="Optional note"/></td><td className="driver-actions">
             <button className="admin-button" disabled={busy || app.status === 'approved'} onClick={() => void reviewApplication(app,'approve')}><Check size={14}/> Approve</button>
             <button className="admin-button admin-button--outline" disabled={busy} onClick={() => void reviewApplication(app,'reject')}><X size={14}/> Reject</button>
             <button className="admin-button admin-button--danger" disabled={busy} onClick={() => void reviewApplication(app,'suspend')}>Suspend</button>
@@ -118,7 +118,7 @@ export function DriverManagement() {
         <div className="admin-section-heading"><div><h2>Assign an order</h2><p>Choose an active customer order and an approved driver.</p></div><PackageCheck size={22}/></div>
         <div className="admin-form-grid driver-assignment-grid">
           <label className="driver-field">Customer order<select className="driver-control" value={orderId} onChange={e => setOrderId(e.target.value)}><option value="">Select an active order</option>{orders.map(o => <option key={o.id} value={o.id}>{o.order_number} — {o.customer_name} ({o.order_status})</option>)}</select></label>
-          <label className="driver-field">Approved driver<select className="admin-select" value={driverId} onChange={e => setDriverId(e.target.value)}><option value="">Select a driver</option>{drivers.map(d => <option key={d.user_id} value={d.user_id}>{d.full_name} — {d.phone}</option>)}</select></label>
+          <label className="driver-field">Approved driver<select className="driver-control" value={driverId} onChange={e => setDriverId(e.target.value)}><option value="">Select a driver</option>{drivers.map(d => <option key={d.user_id} value={d.user_id}>{d.full_name} — {d.phone}</option>)}</select></label>
         </div>
         <button className="admin-button" disabled={busy || !orderId || !driverId} onClick={() => void assignDriver()}><Truck size={16}/> Assign driver</button>
       </section>

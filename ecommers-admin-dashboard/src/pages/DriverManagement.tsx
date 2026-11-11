@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, RefreshCw, Truck, UserRoundCheck, X, ShieldCheck, Users, PackageCheck } from 'lucide-react'
+import { Check, RefreshCw, Truck, X, ShieldCheck, Users, PackageCheck } from 'lucide-react'
 import { getSupabase } from '../lib/supabase'
 
 type DriverApplication = { id: string; user_id: string; full_name: string; phone: string; vehicle_type: string; status: string; admin_note: string | null; created_at: string }

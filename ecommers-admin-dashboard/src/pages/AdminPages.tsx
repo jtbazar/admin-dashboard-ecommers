@@ -7,6 +7,7 @@ import { adjustInventory, decideMarketplaceCase, deleteAdminHero, deleteAdminPro
 import type { Database } from '../types/database'
 import { getSupabase } from '../lib/supabase'
 import { isValidEmail, isValidPakistaniMobile, normalizePakistaniMobile } from '../utils/contactValidation'
+import { DriverManagement } from './DriverManagement'
 import '../admin.css'
 
 const nav = [
@@ -21,6 +22,7 @@ const nav = [
   { to: '/admin/manual-orders', label: 'Manual Orders', icon: Plus },
   { to: '/admin/inventory', label: 'Inventory', icon: Boxes },
   { to: '/admin/sellers', label: 'Sellers', icon: Store },
+  { to: '/admin/drivers', label: 'Drivers', icon: Truck },
   { to: '/admin/cases', label: 'Cases', icon: MessageSquare },
   { to: '/admin/tickets', label: 'Support tickets', icon: MessageSquare },
   { to: '/admin/customers', label: 'Customers', icon: Users },
@@ -168,6 +170,7 @@ function AdminContent({ path }: { path: string }) {
   if (/^\/admin\/orders\/[^/]+$/.test(path)) return <OrderDetailPage orderId={path.split('/').pop()!} />
   if (path === '/admin/inventory') return <Inventory />
   if (path === '/admin/sellers') return <Sellers />
+  if (path === '/admin/drivers') return <DriverManagement />
   if (path === '/admin/cases') return <Cases />
   if (path === '/admin/tickets') return <SupportTickets />
   if (path === '/admin/customers') return <Customers />

@@ -4,11 +4,14 @@ import { getSupabase } from '../lib/supabase'
 
 type DriverApplication = { id: string; user_id: string; full_name: string; phone: string; vehicle_type: string; status: string; admin_note: string | null; created_at: string }
 type DeliveryOrder = { id: string; order_number: string; customer_name: string; customer_phone: string; order_status: string; created_at: string }
-type DriverOption = { user_id: string; full_name: string; phone: string }\ntype DriverCustomer = { user_id: string; email: string; full_name: string; phone: string; driver_enabled: boolean }
+type DriverOption = { user_id: string; full_name: string; phone: string }
+type DriverCustomer = { user_id: string; email: string; full_name: string; phone: string; driver_enabled: boolean }
 
 export function DriverManagement() {
   const db = getSupabase() as any
-  const [customers, setCustomers] = useState<DriverCustomer[]>([])\n  const [customerSearch, setCustomerSearch] = useState('')\n  const [selectedCustomer, setSelectedCustomer] = useState('')
+  const [customers, setCustomers] = useState<DriverCustomer[]>([])
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [selectedCustomer, setSelectedCustomer] = useState('')
   const [applications, setApplications] = useState<DriverApplication[]>([])
   const [orders, setOrders] = useState<DeliveryOrder[]>([])
   const [drivers, setDrivers] = useState<DriverOption[]>([])

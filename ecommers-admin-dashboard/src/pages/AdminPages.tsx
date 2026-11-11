@@ -302,7 +302,80 @@ function Products() {
 
 
 function VendorProducts({ sellerId }: { sellerId?: string }) {
-  return sellerId ? <VendorProductsForSeller sellerId={sellerId} /> : <VendorDirectory />
+  return sellerId ? <VendorProductsForSeller sellerId={sellerId} /> : <VendorProductsOverview />
+}
+
+function VendorProductsOverview() {
+  const { push } = useToast()
+  const [vendors, setVendors] = useState<import('../services/admin/adminService').AdminVendorDirectoryRow[]>([])
+  const [sellerId, setSellerId] = useState('')
+  const [items, setItems] = useState<AdminProduct[]>([])
+  const [search, setSearch] = useState('')
+  const [tab, setTab] = useState<'pending_review' | 'approved' | 'rejected'>('pending_review')
+  const [page, setPage] = useState(0)
+  const [count, setCount] = useState(0)
+  const [pendingCount, setPendingCount] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [rejectTarget, setRejectTarget] = useState<AdminProduct | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [detailsId, setDetailsId] = useState<string | null>(null)
+  const [editing, setEditing] = useState<AdminProduct | null | undefined>(undefined)
+
+  useEffect(() => {
+    void listAdminVendorDirectoryPage('', 0, 200).then((result) => setVendors(result.items)).catch(() => setVendors([]))
+  }, [])
+  const load = (quiet = false) => {
+    if (!quiet) setLoading(true)
+    setError(null)
+    void Promise.all([
+      listAdminProductsPage(search, page, 12, sellerId || null, tab, false),
+      tab === 'pending_review' ? Promise.resolve(null) : listAdminProductsPage('', 0, 1, null, 'pending_review', false)
+    ]).then(([result, pending]) => {
+      setItems(result.items); setCount(result.count)
+      if (pending) setPendingCount(pending.count)
+      else if (tab === 'pending_review') setPendingCount(result.count)
+    }).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Vendor products could not be loaded.'))
+      .finally(() => { if (!quiet) setLoading(false) })
+  }
+  useEffect(load, [search, page, tab, sellerId])
+  useAutoRefresh(load)
+  async function approve(item: AdminProduct) {
+    setSaving(true)
+    try { await moderateProduct(item.id, 'approved'); push('Vendor product approved.', 'success'); load(true) }
+    catch (cause) { push(cause instanceof Error ? cause.message : 'Product could not be approved.', 'error') }
+    finally { setSaving(false) }
+  }
+  async function reject() {
+    if (!rejectTarget || rejectReason.trim().length < 3) return
+    setSaving(true)
+    try { await moderateProduct(rejectTarget.id, 'rejected', rejectReason.trim()); push('Vendor product rejected.', 'success'); setRejectTarget(null); setRejectReason(''); load(true) }
+    catch (cause) { push(cause instanceof Error ? cause.message : 'Product could not be rejected.', 'error') }
+    finally { setSaving(false) }
+  }
+  return <section className="admin-content">
+    <div className="admin-page-heading"><div><p className="admin-kicker">Catalog management</p><h2>Vendor Products</h2><p className="admin-copy">Review vendor product approval requests separately from platform products.</p></div><button className="admin-button admin-button--outline" onClick={() => load()}><RefreshCw size={15}/> Refresh</button></div>
+    <div className="admin-panel">
+      <div className="admin-toolbar admin-finance-toolbar">
+        <div className="admin-segmented" role="tablist" aria-label="Vendor product status">
+          {(['pending_review','approved','rejected'] as const).map((key) => <button key={key} type="button" className={tab === key ? 'is-active' : ''} onClick={() => { setTab(key); setPage(0) }}>{key === 'pending_review' ? 'Pending Products' : key === 'approved' ? 'Approved Products' : 'Rejected Products'}{key === 'pending_review' && pendingCount > 0 ? ` (${pendingCount})` : ''}</button>)}
+        </div>
+        <select aria-label="Filter by vendor" value={sellerId} onChange={(event) => { setSellerId(event.target.value); setPage(0) }}><option value="">All vendors</option>{vendors.map((vendor) => <option key={vendor.seller_id} value={vendor.seller_id}>{vendor.shop_name}</option>)}</select>
+        <label className="admin-search"><Search size={16}/><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(0) }} placeholder="Search product name, SKU or slug"/></label>
+      </div>
+      {editing !== undefined && <ProductEditor key={editing?.id ?? 'vendor-product-edit'} product={editing ?? undefined} onSaved={() => { setEditing(undefined); load(true) }} onCancel={() => setEditing(undefined)}/>}
+      {error ? <ErrorState message={error} retry={load}/> : loading ? <Loading/> : items.length === 0 ? <Empty title={tab === 'pending_review' ? 'No pending products' : tab === 'approved' ? 'No approved products' : 'No rejected products'} detail="There are no vendor products matching this status and filter."/> :
+        <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>#</th><th>Product</th><th>Vendor</th><th>Category</th><th>Price</th><th>Stock</th><th>Publication</th><th>Action</th></tr></thead><tbody>{items.map((item, index) => <tr key={item.id}>
+          <td>{page * 12 + index + 1}</td><td><div className="admin-product-cell">{item.image_url ? <img src={item.image_url} alt=""/> : <span className="admin-thumb"><Package size={15}/></span>}<span><strong>{item.name}</strong><small>{item.sku ?? 'No product code'} · {item.slug}</small></span></div></td>
+          <td>{item.seller_name ?? 'Vendor'}</td><td>{item.category?.name ?? 'Unassigned'}</td><td>{formatMoney(item.price)}</td><td>{item.track_inventory ? item.inventory : 'Not tracked'}</td><td><em className={statusClass(item.publication_status)}>{item.publication_status}</em></td>
+          <td><div className="admin-action-row"><button className="admin-small-button" onClick={() => setDetailsId(item.id)}>View</button><button className="admin-small-button" onClick={() => setEditing(item)}>Edit</button>{tab === 'pending_review' && <><button className="admin-small-button" disabled={saving} onClick={() => void approve(item)}>Approve</button><button className="admin-small-button" disabled={saving} onClick={() => { setRejectTarget(item); setRejectReason('') }}>Reject</button></>}</div></td>
+        </tr>)}</tbody></table></div>}
+      {!error && !loading && <ApiPagination page={page} pageSize={12} count={count} onPageChange={setPage} loading={loading}/>}
+    </div>
+    {detailsId && <AdminProductDetails id={detailsId} onClose={() => setDetailsId(null)} onEdit={(id) => { const item = items.find((row) => row.id === id); setDetailsId(null); if (item) setEditing(item) }}/>}
+    {rejectTarget && <div className="admin-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setRejectTarget(null) }}><section className="admin-modal" role="dialog" aria-modal="true" aria-labelledby="vendor-product-reject-title"><div className="admin-panel-heading"><div><p className="admin-kicker">Vendor product review</p><h3 id="vendor-product-reject-title">Reject {rejectTarget.name}?</h3></div><button type="button" className="admin-icon-button" disabled={saving} onClick={() => setRejectTarget(null)}><X size={18}/></button></div><label className="admin-form-span"><span>Reason / corrections required *</span><textarea rows={4} value={rejectReason} onChange={(event) => setRejectReason(event.target.value)} placeholder="Tell the vendor what needs to be corrected."/></label><div className="admin-form-actions"><button className="admin-button admin-button--outline" disabled={saving} onClick={() => setRejectTarget(null)}>Cancel</button><button className="admin-button" disabled={saving || rejectReason.trim().length < 3} onClick={() => void reject()}>{saving ? 'Please wait…' : 'Confirm rejection'}</button></div></section></div>}
+  </section>
 }
 
 function VendorDirectory() {

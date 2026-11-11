@@ -179,11 +179,11 @@ export async function listAdminVendorDirectoryPage(search = '', page = 0, pageSi
   return { items: (data ?? []) as AdminVendorDirectoryRow[], count: Number(countResult.data ?? 0) }
 }
 
-export async function listAdminProductsPage(search = '', page = 0, pageSize = 12, sellerId: string | null = null, moderationStatus: string | null = null): Promise<{ items: AdminProduct[]; count: number }> {
+export async function listAdminProductsPage(search = '', page = 0, pageSize = 12, sellerId: string | null = null, moderationStatus: string | null = null, platformOnly = false): Promise<{ items: AdminProduct[]; count: number }> {
   const client = getSupabase()
   const [{ data, error }, countResult] = await Promise.all([
-    client.rpc('admin_list_products_page', { p_search: search.trim(), p_seller_id: sellerId, p_moderation_status: moderationStatus, p_page: page, p_page_size: pageSize }),
-    client.rpc('admin_count_products_page', { p_search: search.trim(), p_seller_id: sellerId, p_moderation_status: moderationStatus }),
+    client.rpc('admin_list_products_page', { p_search: search.trim(), p_seller_id: sellerId, p_moderation_status: moderationStatus, p_page: page, p_page_size: pageSize, p_platform_only: platformOnly }),
+    client.rpc('admin_count_products_page', { p_search: search.trim(), p_seller_id: sellerId, p_moderation_status: moderationStatus, p_platform_only: platformOnly }),
   ])
   assertError(error); assertError(countResult.error)
   const rows = (data ?? []) as Database['public']['Tables']['products']['Row'][]

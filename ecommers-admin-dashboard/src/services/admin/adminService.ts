@@ -156,6 +156,60 @@ export async function listAdminProducts(search = ''): Promise<AdminProduct[]> {
   }))
 }
 
+export async function listAdminProductsPage(search = '', page = 0, pageSize = 12, sellerId: string | null = null, moderationStatus: string | null = null): Promise<{ items: AdminProduct[]; count: number }> {
+  const client = getSupabase()
+  const [{ data, error }, countResult] = await Promise.all([client.rpc('admin_list_products_page', { p_search: search.trim(), p_seller_id: sellerId, p_moderation_status: moderationStatus, p_page: page, p_page_size: pageSize }), client.rpc('admin_count_products_page', { p_search: search.trim(), p_seller_id: sellerId, p_moderation_status: moderationStatus })])
+  assertError(error); assertError(countResult.error)
+  const rows = (data ?? []) as Database['public']['Tables']['products']['Row'][]
+  if (rows.length === 0) return { items: [], count: Number(countResult.data ?? 0) }
+
+  const productIds = rows.map((row) => row.id)
+  const [categoriesResult, inventoryResult, imagesResult, sellersResult] = await Promise.all([
+    client.from('categories').select('id, name').limit(500),
+    client.from('product_inventory').select('product_id, quantity').in('product_id', productIds).limit(1000),
+    client.from('product_images').select('product_id, image_url, storage_path, is_primary, sort_order').in('product_id', productIds).order('sort_order').limit(1000),
+    client.from('seller_profiles').select('id, shop_name, user_id').limit(1000),
+  ])
+  assertError(categoriesResult.error); assertError(inventoryResult.error); assertError(imagesResult.error); assertError(sellersResult.error)
+
+  const categoryNames = new Map((categoriesResult.data ?? []).map((category) => [category.id, category.name]))
+  const sellerNames = new Map((sellersResult.data ?? []).map((seller) => [seller.id, seller.shop_name]))
+  const inventoryTotals = new Map<string, number>()
+  for (const row of inventoryResult.data ?? []) {
+    inventoryTotals.set(row.product_id, (inventoryTotals.get(row.product_id) ?? 0) + (row.quantity ?? 0))
+  }
+  const imagesByProduct = new Map<string, { image_url: string | null; storage_path: string | null; is_primary: boolean | null }[]>()
+  for (const image of imagesResult.data ?? []) {
+    const list = imagesByProduct.get(image.product_id) ?? []
+    list.push(image)
+    imagesByProduct.set(image.product_id, list)
+  }
+
+  const items = await Promise.all(rows.map(async (row) => {
+    const images = imagesByProduct.get(row.id) ?? []
+    const primary = images.find((image) => image.is_primary) ?? images[0]
+    let imageUrl = primary?.image_url ?? null
+    if (!imageUrl && primary?.storage_path) {
+      const bucket = getProductImageBucket(primary.storage_path, row.id)
+      if (bucket === 'product-images') {
+        imageUrl = client.storage.from(bucket).getPublicUrl(primary.storage_path).data.publicUrl
+      } else {
+        const signed = await client.storage.from(bucket).createSignedUrl(primary.storage_path, 600)
+        imageUrl = signed.data?.signedUrl ?? null
+      }
+    }
+    return {
+      ...row,
+      category: row.category_id ? { name: categoryNames.get(row.category_id) ?? 'Unassigned' } : null,
+      inventory: inventoryTotals.get(row.id) ?? 0,
+      image_url: imageUrl,
+      seller_name: row.seller_id ? sellerNames.get(row.seller_id) ?? null : null,
+    }
+  }))
+  return { items, count: Number(countResult.data ?? 0) }
+}
+
+
 export async function listAdminCategories(): Promise<AdminCategory[]> {
   const { data, error } = await getSupabase().from('categories').select('id, parent_id, name, slug, description, eyebrow, image_url, is_active, is_coming_soon, is_food_category, sort_order, seo_title, seo_description, created_at, updated_at').order('sort_order').order('name').limit(200)
   assertError(error)

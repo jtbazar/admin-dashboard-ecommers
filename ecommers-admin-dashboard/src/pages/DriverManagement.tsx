@@ -9,7 +9,6 @@ type DriverOption = { user_id: string; full_name: string; phone: string }
 export function DriverManagement() {
   const db = getSupabase() as any
   const [enabled, setEnabled] = useState(false)
-  const [settingsId, setSettingsId] = useState<string | null>(null)
   const [applications, setApplications] = useState<DriverApplication[]>([])
   const [orders, setOrders] = useState<DeliveryOrder[]>([])
   const [drivers, setDrivers] = useState<DriverOption[]>([])
@@ -24,15 +23,14 @@ export function DriverManagement() {
   async function load() {
     setError(null)
     const [settings, apps, orderRows, approved] = await Promise.all([
-      db.from('store_settings').select('id,driver_system_enabled').limit(1).maybeSingle(),
+      db.rpc('get_driver_system_enabled'),
       db.from('driver_applications').select('id,user_id,full_name,phone,vehicle_type,status,admin_note,created_at').order('created_at', { ascending: false }).limit(200),
       db.from('orders').select('id,order_number,customer_name,customer_phone,order_status,created_at').not('order_status','in','(delivered,cancelled)').order('created_at',{ascending:false}).limit(250),
       db.from('driver_applications').select('user_id,full_name,phone').eq('status','approved').order('full_name')
     ])
     const failure = settings.error || apps.error || orderRows.error || approved.error
     if (failure) throw new Error(failure.message)
-    setSettingsId(settings.data?.id ?? null)
-    setEnabled(Boolean(settings.data?.driver_system_enabled))
+    setEnabled(Boolean(settings.data))
     setApplications(apps.data ?? [])
     setOrders(orderRows.data ?? [])
     setDrivers(approved.data ?? [])
@@ -42,9 +40,8 @@ export function DriverManagement() {
   useEffect(() => { void load().catch(e => setError(e.message || 'Could not load driver operations.')).finally(() => setLoading(false)) }, [])
 
   async function toggleSystem() {
-    if (!settingsId) return
     setBusy(true); setError(null); setSuccess(null)
-    const { error: updateError } = await db.from('store_settings').update({ driver_system_enabled: !enabled }).eq('id', settingsId)
+    const { error: updateError } = await db.rpc('admin_set_driver_system_enabled', { p_enabled: !enabled })
     if (updateError) setError(updateError.message)
     else { setEnabled(!enabled); setSuccess(`Driver system ${!enabled ? 'enabled' : 'disabled'}.`) }
     setBusy(false)
@@ -88,7 +85,7 @@ export function DriverManagement() {
       <div className="dm-stat"><div className="dm-stat-icon"><UserRoundCheck size={20}/></div><div><span>Pending review</span><strong>{pendingCount}</strong></div></div>
       <div className="dm-stat"><div className="dm-stat-icon"><ShieldCheck size={20}/></div><div><span>Approved drivers</span><strong>{drivers.length}</strong></div></div>
     </div>
-    <section className="dm-card"><div className="dm-system"><div className="dm-system-copy"><div className="dm-system-icon"><Truck size={22}/></div><div><strong>Driver system</strong><p>{enabled ? 'Applications and driver operations are currently enabled.' : 'Applications and driver operations are currently disabled.'}</p></div><span className={`dm-pill ${enabled?'dm-pill--enabled':''}`}>{enabled?'Active':'Disabled'}</span></div><button className={`dm-btn ${enabled?'dm-btn--danger':''}`} disabled={busy || !settingsId} onClick={() => void toggleSystem()}>{enabled?'Disable system':'Enable driver system'}</button></div></section>
+    <section className="dm-card"><div className="dm-system"><div className="dm-system-copy"><div className="dm-system-icon"><Truck size={22}/></div><div><strong>Driver system</strong><p>{enabled ? 'Applications and driver operations are currently enabled.' : 'Applications and driver operations are currently disabled.'}</p></div><span className={`dm-pill ${enabled?'dm-pill--enabled':''}`}>{enabled?'Active':'Disabled'}</span></div><button className={`dm-btn ${enabled?'dm-btn--danger':''}`} disabled={busy} onClick={() => void toggleSystem()}>{enabled?'Disable system':'Enable driver system'}</button></div></section>
     <section className="dm-card"><div className="dm-card-head"><h2 className="dm-card-title"><UserRoundCheck size={19}/> Driver applications</h2><span className="dm-pill">{applications.length} total</span></div>
       {loading ? <div className="dm-empty">Loading driver applications…</div> : applications.length === 0 ? <div className="dm-empty"><UserRoundCheck size={24}/>No driver applications yet.</div> : <div className="dm-table-wrap"><table className="dm-table"><thead><tr><th>Applicant</th><th>Phone</th><th>Vehicle</th><th>Status</th><th>Admin note</th><th>Review</th></tr></thead><tbody>
       {applications.map(app => <tr key={app.id}><td><strong>{app.full_name}</strong><span className="dm-sub">Applied {new Date(app.created_at).toLocaleDateString()}</span></td><td>{app.phone}</td><td>{app.vehicle_type}</td><td><span className={`dm-pill dm-pill--${app.status}`}>{app.status}</span></td><td><input className="dm-note" value={notes[app.id] ?? ''} onChange={e=>setNotes(old=>({...old,[app.id]:e.target.value}))} placeholder="Add a note"/></td><td><div className="dm-actions"><button className="dm-btn dm-btn--success" disabled={busy || app.status==='approved'} onClick={()=>void review(app,'approved')}><Check size={13}/> Approve</button><button className="dm-btn dm-btn--light" disabled={busy || app.status==='rejected'} onClick={()=>void review(app,'rejected')}><X size={13}/> Reject</button>{app.status==='approved' && <button className="dm-btn dm-btn--danger" disabled={busy} onClick={()=>void review(app,'suspended')}>Suspend</button>}</div></td></tr>)}

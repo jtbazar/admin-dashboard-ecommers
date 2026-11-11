@@ -6,6 +6,7 @@ type DriverApplication = { id: string; user_id: string; full_name: string; phone
 type DeliveryOrder = { id: string; order_number: string; customer_name: string; customer_phone: string; order_status: string; created_at: string }
 type DriverOption = { user_id: string; full_name: string; phone: string }
 type DriverCustomer = { user_id: string; email: string; full_name: string; phone: string; driver_enabled: boolean }
+type DriverAssignment = { assignment_id: string; order_id: string; order_number: string; customer_name: string; driver_user_id: string; driver_name: string; driver_phone: string; assignment_status: string; assigned_at: string; picked_up_at: string | null; delivered_at: string | null }
 
 export function DriverManagement() {
   const db = getSupabase() as any
@@ -15,6 +16,7 @@ export function DriverManagement() {
   const [applications, setApplications] = useState<DriverApplication[]>([])
   const [orders, setOrders] = useState<DeliveryOrder[]>([])
   const [drivers, setDrivers] = useState<DriverOption[]>([])
+  const [assignments, setAssignments] = useState<DriverAssignment[]>([])
   const [orderId, setOrderId] = useState('')
   const [driverId, setDriverId] = useState('')
   const [notes, setNotes] = useState<Record<string, string>>({})
@@ -25,18 +27,20 @@ export function DriverManagement() {
 
   async function load() {
     setError(null)
-    const [settings, apps, orderRows, approved] = await Promise.all([
+    const [settings, apps, orderRows, approved, assignmentRows] = await Promise.all([
       db.rpc('admin_list_driver_customers'),
       db.rpc('admin_list_driver_applications'),
       db.rpc('admin_list_assignable_driver_orders'),
-      db.rpc('admin_list_approved_drivers')
+      db.rpc('admin_list_approved_drivers'),
+      db.rpc('admin_list_driver_assignments')
     ])
-    const failure = settings.error || apps.error || orderRows.error || approved.error
+    const failure = settings.error || apps.error || orderRows.error || approved.error || assignmentRows.error
     if (failure) throw new Error(failure.message)
     setCustomers(settings.data ?? [])
     setApplications(apps.data ?? [])
     setOrders(orderRows.data ?? [])
     setDrivers(approved.data ?? [])
+    setAssignments(assignmentRows.data ?? [])
     setNotes(Object.fromEntries((apps.data ?? []).map((a: DriverApplication) => [a.id, a.admin_note ?? ''])))
   }
 
@@ -85,6 +89,21 @@ export function DriverManagement() {
       await load()
     } catch (e: any) {
       setError(e?.message || 'Could not assign this driver.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function cancelAssignment(assignment: DriverAssignment) {
+    if (!window.confirm('Cancel the driver assignment for order ' + assignment.order_number + '? The order will return to the assignable orders list.')) return
+    setBusy(true); setError(null); setSuccess(null)
+    try {
+      const { error: rpcError } = await db.rpc('admin_cancel_driver_assignment', { p_assignment_id: assignment.assignment_id })
+      if (rpcError) throw rpcError
+      setSuccess('Driver assignment cancelled. The order is available for reassignment.')
+      await load()
+    } catch (e: any) {
+      setError(e?.message || 'Could not cancel this driver assignment.')
     } finally {
       setBusy(false)
     }
@@ -142,6 +161,23 @@ export function DriverManagement() {
         </div>
         <button className="admin-button" disabled={busy || !orderId || !driverId} onClick={() => void assignDriver()}><Truck size={16}/> Assign driver</button>
       </section>
+      <section className="admin-panel driver-panel">
+        <div className="admin-section-heading"><div><h2>Driver assignment records</h2><p>Track assigned, picked-up, delivered and cancelled deliveries. Cancel an active assignment to return its order to the available list.</p></div><PackageCheck size={22}/></div>
+        <div className="admin-table-wrap driver-table-wrap"><table className="admin-table driver-table">
+          <thead><tr><th>Order</th><th>Customer</th><th>Driver</th><th>Status</th><th>Assigned</th><th>Action</th></tr></thead>
+          <tbody>{assignments.map(a => <tr key={a.assignment_id}>
+            <td><strong>{a.order_number}</strong></td><td>{a.customer_name}</td>
+            <td><strong>{a.driver_name || 'Driver'}</strong><br/><small>{a.driver_phone}</small></td>
+            <td><span className="admin-status">{a.assignment_status.replace('_',' ')}</span></td>
+            <td>{new Date(a.assigned_at).toLocaleString()}</td>
+            <td>{['assigned','picked_up'].includes(a.assignment_status)
+              ? <button className="admin-button admin-button--danger" disabled={busy} onClick={() => void cancelAssignment(a)}><X size={14}/> Cancel assignment</button>
+              : <span className="driver-muted">—</span>}</td>
+          </tr>)}</tbody>
+        </table></div>
+        {assignments.length === 0 && <p className="driver-empty">No driver assignments recorded yet.</p>}
+      </section>
+
       {loading && <p>Loading driver operations…</p>}
     </main>
   )

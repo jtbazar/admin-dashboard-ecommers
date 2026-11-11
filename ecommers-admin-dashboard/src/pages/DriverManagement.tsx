@@ -101,6 +101,7 @@ export function DriverManagement() {
           <button className={selected.driver_enabled ? 'admin-button admin-button--danger' : 'admin-button'} disabled={busy} onClick={() => void setCustomerAccess(selected)}>{selected.driver_enabled ? 'Disable for this customer' : 'Enable for this customer'}</button>
         </div>}
         {!loading && customers.length === 0 && <p className="driver-empty">No customer accounts were returned.</p>}
+        </div>
       </section>
 
       <section className="admin-panel driver-panel">

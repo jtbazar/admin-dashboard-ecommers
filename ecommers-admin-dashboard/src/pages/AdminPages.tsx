@@ -34,6 +34,7 @@ const nav = [
 function notificationSectionPath(item: AdminNotification): string | null {
   const title = `${item.title} ${item.body}`.toLowerCase()
   if (item.kind === 'order' || title.includes('order')) return '/admin/orders'
+  if (title.includes('vendor product') || title.includes('vendor listing') || (title.includes('product') && title.includes('vendor'))) return '/admin/vendor-products'
   if (title.includes('product') || title.includes('listing')) return '/admin/products'
   if (title.includes('seller') || title.includes('vendor') || title.includes('shop')) return '/admin/sellers'
   if (title.includes('case') || title.includes('complaint') || title.includes('return') || title.includes('refund')) return '/admin/cases'
@@ -326,10 +327,10 @@ function VendorProducts() {
 
   const vendorItems = items.filter((item) => Boolean(item.seller_id))
   const vendors = Array.from(new Map(vendorItems.filter((item) => item.seller_id && item.seller_name).map((item) => [item.seller_id!, item.seller_name!])).entries())
-  const filtered = vendorItems.filter((item) => item.moderation_status === statusTab && (!vendorFilter || item.seller_id === vendorFilter))
+  const filtered = vendorItems.filter((item) => (statusTab === 'approved' ? item.moderation_status === 'approved' || item.moderation_status === 'hidden' : item.moderation_status === statusTab) && (!vendorFilter || item.seller_id === vendorFilter))
   const counts = {
     pending_review: vendorItems.filter((item) => item.moderation_status === 'pending_review').length,
-    approved: vendorItems.filter((item) => item.moderation_status === 'approved').length,
+    approved: vendorItems.filter((item) => item.moderation_status === 'approved' || item.moderation_status === 'hidden').length,
     rejected: vendorItems.filter((item) => item.moderation_status === 'rejected').length,
   }
 
@@ -373,7 +374,7 @@ function VendorProducts() {
           <option value="">All vendors</option>
           {vendors.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
         </select>
-        <label className="admin-search"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search vendor or product name" /></label>
+        <label className="admin-search"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search product name, SKU or slug" /></label>
       </div>
       {editing !== undefined && <ProductEditor key={editing?.id ?? 'vendor-new-product'} product={editing ?? undefined} onSaved={() => { setEditing(undefined); load(true) }} onCancel={() => setEditing(undefined)} />}
       {error ? <ErrorState message={error} retry={load} /> : loading ? <Loading /> : filtered.length === 0 ? <Empty title={statusTab === 'pending_review' ? 'No pending vendor products' : statusTab === 'approved' ? 'No approved vendor products' : 'No rejected vendor products'} detail={vendorFilter ? 'No products match this vendor and status. Try another vendor or status tab.' : 'Vendor products in this status will appear here.'} /> :

@@ -92,6 +92,10 @@ export interface Database {
       admin_set_vendor_lock: { Args: { p_seller_id: string; p_locked: boolean; p_reason?: string | null }; Returns: SellerProfileRow }
       admin_decide_marketplace_case: { Args: { p_case_id: string; p_status: string; p_decision: string }; Returns: MarketplaceCaseRow }
       admin_moderate_product: { Args: { p_product_id: string; p_status: ModerationStatus; p_reason?: string | null }; Returns: ProductRow }
+      admin_list_vendor_directory_page: { Args: { p_search?: string; p_page?: number; p_page_size?: number }; Returns: { seller_id: string; shop_name: string; contact_email: string | null; phone: string | null; seller_status: string; vendor_locked: boolean; total_products: number; pending_products: number; approved_products: number; rejected_products: number }[] }
+      admin_count_vendor_directory: { Args: { p_search?: string }; Returns: number }
+      admin_list_products_page: { Args: { p_search?: string; p_seller_id?: string | null; p_moderation_status?: string | null; p_page?: number; p_page_size?: number; p_platform_only?: boolean }; Returns: ProductRow[] }
+      admin_count_products_page: { Args: { p_search?: string; p_seller_id?: string | null; p_moderation_status?: string | null; p_platform_only?: boolean }; Returns: number }
       admin_list_products: { Args: { p_search?: string }; Returns: ProductRow[] }
       admin_get_product_by_id: { Args: { p_product_id: string }; Returns: ProductRow[] }
       admin_customer_summary: { Args: Record<string, never>; Returns: { id: string; full_name: string | null; phone: string | null; avatar_url: string | null; email: string | null; order_count: number; lifetime_value: number; created_at: string; updated_at: string }[] }

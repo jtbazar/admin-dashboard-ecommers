@@ -378,40 +378,6 @@ function VendorProductsOverview() {
   </section>
 }
 
-function VendorDirectory() {
-  const navigate = useNavigate()
-  const [items, setItems] = useState<import('../services/admin/adminService').AdminVendorDirectoryRow[]>([])
-  const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('all')
-  const [page, setPage] = useState(0)
-  const [count, setCount] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const load = (quiet = false) => {
-    if (!quiet) setLoading(true)
-    setError(null)
-    void listAdminVendorDirectoryPage(search, page, 12).then((result) => {
-      const filtered = status === 'all' ? result.items : result.items.filter((item) => item.seller_status === status)
-      setItems(filtered); setCount(status === 'all' ? result.count : filtered.length)
-    }).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Vendors could not be loaded.'))
-      .finally(() => { if (!quiet) setLoading(false) })
-  }
-  useEffect(load, [search, page, status])
-  useAutoRefresh(load)
-  return <section className="admin-content">
-    <div className="admin-page-heading"><div><p className="admin-kicker">Catalog management</p><h2>Vendors</h2><p className="admin-copy">Select a vendor to review only that vendor’s listings.</p></div><button className="admin-button admin-button--outline" onClick={() => load()}><RefreshCw size={15}/> Refresh</button></div>
-    <div className="admin-panel">
-      <div className="admin-toolbar"><label className="admin-search"><Search size={16}/><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(0) }} placeholder="Search vendor, email or phone"/></label>
-      <select aria-label="Filter vendors by status" value={status} onChange={(event) => { setStatus(event.target.value); setPage(0) }}><option value="all">All vendor statuses</option><option value="approved">Approved</option><option value="pending">Pending</option><option value="rejected">Rejected</option><option value="suspended">Suspended</option></select></div>
-      {error ? <ErrorState message={error} retry={load}/> : loading ? <Loading/> : items.length === 0 ? <Empty title="No vendors found" detail="Try another vendor name or status filter."/> :
-        <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Vendor</th><th>Contact</th><th>Vendor status</th><th>Total products</th><th>Pending</th><th>Approved</th><th>Rejected</th><th>Action</th></tr></thead><tbody>{items.map((vendor) => <tr key={vendor.seller_id}>
-          <td><strong>{vendor.shop_name}</strong>{vendor.vendor_locked && <small>Locked</small>}</td><td>{vendor.contact_email || '—'}{vendor.phone && <small>{vendor.phone}</small>}</td><td><em className={statusClass(vendor.seller_status)}>{vendor.seller_status}</em></td><td>{vendor.total_products}</td><td>{vendor.pending_products}</td><td>{vendor.approved_products}</td><td>{vendor.rejected_products}</td><td><button type="button" className="admin-small-button" onClick={() => navigate('/admin/vendor-products/' + vendor.seller_id)}>View products</button></td>
-        </tr>)}</tbody></table></div>}
-      {!error && !loading && <ApiPagination page={page} pageSize={12} count={count} onPageChange={setPage} loading={loading}/>}
-    </div>
-  </section>
-}
-
 function VendorProductsForSeller({ sellerId }: { sellerId: string }) {
   const navigate = useNavigate()
   const { push } = useToast()

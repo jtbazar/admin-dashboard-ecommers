@@ -44,31 +44,50 @@ export function DriverManagement() {
 
   async function setCustomerAccess(customer: DriverCustomer) {
     setBusy(true); setError(null); setSuccess(null)
-    const { error: rpcError } = await db.rpc('admin_set_customer_driver_access', { p_user_id: customer.user_id, p_enabled: !customer.driver_enabled })
-    if (rpcError) setError(rpcError.message)
-    else { setSuccess(`${customer.full_name || customer.email}: driver option ${!customer.driver_enabled ? 'enabled' : 'disabled'}.`); await load() }
-    setBusy(false)
+    try {
+      const { error: rpcError } = await db.rpc('admin_set_customer_driver_access', { p_user_id: customer.user_id, p_enabled: !customer.driver_enabled })
+      if (rpcError) throw rpcError
+      setSuccess((customer.full_name || customer.email) + ': driver option ' + (!customer.driver_enabled ? 'enabled' : 'disabled') + '.')
+      await load()
+    } catch (e: any) {
+      setError(e?.message || 'Could not update customer driver access.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function reviewApplication(app: DriverApplication, decision: 'approve' | 'reject' | 'suspend') {
     setBusy(true); setError(null); setSuccess(null)
-    const { error: rpcError } = await db.rpc('admin_review_driver_application', {
-      p_application_id: app.id, p_decision: decision, p_admin_note: notes[app.id] ?? null
-    })
-    if (rpcError) setError(rpcError.message)
-    else { setSuccess(`Application ${decision}d for ${app.full_name}.`); await load() }
-    setBusy(false)
+    try {
+      const { error: rpcError } = await db.rpc('admin_review_driver_application', {
+        p_application_id: app.id, p_decision: decision, p_admin_note: notes[app.id] ?? null
+      })
+      if (rpcError) throw rpcError
+      setSuccess('Application ' + decision + 'd for ' + app.full_name + '.')
+      await load()
+    } catch (e: any) {
+      setError(e?.message || 'Could not review driver application.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function assignDriver() {
     if (!orderId || !driverId) return
     setBusy(true); setError(null); setSuccess(null)
-    const { error: rpcError } = await db.rpc('admin_assign_driver_to_order', {
-      p_order_id: orderId, p_driver_user_id: driverId
-    })
-    if (rpcError) setError(rpcError.message)
-    else { setSuccess('Driver assigned successfully.'); setOrderId(''); setDriverId(''); await load() }
-    setBusy(false)
+    try {
+      const { error: rpcError } = await db.rpc('admin_assign_driver_to_order', {
+        p_order_id: orderId, p_driver_user_id: driverId
+      })
+      if (rpcError) throw rpcError
+      setSuccess('Driver assigned successfully.')
+      setOrderId(''); setDriverId('')
+      await load()
+    } catch (e: any) {
+      setError(e?.message || 'Could not assign this driver.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   const filteredCustomers = customers.filter(c => {

@@ -26,7 +26,7 @@ export function DriverManagement() {
       db.rpc('admin_list_driver_customers'),
       db.from('driver_applications').select('id,user_id,full_name,phone,vehicle_type,status,admin_note,created_at').order('created_at', { ascending: false }).limit(200),
       db.from('orders').select('id,order_number,customer_name,customer_phone,order_status,created_at').not('order_status','in','(delivered,cancelled)').order('created_at',{ascending:false}).limit(250),
-      db.from('driver_applications').select('user_id,full_name,phone').eq('status','approved').order('full_name')
+      db.rpc('admin_list_approved_drivers')
     ])
     const failure = settings.error || apps.error || orderRows.error || approved.error
     if (failure) throw new Error(failure.message)

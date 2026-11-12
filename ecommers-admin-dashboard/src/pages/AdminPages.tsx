@@ -2728,6 +2728,16 @@ function PushNotifications() {
       <Metric label="Delivery" value="Device based" note="Only registered devices can receive push" />
     </div>
     <div className="admin-panel">
+      <div className="admin-panel-heading"><div><p className="admin-kicker">Recipient</p><h3>Choose customer</h3><p className="admin-copy">Select the account for both the test push and manual notification.</p></div></div>
+      <label className="admin-field admin-field--full">Customer
+        <select value={selectedUser} onChange={(event) => setSelectedUser(event.target.value)} disabled={loadingCustomers || customers.length === 0} required>
+          <option value="">{loadingCustomers ? 'Loading customers…' : 'Select customer'}</option>
+          {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.full_name || 'Unnamed customer'} · {customer.email || customer.phone || customer.id.slice(0, 8)}</option>)}
+        </select>
+        {selectedCustomer && <small>Selected: {selectedCustomer.full_name || 'Customer'} · {selectedCustomer.email || 'No email on file'}</small>}
+      </label>
+    </div>
+    <div className="admin-panel">
       <div className="admin-panel-heading"><div><p className="admin-kicker">Connection check</p><h3>Test notification</h3><p className="admin-copy">Send a real test push to the selected customer's registered device.</p></div><button type="button" className="admin-button" onClick={() => void sendTest()} disabled={testing}>{testing ? 'Sending…' : <><Bell size={15} /> Send test notification</>}</button></div>
       {testResult && <div className="admin-inline-notice" role="status">{testResult}</div>}
     </div>
@@ -2735,13 +2745,6 @@ function PushNotifications() {
       <div className="admin-panel-heading"><div><p className="admin-kicker">Direct message</p><h3>Manual notification</h3><p className="admin-copy">Choose one customer, write a short title and message, then send. The notification is also saved in the customer's in-app notification inbox.</p></div></div>
       {error && <ErrorState message={error} retry={() => void loadCustomers()} />}
       <form className="admin-form-grid" onSubmit={(event) => void sendManual(event)}>
-        <label className="admin-field admin-field--full">Recipient
-          <select value={selectedUser} onChange={(event) => setSelectedUser(event.target.value)} disabled={loadingCustomers || customers.length === 0} required>
-            <option value="">{loadingCustomers ? 'Loading customers…' : 'Select customer'}</option>
-            {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.full_name || 'Unnamed customer'} · {customer.email || customer.phone || customer.id.slice(0, 8)}</option>)}
-          </select>
-          {selectedCustomer && <small>Selected: {selectedCustomer.full_name || 'Customer'} · {selectedCustomer.email || 'No email on file'}</small>}
-        </label>
         <label className="admin-field admin-field--full">Notification title
           <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder="e.g. New update from JTBazar" required />
           <small>{title.length}/120</small>

@@ -1108,9 +1108,9 @@ export async function saveDeliveryCollection(orderId: string, amounts: { id: str
 }
 
 
-export async function sendAdminPushTest(): Promise<{ success: boolean; sent: number; failed: number; message?: string }> {
+export async function sendAdminPushTest(userId: string): Promise<{ success: boolean; sent: number; failed: number; message?: string }> {
   const { data, error } = await getSupabase().functions.invoke('firebase-push-notifications', {
-    body: { action: 'test' },
+    body: { action: 'admin_test', user_id: userId },
   })
   if (error) {
     const detail = typeof data === 'object' && data && 'error' in data ? String(data.error) : error.message

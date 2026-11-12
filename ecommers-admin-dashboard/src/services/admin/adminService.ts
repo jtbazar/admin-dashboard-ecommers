@@ -1106,3 +1106,30 @@ export async function saveDeliveryCollection(orderId: string, amounts: { id: str
     assertError(error)
   }
 }
+
+
+export async function sendAdminPushTest(): Promise<{ success: boolean; sent: number; failed: number; message?: string }> {
+  const { data, error } = await getSupabase().functions.invoke('firebase-push-notifications', {
+    body: { action: 'test' },
+  })
+  if (error) {
+    const detail = typeof data === 'object' && data && 'error' in data ? String(data.error) : error.message
+    throw new Error(detail || 'Test push could not be sent.')
+  }
+  return data as { success: boolean; sent: number; failed: number; message?: string }
+}
+
+export async function sendAdminManualNotification(userId: string, title: string, body: string): Promise<void> {
+  const cleanTitle = title.trim()
+  const cleanBody = body.trim()
+  if (!userId) throw new Error('Choose a customer first.')
+  if (!cleanTitle || cleanTitle.length > 120) throw new Error('Title is required and must be 120 characters or fewer.')
+  if (!cleanBody || cleanBody.length > 500) throw new Error('Message is required and must be 500 characters or fewer.')
+  const { error } = await getSupabase().from('notifications').insert({
+    user_id: userId,
+    kind: 'store',
+    title: cleanTitle,
+    body: cleanBody,
+  })
+  assertError(error)
+}

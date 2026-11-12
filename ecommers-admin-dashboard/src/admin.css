@@ -636,6 +636,11 @@
 
 
 /* Driver operations page */
+.driver-table td:nth-child(3){min-width:270px}
+.driver-table td:nth-child(5){min-width:280px}
+.driver-company-field{display:grid;grid-template-columns:minmax(150px,1fr) auto;align-items:center;gap:7px;min-width:260px}
+.driver-company-field .admin-button{white-space:nowrap}
+
 .driver-management{max-width:1400px;padding-top:34px}
 .driver-page-heading{align-items:flex-end;margin-bottom:26px}
 .driver-heading-copy h2{margin:8px 0 9px;color:#242720;font-size:clamp(29px,3vw,38px);line-height:1.08;letter-spacing:-.045em}

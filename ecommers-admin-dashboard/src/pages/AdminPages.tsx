@@ -2662,99 +2662,79 @@ function PushNotifications() {
   const [error, setError] = useState<string | null>(null)
 
   async function loadCustomers() {
-    setLoadingCustomers(true)
-    setError(null)
-    try {
-      const rows = await listAdminCustomers()
-      setCustomers(rows)
-      if (!selectedUser && rows.length) setSelectedUser(rows[0].id)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Customer list could not be loaded.')
-    } finally {
-      setLoadingCustomers(false)
-    }
+    setLoadingCustomers(true); setError(null)
+    try { const rows = await listAdminCustomers(); setCustomers(rows); if (!selectedUser && rows.length) setSelectedUser(rows[0].id) }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'Customer list could not be loaded.') }
+    finally { setLoadingCustomers(false) }
   }
-
   useEffect(() => { void loadCustomers() }, [])
 
   async function sendTest() {
-    setTesting(true)
-    setTestResult(null)
+    setTesting(true); setTestResult(null)
     try {
       if (!selectedUser) throw new Error('Choose a customer to test first.')
       const result = await sendAdminPushTest(selectedUser)
       if (result.sent > 0) {
-        setTestResult(`Test push sent successfully to ${result.sent} registered device(s).${result.failed ? ` ${result.failed} device(s) failed.` : ''}`)
-        push(`Test push sent to ${selectedCustomer?.full_name || 'selected customer'} device.`, 'success')
+        setTestResult(`Delivered to ${result.sent} registered device(s).${result.failed ? ` ${result.failed} device(s) failed.` : ''}`)
+        push('Test notification sent.', 'success')
       } else {
-        setTestResult(result.message || 'No push device is registered to this selected account yet. Open the JTBazar app and sign in on the device first.')
-        push('No registered device found for this selected account.', 'error')
+        setTestResult(result.message || 'No registered device found for this customer. Sign in to JTBazar and enable notifications first.')
+        push('No registered device found.', 'error')
       }
-    } catch (cause) {
-      const message = cause instanceof Error ? cause.message : 'Test push failed.'
-      setTestResult(message)
-      push(message, 'error')
-    } finally {
-      setTesting(false)
-    }
+    } catch (cause) { const message = cause instanceof Error ? cause.message : 'Test push failed.'; setTestResult(message); push(message, 'error') }
+    finally { setTesting(false) }
   }
-
   async function sendManual(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!selectedUser) { push('Select a customer first.', 'error'); return }
-    if (!window.confirm('Send this notification to the selected account? It will appear in the customer notification inbox and trigger push delivery to registered devices.')) return
+    if (!window.confirm('Send this notification to the selected customer?')) return
     setSending(true)
-    try {
-      await sendAdminManualNotification(selectedUser, title, body)
-      push('Notification saved and push dispatch requested.', 'success')
-      setTitle('')
-      setBody('')
-    } catch (cause) {
-      push(cause instanceof Error ? cause.message : 'Notification could not be sent.', 'error')
-    } finally {
-      setSending(false)
-    }
+    try { await sendAdminManualNotification(selectedUser, title, body); push('Notification sent and saved to inbox.', 'success'); setTitle(''); setBody('') }
+    catch (cause) { push(cause instanceof Error ? cause.message : 'Notification could not be sent.', 'error') }
+    finally { setSending(false) }
   }
-
-  const selectedCustomer = customers.find((customer) => customer.id === selectedUser)
-  return <section className="admin-content">
-    <div className="admin-page-heading">
-      <div><p className="admin-kicker">Firebase Cloud Messaging</p><h2>Push Notifications</h2><p className="admin-copy">Test push delivery from the dashboard and send a manual notification to one selected customer.</p></div>
-      <button type="button" className="admin-button admin-button--outline" onClick={() => void loadCustomers()} disabled={loadingCustomers}><RefreshCw size={15} /> Refresh customers</button>
+  const selectedCustomer = customers.find(customer => customer.id === selectedUser)
+  return <section className="admin-content push-center">
+    <div className="push-hero">
+      <div className="push-hero__icon"><Bell size={24} /></div>
+      <div className="push-hero__copy"><span className="push-eyebrow">COMMUNICATION CENTER</span><h2>Push Notifications</h2><p>Test delivery or send an update directly to a JTBazar customer.</p></div>
+      <button type="button" className="push-refresh" onClick={() => void loadCustomers()} disabled={loadingCustomers}><RefreshCw size={15} className={loadingCustomers ? 'push-spin' : ''} /> Refresh</button>
     </div>
-    <div className="admin-metrics-grid">
-      <Metric label="Customer accounts" value={loadingCustomers ? '…' : customers.length} note="Available recipients" />
-      <Metric label="Push provider" value="Firebase FCM" note="Connected through Supabase Edge Function" />
-      <Metric label="Delivery" value="Device based" note="Only registered devices can receive push" />
+    <div className="push-stats">
+      <div className="push-stat"><span className="push-stat__icon"><Users size={17}/></span><div><small>Customers</small><strong>{loadingCustomers ? '—' : customers.length}</strong></div></div>
+      <div className="push-stat"><span className="push-stat__icon push-stat__icon--firebase"><Bell size={17}/></span><div><small>Push provider</small><strong>Firebase FCM</strong><em>Connected</em></div></div>
+      <div className="push-stat"><span className="push-stat__icon"><ShieldAlert size={17}/></span><div><small>Delivery method</small><strong>Registered devices</strong><em>Device permission required</em></div></div>
     </div>
-    <div className="admin-panel">
-      <div className="admin-panel-heading"><div><p className="admin-kicker">Recipient</p><h3>Choose customer</h3><p className="admin-copy">Select the account for both the test push and manual notification.</p></div></div>
-      <label className="admin-field admin-field--full">Customer
-        <select value={selectedUser} onChange={(event) => setSelectedUser(event.target.value)} disabled={loadingCustomers || customers.length === 0} required>
-          <option value="">{loadingCustomers ? 'Loading customers…' : 'Select customer'}</option>
-          {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.full_name || 'Unnamed customer'} · {customer.email || customer.phone || customer.id.slice(0, 8)}</option>)}
-        </select>
-        {selectedCustomer && <small>Selected: {selectedCustomer.full_name || 'Customer'} · {selectedCustomer.email || 'No email on file'}</small>}
-      </label>
-    </div>
-    <div className="admin-panel">
-      <div className="admin-panel-heading"><div><p className="admin-kicker">Connection check</p><h3>Test notification</h3><p className="admin-copy">Send a real test push to the selected customer's registered device.</p></div><button type="button" className="admin-button" onClick={() => void sendTest()} disabled={testing}>{testing ? 'Sending…' : <><Bell size={15} /> Send test notification</>}</button></div>
-      {testResult && <div className="admin-inline-notice" role="status">{testResult}</div>}
-    </div>
-    <div className="admin-panel">
-      <div className="admin-panel-heading"><div><p className="admin-kicker">Direct message</p><h3>Manual notification</h3><p className="admin-copy">Choose one customer, write a short title and message, then send. The notification is also saved in the customer's in-app notification inbox.</p></div></div>
-      {error && <ErrorState message={error} retry={() => void loadCustomers()} />}
-      <form className="admin-form-grid" onSubmit={(event) => void sendManual(event)}>
-        <label className="admin-field admin-field--full">Notification title
-          <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder="e.g. New update from JTBazar" required />
-          <small>{title.length}/120</small>
-        </label>
-        <label className="admin-field admin-field--full">Message
-          <textarea value={body} onChange={(event) => setBody(event.target.value)} rows={4} maxLength={500} placeholder="Write the notification message…" required />
-          <small>{body.length}/500</small>
-        </label>
-        <div className="admin-form-actions admin-field--full"><button className="admin-button" disabled={sending || loadingCustomers || !selectedUser || !title.trim() || !body.trim()}>{sending ? 'Sending…' : <><Send size={15} /> Send notification</>}</button></div>
-      </form>
+    {error && <ErrorState message={error} retry={() => void loadCustomers()} />}
+    <div className="push-layout">
+      <div className="push-main">
+        <section className="push-card">
+          <div className="push-card__heading"><div><span className="push-step">01 · RECIPIENT</span><h3>Choose customer</h3><p>Select who should receive the test or manual notification.</p></div><Users size={20}/></div>
+          <label className="push-label">Customer account</label>
+          <select className="push-select" value={selectedUser} onChange={event => { setSelectedUser(event.target.value); setTestResult(null) }} disabled={loadingCustomers || !customers.length}>
+            <option value="">{loadingCustomers ? 'Loading customers…' : 'Select a customer'}</option>
+            {customers.map(customer => <option key={customer.id} value={customer.id}>{customer.full_name || 'Unnamed customer'} · {customer.email || customer.phone || customer.id.slice(0,8)}</option>)}
+          </select>
+          {selectedCustomer && <div className="push-selected"><span className="push-avatar">{(selectedCustomer.full_name || 'C').trim().charAt(0).toUpperCase()}</span><div><strong>{selectedCustomer.full_name || 'Customer'}</strong><small>{selectedCustomer.email || selectedCustomer.phone || 'Contact unavailable'}</small></div><Check size={17}/></div>}
+        </section>
+        <section className="push-card push-test-card">
+          <div className="push-card__heading"><div><span className="push-step">02 · DELIVERY CHECK</span><h3>Test notification</h3><p>Send a real test push to the selected customer's registered device.</p></div><span className="push-card-symbol"><Bell size={20}/></span></div>
+          {testResult && <div className="push-result" role="status"><Info size={16}/>{testResult}</div>}
+          <button type="button" className="push-primary" onClick={() => void sendTest()} disabled={testing || !selectedUser}>{testing ? <><RefreshCw size={16} className="push-spin"/> Sending test…</> : <><Send size={16}/> Send test notification</>}</button>
+        </section>
+      </div>
+      <section className="push-card push-compose">
+        <div className="push-card__heading"><div><span className="push-step">03 · MANUAL MESSAGE</span><h3>Compose notification</h3><p>Write a clear message for the selected customer.</p></div><span className="push-card-symbol"><MessageSquare size={20}/></span></div>
+        <form onSubmit={event => void sendManual(event)}>
+          <label className="push-label" htmlFor="push-title">Notification title</label>
+          <input id="push-title" className="push-input" value={title} onChange={event => setTitle(event.target.value)} maxLength={120} placeholder="e.g. Your order is on its way" required/>
+          <div className="push-counter">{title.length}/120</div>
+          <label className="push-label" htmlFor="push-body">Message</label>
+          <textarea id="push-body" className="push-textarea" value={body} onChange={event => setBody(event.target.value)} rows={5} maxLength={500} placeholder="Write your message here…" required/>
+          <div className="push-counter">{body.length}/500</div>
+          <div className="push-compose__foot"><small><ShieldAlert size={14}/> Also saved in the customer's notification inbox</small><button className="push-primary" disabled={sending || !selectedUser || !title.trim() || !body.trim()}>{sending ? 'Sending…' : <><Send size={16}/> Send notification</>}</button></div>
+        </form>
+      </section>
     </div>
   </section>
 }

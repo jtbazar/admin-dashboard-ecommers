@@ -723,3 +723,62 @@
 @media(max-width:760px) {
   .admin-filter-select { flex: 1 1 100%; min-width: 0; }
 }
+
+
+/* Product action menu is portaled to body so table/scroll containers cannot clip it. */
+.admin-product-menu-trigger {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid #e2dfd7;
+  border-radius: 4px;
+  background: #fff;
+  color: #42473f;
+  cursor: pointer;
+}
+.admin-product-menu-trigger:hover,
+.admin-product-menu-trigger[aria-expanded="true"] {
+  border-color: #b96e52;
+  color: #8e4e38;
+  background: #fffdfa;
+}
+.admin-product-menu-trigger:focus-visible {
+  outline: 2px solid #b96e52;
+  outline-offset: 2px;
+}
+.admin-action-menu__portal {
+  position: fixed !important;
+  top: auto;
+  bottom: auto !important;
+  left: auto !important;
+  max-width: min(270px, calc(100vw - 20px));
+  max-height: calc(100vh - 20px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 14px 38px rgba(24, 29, 24, .22);
+}
+.admin-action-menu__portal button {
+  width: 100%;
+  min-height: 40px;
+  padding: 10px 13px;
+  border: 0;
+  border-radius: 4px;
+  background: #fff;
+  color: #343831;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.admin-action-menu__portal button:hover,
+.admin-action-menu__portal button:focus-visible {
+  background: #f8f6f1;
+  color: #8e4e38;
+}
+.admin-action-menu__portal button.is-danger { color: #a34539; }

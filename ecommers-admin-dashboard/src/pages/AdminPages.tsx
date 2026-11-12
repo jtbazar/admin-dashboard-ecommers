@@ -2681,13 +2681,14 @@ function PushNotifications() {
     setTesting(true)
     setTestResult(null)
     try {
-      const result = await sendAdminPushTest()
+      if (!selectedUser) throw new Error('Choose a customer to test first.')
+      const result = await sendAdminPushTest(selectedUser)
       if (result.sent > 0) {
-        setTestResult(`Test push sent successfully to ${result.sent} registered device(s).`)
-        push('Test push sent to your signed-in admin device.', 'success')
+        setTestResult(`Test push sent successfully to ${result.sent} registered device(s).${result.failed ? ` ${result.failed} device(s) failed.` : ''}`)
+        push(`Test push sent to ${selectedCustomer?.full_name || 'selected customer'} device.`, 'success')
       } else {
-        setTestResult(result.message || 'No push device is registered to this admin account yet. Open the JTBazar app and sign in first.')
-        push('No registered device found for this admin account.', 'error')
+        setTestResult(result.message || 'No push device is registered to this selected account yet. Open the JTBazar app and sign in on the device first.')
+        push('No registered device found for this selected account.', 'error')
       }
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'Test push failed.'
@@ -2727,7 +2728,7 @@ function PushNotifications() {
       <Metric label="Delivery" value="Device based" note="Only registered devices can receive push" />
     </div>
     <div className="admin-panel">
-      <div className="admin-panel-heading"><div><p className="admin-kicker">Connection check</p><h3>Test notification</h3><p className="admin-copy">Send a test push to the device signed in with this administrator account.</p></div><button type="button" className="admin-button" onClick={() => void sendTest()} disabled={testing}>{testing ? 'Sending…' : <><Bell size={15} /> Send test notification</>}</button></div>
+      <div className="admin-panel-heading"><div><p className="admin-kicker">Connection check</p><h3>Test notification</h3><p className="admin-copy">Send a real test push to the selected customer's registered device.</p></div><button type="button" className="admin-button" onClick={() => void sendTest()} disabled={testing}>{testing ? 'Sending…' : <><Bell size={15} /> Send test notification</>}</button></div>
       {testResult && <div className="admin-inline-notice" role="status">{testResult}</div>}
     </div>
     <div className="admin-panel">

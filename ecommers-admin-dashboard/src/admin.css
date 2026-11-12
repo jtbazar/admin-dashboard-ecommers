@@ -682,3 +682,44 @@
  .driver-customer-access>.admin-button{width:100%}
  .driver-assignment-grid{grid-template-columns:1fr}
 }
+
+
+/* Product action menus: one open at a time, opening upward avoids covering rows below. */
+.admin-action-menu { z-index: 60; }
+.admin-action-menu[open] { z-index: 120; }
+.admin-action-menu__panel {
+  top: auto;
+  bottom: calc(100% + 6px);
+  right: 0;
+  z-index: 130;
+  min-width: 205px;
+  max-width: min(260px, calc(100vw - 32px));
+  border-radius: 8px;
+  box-shadow: 0 14px 34px rgba(25, 30, 25, .18);
+}
+.admin-action-menu__panel button { width: 100%; min-height: 38px; padding: 10px 12px; }
+.admin-filter-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 210px;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid #dedbd2;
+  border-radius: 3px;
+  background: #fff;
+  color: #64685f;
+}
+.admin-filter-select select {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #343831;
+  font: inherit;
+  font-size: 13px;
+}
+@media(max-width:760px) {
+  .admin-filter-select { flex: 1 1 100%; min-width: 0; }
+}

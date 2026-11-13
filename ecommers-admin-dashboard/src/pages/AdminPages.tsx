@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { Archive, ArrowLeft, BarChart3, Bell, Boxes, Check, CheckCheck, ChevronLeft, ChevronRight, CircleAlert, ClipboardList, Edit2, FolderTree, Eye, EyeOff, Image as ImageIcon, Info, LayoutDashboard, LogOut, MapPin, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen, MessageSquare, Package, Plus, Printer, RefreshCw, Search, Send, Settings, ShieldAlert, Star, Store, Tag, Trash2, Truck, Users, X } from 'lucide-react'
+import { Archive, ArrowLeft, BarChart3, Bell, Boxes, Check, CheckCheck, ChevronLeft, ChevronRight, CircleAlert, ClipboardList, Edit2, FolderTree, Eye, EyeOff, Image as ImageIcon, Info, LayoutDashboard, LogOut, MapPin, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen, MessageSquare, Package, Plus, Printer, RefreshCw, Search, Send, Settings, ShieldAlert, Star, Store, Tag, Trash2, Truck, Users, Volume2, VolumeX, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { adjustInventory, decideMarketplaceCase, deleteAdminHero, deleteAdminPromotion, deleteProductVariant, getAdminOrderDetail, getAdminProductEditor, getAdminStoreSettings, getAdminFoodDeliverySettings, getAdminCommissionSettings, getAdminSummary, getVendorDocumentSignedUrl, listAdminCategories, listAdminAccountSuspensions, listAdminCustomers, listAdminHeroes, listAdminInventory, listAdminNotifications, listAdminOrders, listAdminOrderVendors, listAdminVendorPickups, markAdminVendorPickedUp, listAdminProducts, listAdminProductsPage, listAdminVendorDirectoryPage, listAdminPromotions, listAdminCustomerReviews, setAdminCustomerReviewStatus, listAdminSupportTickets, listAdminSellerSupportMessages, sendAdminSellerSupportMessage, listAdminCustomerSupportMessages, sendAdminCustomerSupportMessage, listAuditLogs, listMarketplaceCases, listSellerApplications, markAdminNotificationRead, markAllAdminNotificationsRead, sendAdminPushTest, sendAdminManualNotification, moderateProduct, deleteAdminProductImage, deleteAdminProductPermanently, listAdminProductDeletionRequests, reviewAdminProductDeletion, reviewSellerApplication, setAdminVendorLock, setAdminSupportTicketStatus, saveAdminHero, saveAdminPromotion, saveCategory, saveProduct, saveProductVariant, saveAdminProductInventory, setAdminAccountSuspension, updateAdminStoreSettings, updateAdminFoodDeliverySettings, updateAdminCommissionSettings, updateAdminSupportTicket, updateOrder, saveDeliveryCollection, addOrderNote, rejectAdminOrder, findCustomerDeliveryOrders, confirmOrdersWithDeliveryBatch, createFollowupDeliveryBatch, markDeliveryBatchDelivered, listOrderDeliveryBatches, updateProductStatus, updateProductsHotDeal, setAdminProductFeatured, uploadAdditionalProductImage, uploadPublicMedia, type AdminCaseDetail, type AdminCategory, type AdminCustomerReview, type AdminAccountSuspension, type AdminCustomer, type AdminHero, type AdminInventory, type AdminNotification, type AdminOrder, type AdminOrderVendor, type AdminProduct, type AdminProductDeletionRequest, type AdminPromotion, type AdminSeller, type AdminStoreSettings, type AdminFoodDeliverySettings, type AdminCommissionSettings, type AdminSummary, type AdminSupportInboxTicket, type AdminSupportChatMessage, type AdminVariant } from '../services/admin/adminService'
@@ -108,6 +108,10 @@ function AdminShell({ children }: { children: ReactNode }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notifications, setNotifications] = useState<AdminNotification[]>([])
   const [notificationError, setNotificationError] = useState<string | null>(null)
+  const [soundEnabled, setSoundEnabled] = useState(() => { try { return window.localStorage.getItem('jtbazar-admin-notification-sound') !== 'off' } catch { return true } })
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const notificationsInitializedRef = useRef(false)
+  const knownNotificationIdsRef = useRef<Set<string>>(new Set())
   const navigate = useNavigate()
   const unreadCount = notifications.filter((item) => !item.read_at).length
   async function markSectionRead(path: string) {
@@ -121,14 +125,69 @@ function AdminShell({ children }: { children: ReactNode }) {
       setNotificationError(cause instanceof Error ? cause.message : 'Section notifications could not be marked as seen.')
     }
   }
-  const loadNotifications = () => { void listAdminNotifications().then((items) => { setNotifications(items); setNotificationError(null) }).catch((cause: unknown) => setNotificationError(cause instanceof Error ? cause.message : 'Notifications could not be loaded.')) }
+  function playAdminNotificationSound() {
+    if (!soundEnabled) return
+    const context = audioContextRef.current
+    if (!context || context.state !== 'running') return
+    const now = context.currentTime
+    ;[0, 0.19].forEach((offset) => {
+      const oscillator = context.createOscillator()
+      const gain = context.createGain()
+      oscillator.type = 'sine'
+      oscillator.frequency.setValueAtTime(offset === 0 ? 880 : 1174, now + offset)
+      gain.gain.setValueAtTime(0.0001, now + offset)
+      gain.gain.exponentialRampToValueAtTime(0.16, now + offset + 0.018)
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.14)
+      oscillator.connect(gain)
+      gain.connect(context.destination)
+      oscillator.start(now + offset)
+      oscillator.stop(now + offset + 0.15)
+    })
+  }
+  function toggleNotificationSound() {
+    const next = !soundEnabled
+    setSoundEnabled(next)
+    try { window.localStorage.setItem('jtbazar-admin-notification-sound', next ? 'on' : 'off') } catch {}
+    if (next) {
+      const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+      if (AudioContextClass) {
+        const context = audioContextRef.current ?? new AudioContextClass()
+        audioContextRef.current = context
+        void context.resume()
+      }
+    }
+  }
+  const loadNotifications = () => { void listAdminNotifications().then((items) => {
+    const incomingIds = new Set(items.map((item) => item.id))
+    if (notificationsInitializedRef.current) {
+      const hasNewUnread = items.some((item) => !knownNotificationIdsRef.current.has(item.id) && !item.read_at)
+      if (hasNewUnread) playAdminNotificationSound()
+    } else {
+      notificationsInitializedRef.current = true
+    }
+    knownNotificationIdsRef.current = incomingIds
+    setNotifications(items)
+    setNotificationError(null)
+  }).catch((cause: unknown) => setNotificationError(cause instanceof Error ? cause.message : 'Notifications could not be loaded.')) }
   useEffect(() => {
     loadNotifications()
+    let channel: ReturnType<ReturnType<typeof getSupabase>['channel']> | null = null
+    let active = true
+    void (async () => {
+      try {
+        const client = getSupabase()
+        const { data } = await client.auth.getUser()
+        if (!active || !data.user) return
+        channel = client.channel('admin-notifications-' + data.user.id)
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: 'user_id=eq.' + data.user.id }, () => loadNotifications())
+          .subscribe()
+      } catch { /* 20-second refresh remains as a fallback if Realtime is unavailable. */ }
+    })()
     const run = () => { if (document.visibilityState === 'visible') loadNotifications() }
     const timer = window.setInterval(run, 20000)
     window.addEventListener('focus', run)
     document.addEventListener('visibilitychange', run)
-    return () => { window.clearInterval(timer); window.removeEventListener('focus', run); document.removeEventListener('visibilitychange', run) }
+    return () => { active = false; if (channel) void getSupabase().removeChannel(channel); window.clearInterval(timer); window.removeEventListener('focus', run); document.removeEventListener('visibilitychange', run) }
   }, [])
   async function logout() { await signOut(); navigate('/login') }
   async function openNotification(item: AdminNotification) {
@@ -156,7 +215,7 @@ function AdminShell({ children }: { children: ReactNode }) {
       <div className="admin-sidebar-footer"><Link to="/"><ArrowLeft size={15} /> View storefront</Link><button onClick={() => void logout()}><LogOut size={15} /> Sign out</button></div>
     </aside>
     {open && <button className="admin-overlay" aria-label="Close navigation" onClick={() => setOpen(false)} />}
-    <main className="admin-main"><header className="admin-topbar"><button className="admin-menu" aria-label="Open navigation" onClick={() => setOpen(true)}><Menu size={20} /></button><div><span className="admin-kicker">JTBazar operations</span><h1>{location.pathname.startsWith('/admin/manual-orders/') ? 'Manual order detail' : location.pathname.startsWith('/admin/orders/') ? 'Order detail' : nav.find((item) => location.pathname === item.to)?.label ?? 'Admin studio'}</h1></div><div className="admin-topbar-actions"><div className="admin-notification-wrap"><button type="button" className="admin-notification-button" aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`} aria-expanded={notificationsOpen} onClick={() => { setNotificationsOpen((value) => !value); loadNotifications() }}><Bell size={19} />{unreadCount > 0 && <span className="admin-notification-count">{unreadCount > 9 ? '9+' : unreadCount}</span>}</button>{notificationsOpen && <div className="admin-notification-popover" role="dialog" aria-label="Admin notifications"><div className="admin-notification-heading"><strong>Notifications</strong><button type="button" onClick={() => void markAllRead()} disabled={!unreadCount}><CheckCheck size={14} /> Mark all read</button></div>{notificationError && <p className="admin-notification-error">{notificationError}</p>}{notifications.length === 0 ? <p className="admin-notification-empty">No activity notifications yet.</p> : notifications.map((item) => <button type="button" key={item.id} className={`admin-notification-item${item.read_at ? '' : ' is-unread'}`} onClick={() => void openNotification(item)}><span><strong>{item.title}</strong><small>{item.body}</small><small>{formatDate(item.created_at)}</small></span>{!item.read_at && <i aria-label="Unread" />}</button>)}</div>}</div><div className="admin-user"><span>{displayName ?? 'Administrator'}</span><span className="admin-avatar">{(displayName ?? 'A').slice(0, 1).toUpperCase()}</span></div></div></header>{children}</main>
+    <main className="admin-main"><header className="admin-topbar"><button className="admin-menu" aria-label="Open navigation" onClick={() => setOpen(true)}><Menu size={20} /></button><div><span className="admin-kicker">JTBazar operations</span><h1>{location.pathname.startsWith('/admin/manual-orders/') ? 'Manual order detail' : location.pathname.startsWith('/admin/orders/') ? 'Order detail' : nav.find((item) => location.pathname === item.to)?.label ?? 'Admin studio'}</h1></div><div className="admin-topbar-actions"><button type="button" className="admin-notification-button" aria-label={soundEnabled ? "Mute notification sound" : "Enable notification sound"} title={soundEnabled ? "Mute notification sound" : "Enable notification sound"} aria-pressed={soundEnabled} onClick={toggleNotificationSound}>{soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}</button><div className="admin-notification-wrap"><button type="button" className="admin-notification-button" aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`} aria-expanded={notificationsOpen} onClick={() => { setNotificationsOpen((value) => !value); loadNotifications() }}><Bell size={19} />{unreadCount > 0 && <span className="admin-notification-count">{unreadCount > 9 ? '9+' : unreadCount}</span>}</button>{notificationsOpen && <div className="admin-notification-popover" role="dialog" aria-label="Admin notifications"><div className="admin-notification-heading"><strong>Notifications</strong><button type="button" onClick={() => void markAllRead()} disabled={!unreadCount}><CheckCheck size={14} /> Mark all read</button></div>{notificationError && <p className="admin-notification-error">{notificationError}</p>}{notifications.length === 0 ? <p className="admin-notification-empty">No activity notifications yet.</p> : notifications.map((item) => <button type="button" key={item.id} className={`admin-notification-item${item.read_at ? '' : ' is-unread'}`} onClick={() => void openNotification(item)}><span><strong>{item.title}</strong><small>{item.body}</small><small>{formatDate(item.created_at)}</small></span>{!item.read_at && <i aria-label="Unread" />}</button>)}</div>}</div><div className="admin-user"><span>{displayName ?? 'Administrator'}</span><span className="admin-avatar">{(displayName ?? 'A').slice(0, 1).toUpperCase()}</span></div></div></header>{children}</main>
   </div>
 }
 

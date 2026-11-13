@@ -108,7 +108,7 @@ function AdminShell({ children }: { children: ReactNode }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notifications, setNotifications] = useState<AdminNotification[]>([])
   const [notificationError, setNotificationError] = useState<string | null>(null)
-  const [soundEnabled, setSoundEnabled] = useState(() => { try { return window.localStorage.getItem('jtbazar-admin-notification-sound') !== 'off' } catch { return true } })
+  const [soundEnabled, setSoundEnabled] = useState(() => { try { return window.localStorage.getItem('jtbazar-admin-notification-sound') === 'on' } catch { return true } })
   const audioContextRef = useRef<AudioContext | null>(null)
   const notificationsInitializedRef = useRef(false)
   const knownNotificationIdsRef = useRef<Set<string>>(new Set())

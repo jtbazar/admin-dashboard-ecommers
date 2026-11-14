@@ -53,6 +53,13 @@ function ErrorState({ message, retry }: { message: string; retry: () => void }) 
 function Empty({ title, detail, action }: { title: string; detail: string; action?: ReactNode }) { return <div className="admin-empty"><Tag size={24} /><strong>{title}</strong><p>{detail}</p>{action}</div> }
 function Metric({ label, value, note }: { label: string; value: string | number; note?: string }) { return <div className="admin-metric"><span>{label}</span><strong>{value}</strong>{note && <small>{note}</small>}</div> }
 function formatMoney(value: number | string) { return `PKR ${Number(value || 0).toLocaleString('en-PK', { maximumFractionDigits: 0 })}` }
+function toLocalDateTimeInput(value: string | null | undefined): string {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+}
+
 function formatDate(value: string) { return new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(new Date(value)) }
 function statusClass(value: string) { return `admin-status admin-status--${value.replace('_', '-')}` }
 
@@ -2003,8 +2010,8 @@ function Promotions() {
           target_platform: String(data.get('target_platform') ?? 'both') as AdminPromotion['target_platform'],
           campaign_type: String(data.get('campaign_type') ?? 'banner') as AdminPromotion['campaign_type'],
           show_on_launch: data.get('show_on_launch') === 'on',
-          starts_at: String(data.get('starts_at') ?? '').trim() || null,
-          ends_at: String(data.get('ends_at') ?? '').trim() || null,
+          starts_at: String(data.get('starts_at') ?? '').trim() ? new Date(String(data.get('starts_at'))).toISOString() : null,
+          ends_at: String(data.get('ends_at') ?? '').trim() ? new Date(String(data.get('ends_at'))).toISOString() : null,
           priority: Number(data.get('priority') ?? 0),
           coupon_code: String(data.get('coupon_code') ?? '').trim() || null,
           discount_percent: data.get('discount_percent') ? Number(data.get('discount_percent')) : null,
@@ -2105,10 +2112,10 @@ function Promotions() {
               </select>
             </label>
             <label>
-              Start date/time <input name="starts_at" type="datetime-local" defaultValue={editingPromo?.starts_at?.slice(0, 16) ?? ''} />
+              Start date/time <input name="starts_at" type="datetime-local" defaultValue={toLocalDateTimeInput(editingPromo?.starts_at)} />
             </label>
             <label>
-              End date/time <input name="ends_at" type="datetime-local" defaultValue={editingPromo?.ends_at?.slice(0, 16) ?? ''} />
+              End date/time <input name="ends_at" type="datetime-local" defaultValue={toLocalDateTimeInput(editingPromo?.ends_at)} />
             </label>
             <label className="admin-check">
               <input name="show_on_launch" type="checkbox" defaultChecked={editingPromo?.show_on_launch ?? false} /> Show popup on fresh app/website opening

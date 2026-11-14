@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Film, Plus, RefreshCw, Search, Trash2, Upload, Video } from 'lucide-react'
+import { Film, Plus, RefreshCw, Trash2, Upload, Video } from 'lucide-react'
 import { useToast } from '../contexts/ToastContext'
 import { deleteAdminProductVideo, listAdminProductVideos, listAdminProductsPage, uploadAdminProductVideo, type AdminProductVideo, type AdminProduct } from '../services/admin/adminService'
 

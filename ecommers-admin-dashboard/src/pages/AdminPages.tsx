@@ -699,7 +699,7 @@ function HotDeals() {
   const visibleEligible = view === 'deals' ? visible.filter((item) => removableDeals.some((row) => row.id === item.id)) : visible.filter((item) => eligible.some((row) => row.id === item.id))
   const activeCount = items.filter((item) => item.discount_percent > 0).length
   const selectedEligible = selected.filter((id) => (view === 'deals' ? removableDeals : eligible).some((item) => item.id === id))
-  const campaignEligible = items.filter((item) => item.publication_status === 'published' && item.moderation_status === 'approved' && (!item.track_inventory || item.inventory > 0) && Number(item.discount_percent) === 0)
+  const campaignEligible = items.filter((item) => (item.publication_status === 'published' && item.moderation_status === 'approved' && (!item.track_inventory || item.inventory > 0) && Number(item.discount_percent) === 0) || (editingCampaignId != null && (campaigns.find((row) => row.id === editingCampaignId)?.product_campaign_items ?? []).some((link) => link.product_id === item.id)))
   function toggle(id: string) { setSelected((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]) }
   function toggleCampaignProduct(id: string) { setCampaignProductIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]) }
   function toggleAll() {

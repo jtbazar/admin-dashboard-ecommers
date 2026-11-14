@@ -477,6 +477,7 @@ function VendorProductsOverview() {
   const [pendingCount, setPendingCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [actionSaving, setActionSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [rejectTarget, setRejectTarget] = useState<AdminProduct | null>(null)
   const [rejectReason, setRejectReason] = useState('')

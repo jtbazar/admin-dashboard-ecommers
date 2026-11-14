@@ -1162,8 +1162,8 @@ export async function listAdminProductVideos(page = 0, pageSize = 12): Promise<{
 
 export async function uploadAdminProductVideo(file: File, productId: string, durationSeconds: number): Promise<void> {
   if (!['video/mp4', 'video/webm', 'video/quicktime'].includes(file.type)) throw new Error('Choose an MP4, WebM or MOV video.')
-  if (file.size > 25 * 1024 * 1024) throw new Error('Product videos must be 25 MB or smaller.')
-  if (!Number.isInteger(durationSeconds) || durationSeconds < 1 || durationSeconds > 60) throw new Error('Video duration must be 60 seconds or less.')
+  if (file.size > 20 * 1024 * 1024) throw new Error('Product videos must be 20 MB or smaller.')
+  if (!Number.isInteger(durationSeconds) || durationSeconds < 30 || durationSeconds > 60) throw new Error('Video duration must be between 30 and 60 seconds.')
   const client = getSupabase() as any
   const extension = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp4'
   const storagePath = `products/${productId}/${crypto.randomUUID()}.${extension}`

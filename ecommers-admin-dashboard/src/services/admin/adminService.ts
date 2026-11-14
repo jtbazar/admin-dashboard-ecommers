@@ -1148,14 +1148,16 @@ export type AdminProductVideo = {
   product_name?: string
 }
 
-export async function listAdminProductVideos(): Promise<AdminProductVideo[]> {
+export async function listAdminProductVideos(page = 0, pageSize = 12): Promise<{ items: AdminProductVideo[]; count: number }> {
   const client = getSupabase() as any
-  const { data, error } = await client.from('product_videos')
-    .select('id,product_id,video_url,storage_path,duration_seconds,file_size_bytes,mime_type,is_active,created_at,products(name)')
-    .order('created_at', { ascending: false })
-    .limit(100)
-  assertError(error)
-  return (data ?? []).map((row: any) => ({ ...row, product_name: row.products?.name ?? 'Product unavailable' }))
+  const from = Math.max(0, page) * pageSize
+  const [{ data, error }, countResult] = await Promise.all([
+    client.from('product_videos').select('id,product_id,video_url,storage_path,duration_seconds,file_size_bytes,mime_type,is_active,created_at,products(name)', { count: 'exact' })
+      .order('created_at', { ascending: false }).range(from, from + pageSize - 1),
+    client.from('product_videos').select('id', { count: 'exact', head: true }),
+  ])
+  assertError(error); assertError(countResult.error)
+  return { items: (data ?? []).map((row: any) => ({ ...row, product_name: row.products?.name ?? 'Product unavailable' })), count: countResult.count ?? 0 }
 }
 
 export async function uploadAdminProductVideo(file: File, productId: string, durationSeconds: number): Promise<void> {

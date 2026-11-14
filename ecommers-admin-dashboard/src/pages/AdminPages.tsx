@@ -672,6 +672,7 @@ function HotDeals() {
   const [endsAt, setEndsAt] = useState('')
   const [campaignProductIds, setCampaignProductIds] = useState<string[]>([])
   const [campaignSaving, setCampaignSaving] = useState(false)
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null)
 
   const load = (quiet = false) => {
     if (!quiet) setLoading(true)
@@ -721,7 +722,8 @@ function HotDeals() {
     event.preventDefault()
     if (!campaignName.trim() || !campaignTitle.trim()) { push('Enter a campaign name and storefront title.', 'error'); return }
     if (!campaignProductIds.length) { push('Select at least one eligible product.', 'error'); return }
-    if (campaignProductIds.some((id) => !campaignEligible.some((item) => item.id === id))) { push('Refresh the product list and select only currently eligible products.', 'error'); return }
+    const existingCampaignProductIds = editingCampaignId ? campaigns.find((row) => row.id === editingCampaignId)?.product_campaign_items?.map((row) => row.product_id) ?? [] : []
+    if (campaignProductIds.some((id) => !campaignEligible.some((item) => item.id === id) && !existingCampaignProductIds.includes(id))) { push('Select published, approved, in-stock products without another active discount.', 'error'); return }
     if (campaignType === 'bundle' && campaignProductIds.length < 2) { push('A bundle must include at least two different products.', 'error'); return }
     if (['flash_sale','seasonal','custom'].includes(campaignType) && (Number(campaignDiscount) < 1 || Number(campaignDiscount) > 90)) { push('Campaign discount must be between 1% and 90%.', 'error'); return }
     if (campaignType === 'bogo' && (!Number.isInteger(Number(buyQuantity)) || !Number.isInteger(Number(getQuantity)) || Number(buyQuantity) < 1 || Number(buyQuantity) > 99 || Number(getQuantity) < 1 || Number(getQuantity) > 99)) { push('BOGO quantities must be between 1 and 99.', 'error'); return }
@@ -749,16 +751,22 @@ function HotDeals() {
         ends_at: endsAt ? new Date(endsAt).toISOString() : null,
         created_by: userData.user?.id ?? null,
       }
-      const { data: created, error: createError } = await client.from('product_campaigns').insert(payload).select('id').single()
-      if (createError) throw createError
-      const { error: itemError } = await client.from('product_campaign_items').insert(campaignProductIds.map((product_id) => ({ campaign_id: created.id, product_id })))
-      if (itemError) {
-        await client.from('product_campaigns').delete().eq('id', created.id)
-        throw itemError
+      let campaignId = editingCampaignId
+      if (campaignId) {
+        const { error: updateError } = await client.from('product_campaigns').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', campaignId)
+        if (updateError) throw updateError
+        const { error: removeLinksError } = await client.from('product_campaign_items').delete().eq('campaign_id', campaignId)
+        if (removeLinksError) throw removeLinksError
+      } else {
+        const { data: created, error: createError } = await client.from('product_campaigns').insert(payload).select('id').single()
+        if (createError) throw createError
+        campaignId = created.id
       }
+      const { error: itemError } = await client.from('product_campaign_items').insert(campaignProductIds.map((product_id) => ({ campaign_id: campaignId, product_id })))
+      if (itemError) throw itemError
       setCampaignName(''); setCampaignTitle(''); setCampaignDescription(''); setCampaignDiscount('20')
-      setBuyQuantity('1'); setGetQuantity('1'); setBundlePrice(''); setStartsAt(''); setEndsAt(''); setCampaignProductIds([])
-      push('Campaign created. It will appear on the website during its scheduled active window.', 'success')
+      setBuyQuantity('1'); setGetQuantity('1'); setBundlePrice(''); setStartsAt(''); setEndsAt(''); setCampaignProductIds([]); setEditingCampaignId(null)
+      push(editingCampaignId ? 'Campaign updated successfully.' : 'Campaign created. It will appear on the website during its scheduled active window.', 'success')
       load(true)
     } catch (cause) { push(cause instanceof Error ? cause.message : 'Campaign could not be created.', 'error') }
     finally { setCampaignSaving(false) }
@@ -786,7 +794,7 @@ function HotDeals() {
     <div className="admin-metrics"><Metric label="Products in catalog" value={items.length}/><Metric label="Active product discounts" value={activeCount}/><Metric label="Campaigns" value={campaigns.length}/><Metric label="Eligible products" value={campaignEligible.length}/></div>
 
     <section className="admin-panel">
-      <div className="admin-panel-heading"><div><p className="admin-kicker">Create campaign</p><h3>New website campaign</h3><p className="admin-copy">Choose products without an existing product discount. Scheduled campaigns publish automatically when their start time arrives.</p></div></div>
+      <div className="admin-panel-heading"><div><p className="admin-kicker">{editingCampaignId ? 'Edit campaign' : 'Create campaign'}</p><h3>{editingCampaignId ? 'Update website campaign' : 'New website campaign'}</h3><p className="admin-copy">Create one campaign for multiple products, or edit an existing campaign and change its products, offer and schedule.</p></div>{editingCampaignId && <button type="button" className="admin-button admin-button--outline" onClick={() => { setEditingCampaignId(null); setCampaignProductIds([]); setCampaignName(''); setCampaignTitle(''); setCampaignDescription(''); setCampaignDiscount('20'); setStartsAt(''); setEndsAt(''); setCampaignType('flash_sale') }}>Cancel edit</button>}</div>
       <form onSubmit={createCampaign} className="admin-form admin-form-grid">
         <label className="admin-field"><span>Campaign type</span><select value={campaignType} onChange={(event) => setCampaignType(event.target.value as ProductCampaignAdminRow['campaign_type'])}><option value="flash_sale">Flash Sale</option><option value="bogo">Buy One Get One (BOGO)</option><option value="bundle">Bundle Deal</option><option value="seasonal">Seasonal (Eid / Ramadan / 11.11)</option><option value="custom">Custom campaign</option></select></label>
         <label className="admin-field"><span>Internal campaign name</span><input value={campaignName} onChange={(event) => setCampaignName(event.target.value)} placeholder="e.g. 11.11 Kitchen Sale" maxLength={120} required/></label>
@@ -798,13 +806,13 @@ function HotDeals() {
         <label className="admin-field"><span>Starts at (optional)</span><input type="datetime-local" value={startsAt} onChange={(event) => setStartsAt(event.target.value)}/></label>
         <label className="admin-field"><span>Ends at (optional)</span><input type="datetime-local" value={endsAt} onChange={(event) => setEndsAt(event.target.value)}/></label>
         <div className="admin-field admin-field--wide"><span>Select products ({campaignProductIds.length} selected)</span><div className="admin-toolbar"><span className="admin-copy">Only published, approved, in-stock products with no existing discount are available.</span><button type="button" className="admin-button admin-button--outline" onClick={() => setCampaignProductIds(campaignProductIds.length === campaignEligible.length ? [] : campaignEligible.map((item) => item.id))}>Select all eligible</button></div><div className="admin-campaign-product-picker">{campaignEligible.map((item) => <label key={item.id} className="admin-campaign-product-option"><input type="checkbox" checked={campaignProductIds.includes(item.id)} onChange={() => toggleCampaignProduct(item.id)}/><span>{item.name}<small>{formatMoney(item.price)} · {item.sku ?? 'No SKU'}</small></span></label>)}{campaignEligible.length === 0 && <p className="admin-copy">No eligible products found. Remove an existing discount or publish an approved in-stock product first.</p>}</div></div>
-        <div className="admin-form-actions admin-field--wide"><button type="submit" className="admin-button" disabled={campaignSaving || !campaignProductIds.length}>{campaignSaving ? 'Creating campaign…' : 'Create campaign'}</button></div>
+        <div className="admin-form-actions admin-field--wide"><button type="submit" className="admin-button" disabled={campaignSaving || !campaignProductIds.length}>{campaignSaving ? 'Saving campaign…' : editingCampaignId ? 'Save campaign changes' : 'Create campaign'}</button></div>
       </form>
     </section>
 
     <section className="admin-panel">
       <div className="admin-panel-heading"><div><p className="admin-kicker">Campaign library</p><h3>Existing campaigns</h3><p className="admin-copy">Pause, resume or archive a campaign. Only active campaigns inside their date window appear on the website and apply at checkout.</p></div></div>
-      {campaigns.length === 0 ? <Empty title="No product campaigns yet" detail="Create your first Flash Sale, BOGO, Bundle or seasonal campaign above."/> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Campaign</th><th>Offer</th><th>Products</th><th>Schedule</th><th>Status</th><th>Actions</th></tr></thead><tbody>{campaigns.map((campaign) => <tr key={campaign.id}><td><strong>{campaign.display_title}</strong><small>{campaign.name}</small></td><td>{campaign.campaign_type === 'bogo' ? `Buy ${campaign.buy_quantity} Get ${campaign.get_quantity}` : campaign.campaign_type === 'bundle' ? `Bundle ${formatMoney(Number(campaign.bundle_price || 0))}` : `${Number(campaign.discount_percent)}% off`}<small>{campaign.campaign_type.replace('_',' ')}</small></td><td>{campaign.product_campaign_items?.length ?? 0} products</td><td><small>{campaign.starts_at ? new Date(campaign.starts_at).toLocaleString() : 'Starts immediately'}</small><small>{campaign.ends_at ? new Date(campaign.ends_at).toLocaleString() : 'No end date'}</small></td><td><em className={statusClass(campaign.status)}>{campaign.status}</em></td><td><div className="admin-action-row">{campaign.status === 'active' ? <button type="button" className="admin-button admin-button--outline" onClick={() => void updateCampaignStatus(campaign.id,'paused')}>Pause</button> : <button type="button" className="admin-button admin-button--outline" onClick={() => void updateCampaignStatus(campaign.id,'active')}>Activate</button>}<button type="button" className="admin-button admin-button--outline" onClick={() => void updateCampaignStatus(campaign.id,'archived')}>Archive</button><button type="button" className="admin-button admin-button--danger" onClick={() => void deleteCampaign(campaign.id)}>Delete</button></div></td></tr>)}</tbody></table></div>}
+      {campaigns.length === 0 ? <Empty title="No product campaigns yet" detail="Create your first Flash Sale, BOGO, Bundle or seasonal campaign above."/> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Campaign</th><th>Offer</th><th>Products</th><th>Schedule</th><th>Status</th><th>Actions</th></tr></thead><tbody>{campaigns.map((campaign) => <tr key={campaign.id}><td><strong>{campaign.display_title}</strong><small>{campaign.name}</small></td><td>{campaign.campaign_type === 'bogo' ? `Buy ${campaign.buy_quantity} Get ${campaign.get_quantity}` : campaign.campaign_type === 'bundle' ? `Bundle ${formatMoney(Number(campaign.bundle_price || 0))}` : `${Number(campaign.discount_percent)}% off`}<small>{campaign.campaign_type.replace('_',' ')}</small></td><td>{campaign.product_campaign_items?.length ?? 0} products</td><td><small>{campaign.starts_at ? new Date(campaign.starts_at).toLocaleString() : 'Starts immediately'}</small><small>{campaign.ends_at ? new Date(campaign.ends_at).toLocaleString() : 'No end date'}</small></td><td><em className={statusClass(campaign.status)}>{campaign.status}</em></td><td><div className="admin-action-row"><button type="button" className="admin-button admin-button--outline" onClick={() => { setEditingCampaignId(campaign.id); setCampaignName(campaign.name); setCampaignTitle(campaign.display_title); setCampaignDescription(campaign.description ?? ''); setCampaignType(campaign.campaign_type); setCampaignDiscount(String(campaign.discount_percent || 20)); setBuyQuantity(String(campaign.buy_quantity || 1)); setGetQuantity(String(campaign.get_quantity || 1)); setBundlePrice(campaign.bundle_price == null ? '' : String(campaign.bundle_price)); setStartsAt(campaign.starts_at ? new Date(campaign.starts_at).toISOString().slice(0,16) : ''); setEndsAt(campaign.ends_at ? new Date(campaign.ends_at).toISOString().slice(0,16) : ''); setCampaignProductIds(campaign.product_campaign_items?.map((row) => row.product_id) ?? []); window.scrollTo({top:0,behavior:'smooth'}) }}>Edit</button>{campaign.status === 'active' ? <button type="button" className="admin-button admin-button--outline" onClick={() => void updateCampaignStatus(campaign.id,'paused')}>Pause</button> : <button type="button" className="admin-button admin-button--outline" onClick={() => void updateCampaignStatus(campaign.id,'active')}>Activate</button>}<button type="button" className="admin-button admin-button--outline" onClick={() => void updateCampaignStatus(campaign.id,'archived')}>Archive</button><button type="button" className="admin-button admin-button--danger" onClick={() => void deleteCampaign(campaign.id)}>Delete</button></div></td></tr>)}</tbody></table></div>}
     </section>
 
     <section className="admin-panel">

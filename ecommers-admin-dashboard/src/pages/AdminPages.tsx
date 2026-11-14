@@ -38,7 +38,16 @@ const nav = [
 function notificationSectionPath(item: AdminNotification): string | null {
   const title = `${item.title} ${item.body}`.toLowerCase()
   if (item.kind === 'order' || title.includes('order')) return '/admin/orders'
-  if (title.includes('vendor product') || title.includes('vendor listing') || (title.includes('product') && title.includes('vendor'))) return '/admin/vendor-products'
+
+  // Route vendor-submitted product approval alerts to the dedicated queue.
+  // Older alerts may say "product submitted/pending approval" without
+  // explicitly including the word vendor.
+  const vendorProductReview = /\b(vendor|seller|shop)\b/.test(title)
+    || (/\b(product|listing)\b/.test(title)
+      && /\b(pending|approval|approve|review|submitted|submission|moderation)\b/.test(title)
+      && !/\b(platform|admin catalogue|admin catalog)\b/.test(title))
+  if (title.includes('vendor product') || title.includes('vendor listing') || vendorProductReview) return '/admin/vendor-products'
+
   if (title.includes('product') || title.includes('listing')) return '/admin/products'
   if (title.includes('seller') || title.includes('vendor') || title.includes('shop')) return '/admin/sellers'
   if (title.includes('case') || title.includes('complaint') || title.includes('return') || title.includes('refund')) return '/admin/cases'

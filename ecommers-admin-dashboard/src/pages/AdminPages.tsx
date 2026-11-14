@@ -2083,7 +2083,9 @@ function Promotions() {
                 <option value="seller_banner">Become a Seller Banner</option>
                 <option value="top_promo">Top Promo Bar</option>
                 <option value="category_feature">Category Feature</option>
+                <option value="before_popular_products">Above Popular / Featured Products</option>
                 <option value="product_strip">Product Strip</option>
+                <option value="after_new_arrivals">Below New Arrivals</option>
                 <option value="offer_section">Offer Section</option>
               </select>
             </label>

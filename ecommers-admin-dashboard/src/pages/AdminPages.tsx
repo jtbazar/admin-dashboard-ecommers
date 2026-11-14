@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { Archive, ArrowLeft, BarChart3, Bell, Boxes, Check, CheckCheck, ChevronLeft, ChevronRight, CircleAlert, ClipboardList, Edit2, FolderTree, Eye, EyeOff, Image as ImageIcon, Info, LayoutDashboard, LogOut, MapPin, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen, MessageSquare, Package, Plus, Printer, RefreshCw, Search, Send, Settings, ShieldAlert, Star, Store, Tag, Trash2, Truck, Users, Volume2, VolumeX, X } from 'lucide-react'
+import { Archive, ArrowLeft, BarChart3, Bell, Boxes, Check, CheckCheck, ChevronLeft, ChevronRight, CircleAlert, ClipboardList, Edit2, Film, FolderTree, Eye, EyeOff, Image as ImageIcon, Info, LayoutDashboard, LogOut, MapPin, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen, MessageSquare, Package, Plus, Printer, RefreshCw, Search, Send, Settings, ShieldAlert, Star, Store, Tag, Trash2, Truck, Users, Volume2, VolumeX, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { adjustInventory, decideMarketplaceCase, deleteAdminHero, deleteAdminPromotion, deleteProductVariant, getAdminOrderDetail, getAdminProductEditor, getAdminStoreSettings, getAdminFoodDeliverySettings, getAdminCommissionSettings, getAdminSummary, getVendorDocumentSignedUrl, listAdminCategories, listAdminAccountSuspensions, listAdminCustomers, listAdminHeroes, listAdminInventory, listAdminNotifications, listAdminOrders, listAdminOrderVendors, listAdminVendorPickups, markAdminVendorPickedUp, listAdminProducts, listAdminProductsPage, listAdminVendorDirectoryPage, listAdminPromotions, listAdminCustomerReviews, setAdminCustomerReviewStatus, listAdminSupportTickets, listAdminSellerSupportMessages, sendAdminSellerSupportMessage, listAdminCustomerSupportMessages, sendAdminCustomerSupportMessage, listAuditLogs, listMarketplaceCases, listSellerApplications, markAdminNotificationRead, markAllAdminNotificationsRead, sendAdminPushTest, sendAdminManualNotification, moderateProduct, deleteAdminProductImage, deleteAdminProductPermanently, listAdminProductDeletionRequests, reviewAdminProductDeletion, reviewSellerApplication, setAdminVendorLock, setAdminSupportTicketStatus, saveAdminHero, saveAdminPromotion, saveCategory, saveProduct, saveProductVariant, saveAdminProductInventory, setAdminAccountSuspension, updateAdminStoreSettings, updateAdminFoodDeliverySettings, updateAdminCommissionSettings, updateAdminSupportTicket, updateOrder, saveDeliveryCollection, addOrderNote, rejectAdminOrder, findCustomerDeliveryOrders, confirmOrdersWithDeliveryBatch, createFollowupDeliveryBatch, markDeliveryBatchDelivered, listOrderDeliveryBatches, updateProductStatus, updateProductsHotDeal, setAdminProductFeatured, uploadAdditionalProductImage, uploadPublicMedia, type AdminCaseDetail, type AdminCategory, type AdminCustomerReview, type AdminAccountSuspension, type AdminCustomer, type AdminHero, type AdminInventory, type AdminNotification, type AdminOrder, type AdminOrderVendor, type AdminProduct, type AdminProductDeletionRequest, type AdminPromotion, type AdminSeller, type AdminStoreSettings, type AdminFoodDeliverySettings, type AdminCommissionSettings, type AdminSummary, type AdminSupportInboxTicket, type AdminSupportChatMessage, type AdminVariant } from '../services/admin/adminService'
@@ -9,6 +9,7 @@ import type { Database } from '../types/database'
 import { getSupabase } from '../lib/supabase'
 import { isValidEmail, isValidPakistaniMobile, normalizePakistaniMobile } from '../utils/contactValidation'
 import { DriverManagement } from './DriverManagement'
+import { ProductVideos } from './ProductVideos'
 import '../admin.css'
 
 const nav = [
@@ -16,6 +17,7 @@ const nav = [
   { to: '/admin/heroes', label: 'Heroes', icon: ImageIcon },
   { to: '/admin/promotions', label: 'Banners & Ads', icon: Tag },
   { to: '/admin/products', label: 'Products', icon: Package },
+  { to: '/admin/product-videos', label: 'Product Videos', icon: Film },
   { to: '/admin/hot-deals', label: 'Campaign Manager', icon: Tag },
   { to: '/admin/categories', label: 'Categories', icon: FolderTree },
   { to: '/admin/orders', label: 'Orders', icon: ClipboardList },
@@ -224,6 +226,7 @@ function AdminContent({ path }: { path: string }) {
   if (path === '/admin/heroes') return <Heroes />
   if (path === '/admin/promotions') return <Promotions />
   if (path === '/admin/products') return <Products />
+  if (path === '/admin/product-videos') return <ProductVideos />
   if (path === '/admin/vendor-products') return <VendorProducts />
   if (/^\/admin\/vendor-products\/[^/]+$/.test(path)) return <VendorProducts sellerId={path.split('/').pop()!} />
   if (path === '/admin/hot-deals') return <HotDeals />

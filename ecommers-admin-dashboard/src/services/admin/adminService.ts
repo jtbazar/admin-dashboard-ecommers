@@ -1133,3 +1133,56 @@ export async function sendAdminManualNotification(userId: string, title: string,
   })
   assertError(error)
 }
+
+
+export type AdminProductVideo = {
+  id: string
+  product_id: string
+  video_url: string
+  storage_path: string
+  duration_seconds: number
+  file_size_bytes: number
+  mime_type: string
+  is_active: boolean
+  created_at: string
+  product_name?: string
+}
+
+export async function listAdminProductVideos(): Promise<AdminProductVideo[]> {
+  const client = getSupabase() as any
+  const { data, error } = await client.from('product_videos')
+    .select('id,product_id,video_url,storage_path,duration_seconds,file_size_bytes,mime_type,is_active,created_at,products(name)')
+    .order('created_at', { ascending: false })
+    .limit(100)
+  assertError(error)
+  return (data ?? []).map((row: any) => ({ ...row, product_name: row.products?.name ?? 'Product unavailable' }))
+}
+
+export async function uploadAdminProductVideo(file: File, productId: string, durationSeconds: number): Promise<void> {
+  if (!['video/mp4', 'video/webm', 'video/quicktime'].includes(file.type)) throw new Error('Choose an MP4, WebM or MOV video.')
+  if (file.size > 25 * 1024 * 1024) throw new Error('Product videos must be 25 MB or smaller.')
+  if (!Number.isInteger(durationSeconds) || durationSeconds < 1 || durationSeconds > 60) throw new Error('Video duration must be 60 seconds or less.')
+  const client = getSupabase() as any
+  const extension = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp4'
+  const storagePath = `products/${productId}/${crypto.randomUUID()}.${extension}`
+  const uploaded = await client.storage.from('product-videos').upload(storagePath, file, { upsert: false, contentType: file.type, cacheControl: '31536000' })
+  assertError(uploaded.error)
+  const videoUrl = client.storage.from('product-videos').getPublicUrl(storagePath).data.publicUrl
+  const inserted = await client.from('product_videos').insert({
+    product_id: productId, video_url: videoUrl, storage_path: storagePath,
+    duration_seconds: durationSeconds, file_size_bytes: file.size, mime_type: file.type, is_active: true,
+  })
+  if (inserted.error) {
+    await client.storage.from('product-videos').remove([storagePath])
+    assertError(inserted.error)
+  }
+}
+
+export async function deleteAdminProductVideo(video: AdminProductVideo): Promise<void> {
+  const client = getSupabase() as any
+  const { error } = await client.from('product_videos').delete().eq('id', video.id)
+  assertError(error)
+  const removed = await client.storage.from('product-videos').remove([video.storage_path])
+  assertError(removed.error)
+}
+

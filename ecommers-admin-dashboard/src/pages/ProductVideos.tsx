@@ -57,7 +57,7 @@ export function ProductVideos() {
   }
   async function save() {
     if (!productId || !file || !duration) { push('Select a product and a valid video first.', 'error'); return }
-    if (duration < 30 || duration > 60) { push('Video duration cannot exceed 60 seconds.', 'error'); return }
+    if (duration < 10 || duration > 60) { push('Video duration must be between 10 and 60 seconds.', 'error'); return }
     setSaving(true)
     try {
       await uploadAdminProductVideo(file, productId, Math.ceil(duration))
@@ -88,17 +88,17 @@ export function ProductVideos() {
         </div>
         <div style={{ display: 'grid', gap: 8 }}>
           <label style={labelStyle}>Upload video (MP4 / WebM / MOV)<input style={inputStyle} type="file" accept="video/mp4,video/webm,video/quicktime" onChange={event => chooseFile(event.target.files?.[0] ?? null)}/></label>
-          <small className="admin-copy">30–60 seconds · Maximum 20 MB. Keep videos compressed for fast mobile loading.</small>
+          <small className="admin-copy">10–60 seconds · Maximum 20 MB. Keep videos compressed for fast mobile loading.</small>
           {file && <small>{file.name} · {(file.size / 1024 / 1024).toFixed(1)} MB {duration ? '· '+Math.ceil(duration)+' sec' : '· Reading duration…'}</small>}
         </div>
       </div>
       {preview && <div style={{ marginTop: 14, maxWidth: 320 }}>
         <video src={preview} controls playsInline preload="metadata" style={{ width: '100%', maxHeight: 260, borderRadius: 12, background: '#111' }}
-          onLoadedMetadata={event => { const seconds = event.currentTarget.duration; setDuration(Number.isFinite(seconds) ? seconds : null); if (!Number.isFinite(seconds) || seconds <= 0 || seconds > 60) push('Video must be between 30 and 60 seconds.', 'error') }}/>
+          onLoadedMetadata={event => { const seconds = event.currentTarget.duration; setDuration(Number.isFinite(seconds) ? seconds : null); if (!Number.isFinite(seconds) || seconds < 10 || seconds > 60) push('Video must be between 10 and 60 seconds.', 'error') }}/>
       </div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
         <button className="admin-button admin-button--outline" onClick={() => { setShowForm(false); chooseFile(null) }}>Cancel</button>
-        <button className="admin-button" disabled={saving || !productId || !file || !duration || duration > 60} onClick={() => void save()}>{saving ? <><RefreshCw size={15} className="spin"/> Uploading…</> : <><Upload size={15}/> Save Product Video</>}</button>
+        <button className="admin-button" disabled={saving || !productId || !file || !duration || duration < 10 || duration > 60} onClick={() => void save()}>{saving ? <><RefreshCw size={15} className="spin"/> Uploading…</> : <><Upload size={15}/> Save Product Video</>}</button>
       </div>
     </div>}
     <div className="admin-panel">

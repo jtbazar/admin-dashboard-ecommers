@@ -1256,3 +1256,24 @@ export async function listAdminVendorSettlementBatchesPage(page = 0, pageSize = 
   const names = new Map((sellers.data ?? []).map((row: any) => [row.id, row.shop_name]))
   return { items: rows.map((row: any) => ({ ...row, shop_name: names.get(row.seller_id) ?? 'Vendor' })) as AdminSettlementBatch[], count: count ?? 0 }
 }
+
+
+export type AdminSettlementLedgerItem = { id: string; batch_id: string; seller_id: string; shop_name: string; order_id: string; order_number: string; product_name_snapshot: string; quantity: number; gross_amount: number; commission_amount: number; payout_amount: number; created_at: string }
+export async function listAdminVendorSettlementItemsPage(page = 0, pageSize = 12) {
+  const client = getSupabase() as any
+  const { data, error, count } = await client.from('vendor_settlement_items')
+    .select('id,batch_id,seller_id,order_id,product_name_snapshot,quantity,gross_amount,commission_amount,payout_amount,created_at', { count: 'exact' })
+    .order('created_at', { ascending: false }).range(page * pageSize, page * pageSize + pageSize - 1)
+  assertError(error)
+  const rows = data ?? []
+  const orderIds = [...new Set(rows.map((row: any) => row.order_id))]
+  const sellerIds = [...new Set(rows.map((row: any) => row.seller_id))]
+  const [orders, sellers] = await Promise.all([
+    orderIds.length ? client.from('orders').select('id,order_number').in('id', orderIds) : { data: [], error: null },
+    sellerIds.length ? client.from('seller_profiles').select('id,shop_name').in('id', sellerIds) : { data: [], error: null },
+  ])
+  assertError(orders.error); assertError(sellers.error)
+  const orderNumbers = new Map((orders.data ?? []).map((row: any) => [row.id, row.order_number]))
+  const shopNames = new Map((sellers.data ?? []).map((row: any) => [row.id, row.shop_name]))
+  return { items: rows.map((row: any) => ({ ...row, order_number: orderNumbers.get(row.order_id) ?? row.order_id, shop_name: shopNames.get(row.seller_id) ?? 'Vendor' })) as AdminSettlementLedgerItem[], count: count ?? 0 }
+}

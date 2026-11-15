@@ -2015,10 +2015,12 @@ function Finance() {
   const loadRefunds = () => void listAdminRefundRecordsPage(refundStatus, refundPage, pageSize).then(result => { setRefunds(result.items); setRefundCount(result.count) }).catch(cause => setError(cause instanceof Error ? cause.message : 'Refund records could not be loaded.'))
   const loadPayouts = () => void listAdminVendorSettlementBatchesPage(payoutPage, pageSize).then(result => { setPayouts(result.items); setPayoutCount(result.count) }).catch(cause => setError(cause instanceof Error ? cause.message : 'Vendor payout history could not be loaded.'))
   const loadCandidates = () => { if (!sellerId) { setCandidates([]); setCandidateCount(0); return } void listAdminVendorSettlementCandidates(sellerId, candidatePage, pageSize).then(result => { setCandidates(result.items); setCandidateCount(result.count); setSelectedItems([]) }).catch(cause => setError(cause instanceof Error ? cause.message : 'Payable order items could not be loaded.')) }
-  useEffect(() => { loadBalances(); loadRefunds() }, [refundStatus, refundPage])
+  useEffect(loadBalances, [])
+  useEffect(loadRefunds, [refundStatus, refundPage])
   useEffect(loadPayouts, [payoutPage])
   useEffect(loadCandidates, [sellerId, candidatePage])
   const selectedBalance = balances.find(row => row.seller_id === sellerId)
+  const selectedPayoutTotal = candidates.filter(row => selectedItems.includes(row.order_item_id)).reduce((sum,row) => sum + Number(row.payout_amount),0)
   async function submitRefund(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setSaving(true)
     try {
@@ -2068,14 +2070,14 @@ function Finance() {
       <div className="admin-panel-heading"><div><p className="admin-kicker">Vendor payouts</p><h3>Settlement balances</h3></div><button type="button" className="admin-button admin-button--outline" onClick={loadBalances}><RefreshCw size={14}/> Refresh</button></div>
       {balances.length===0 ? <Empty title="No eligible vendor settlements" detail="Delivered vendor order items with verified order-time commission snapshots will appear here."/> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Vendor</th><th>Payable items</th><th>Outstanding payable</th><th>Previously paid</th><th>Action</th></tr></thead><tbody>{balances.map(row=><tr key={row.seller_id}><td><strong>{row.shop_name}</strong></td><td>{row.eligible_items}</td><td>{formatMoney(row.eligible_amount)}</td><td>{formatMoney(row.paid_amount)}</td><td><button type="button" className="admin-small-button" onClick={()=>{setSellerId(row.seller_id);setCandidatePage(0)}}>{sellerId===row.seller_id?'Selected':'View payable items'}</button></td></tr>)}</tbody></table></div>}
       {selectedBalance && <div style={{marginTop:18,display:'grid',gap:12}}>
-        <div className="admin-panel-heading"><div><h3>Payable items — {selectedBalance.shop_name}</h3><p className="admin-copy">Only delivered order items with saved historical prices are eligible. Each line can be settled once.</p></div><strong>{formatMoney(selectedBalance.eligible_amount)} outstanding</strong></div>
+        <div className="admin-panel-heading"><div><h3>Payable items — {selectedBalance.shop_name}</h3><p className="admin-copy">Only delivered order items with saved historical prices are eligible. Vendor payout uses the order-time vendor base price × quantity; commission is shown separately. Each line can be settled once.</p></div><strong>{formatMoney(selectedBalance.eligible_amount)} outstanding</strong></div>
         {candidates.length===0 ? <Empty title="No payable items on this page" detail="This vendor may have no remaining eligible delivered orders."/> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Select</th><th>Order</th><th>Product</th><th>Qty</th><th>Gross</th><th>Commission</th><th>Vendor payout</th></tr></thead><tbody>{candidates.map(row=><tr key={row.order_item_id}><td><input type="checkbox" checked={selectedItems.includes(row.order_item_id)} onChange={e=>setSelectedItems(current=>e.target.checked?[...current,row.order_item_id]:current.filter(id=>id!==row.order_item_id))}/></td><td>{row.order_number}</td><td>{row.product_name}</td><td>{row.quantity}</td><td>{formatMoney(row.gross_amount)}</td><td>{formatMoney(row.commission_amount)}</td><td><strong>{formatMoney(row.payout_amount)}</strong></td></tr>)}</tbody></table><Pagination page={candidatePage} pageSize={pageSize} total={candidateCount} onPage={setCandidatePage} onPageSize={()=>setCandidatePage(0)}/></div>}
         <div className="admin-form-grid">
           <label className="admin-field"><span>Payout method *</span><select value={payoutMethod} onChange={e=>setPayoutMethod(e.target.value)}><option value="bank_transfer">Bank transfer</option><option value="cash">Cash</option><option value="wallet">Wallet</option><option value="other">Other</option></select></label>
           <label className="admin-field"><span>Payment reference</span><input value={payoutReference} onChange={e=>setPayoutReference(e.target.value)} placeholder="Bank transaction / receipt ID"/></label>
           <label className="admin-field"><span>Admin note *</span><input value={payoutNote} onChange={e=>setPayoutNote(e.target.value)} minLength={3} placeholder="Payout details"/></label>
         </div>
-        <button type="button" className="admin-button" disabled={saving||selectedItems.length===0||payoutNote.trim().length<3} onClick={()=>void payVendor()}>Record payout for {selectedItems.length} selected items</button>
+        <button type="button" className="admin-button" disabled={saving||selectedItems.length===0||payoutNote.trim().length<3} onClick={()=>void payVendor()}>Record {formatMoney(selectedPayoutTotal)} payout for {selectedItems.length} items</button>
       </div>}
     </section>
     <section className="admin-panel" style={{marginBottom:20}}>

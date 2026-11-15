@@ -1993,6 +1993,10 @@ function Audit() { const [items, setItems] = useState<Array<{ id: string; action
 function Promotions() {
   const { push } = useToast()
   const [items, setItems] = useState<AdminPromotion[]>([])
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(12)
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -2003,13 +2007,13 @@ function Promotions() {
   const load = (quiet = false) => {
     if (!quiet) setLoading(true)
     setError(null)
-    void listAdminPromotions()
-      .then(setItems)
+    void listAdminPromotionsPage(search, page, pageSize)
+      .then((result) => { setItems(result.items); setTotal(result.count) })
       .catch((cause) => setError(cause instanceof Error ? cause.message : 'Promotions could not be loaded.'))
       .finally(() => { if (!quiet) setLoading(false) })
   }
 
-  useEffect(load, [])
+  useEffect(load, [search, page, pageSize])
   useAutoRefresh(load)
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -2227,7 +2231,7 @@ function Promotions() {
           detail="Create platform-wide banners or review seller promotional submissions here."
         />
       ) : (
-        <div className="admin-table-wrap"><TableTools />
+        <div className="admin-table-wrap"><div className="admin-table-tools"><div className="admin-table-tools__main"><label className="admin-search admin-table-tools__search"><Search size={16}/><input aria-label="Search promotions" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0) }} placeholder="Search title or coupon code"/></label></div></div>
           <table className="admin-table">
             <thead>
               <tr>
@@ -2266,6 +2270,7 @@ function Promotions() {
               ))}
             </tbody>
           </table>
+          <Pagination page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(size) => { setPageSize(size); setPage(0) }}/>
         </div>
       )}
     </section>
@@ -2275,6 +2280,10 @@ function Promotions() {
 function Heroes() {
   const { push } = useToast()
   const [items, setItems] = useState<AdminHero[]>([])
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(12)
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -2293,13 +2302,13 @@ function Heroes() {
   const load = (quiet = false) => {
     if (!quiet) setLoading(true)
     setError(null)
-    void listAdminHeroes()
-      .then(setItems)
+    void listAdminHeroesPage(search, page, pageSize)
+      .then((result) => { setItems(result.items); setTotal(result.count) })
       .catch((cause) => setError(cause instanceof Error ? cause.message : 'Heroes could not be loaded.'))
       .finally(() => { if (!quiet) setLoading(false) })
   }
 
-  useEffect(load, [])
+  useEffect(load, [search, page, pageSize])
   useAutoRefresh(load)
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -2445,7 +2454,7 @@ function Heroes() {
           detail="Create your first hero slide to customize the storefront homepage hero banner dynamically."
         />
       ) : (
-        <div className="admin-table-wrap"><TableTools />
+        <div className="admin-table-wrap"><div className="admin-table-tools"><div className="admin-table-tools__main"><label className="admin-search admin-table-tools__search"><Search size={16}/><input aria-label="Search heroes" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0) }} placeholder="Search hero title or subtitle"/></label></div></div>
           <table className="admin-table">
             <thead>
               <tr>
@@ -2482,6 +2491,7 @@ function Heroes() {
               ))}
             </tbody>
           </table>
+          <Pagination page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(size) => { setPageSize(size); setPage(0) }}/>
         </div>
       )}
     </section>

@@ -1188,6 +1188,8 @@ export async function deleteAdminProductVideo(video: AdminProductVideo): Promise
   assertError(removed.error)
 }
 
+const ADMIN_PAGE_SIZE = 12
+
 export type AdminRefundRecord = { id: string; case_id: string; order_id: string; amount: number; method: string; status: string; reference: string | null; admin_note: string; created_at: string }
 export type AdminSettlementBalance = { seller_id: string; shop_name: string; eligible_items: number; eligible_amount: number; paid_amount: number }
 export type AdminSettlementCandidate = { order_item_id: string; order_id: string; order_number: string; product_name: string; quantity: number; gross_amount: number; commission_amount: number; payout_amount: number; delivered_at: string | null; total_count: number }

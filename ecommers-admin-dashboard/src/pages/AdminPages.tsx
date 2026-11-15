@@ -2057,22 +2057,22 @@ function Finance() {
     catch (cause) { push(cause instanceof Error ? cause.message : 'Refund status could not be updated.', 'error') }
     finally { setSaving(false) }
   }
-  return <section className="admin-content">
-    <div className="admin-page-heading"><div><p className="admin-kicker">Finance operations</p><h2>Refunds & vendor settlements</h2><p className="admin-copy">Record refunds and verified vendor payouts. No bank or payment-gateway transfer is initiated from this screen.</p></div></div>
-    <section className="admin-panel" style={{marginBottom:20}}>
+  return <section className="admin-content admin-finance">
+    <div className="admin-page-heading admin-finance-heading"><div><p className="admin-kicker">Finance operations</p><h2>Refunds & vendor settlements</h2><p className="admin-copy">Record refunds and verified vendor payouts. No bank or payment-gateway transfer is initiated from this screen.</p></div></div>
+    <section className="admin-panel admin-finance-panel admin-finance-refund" style={{marginBottom:20}}>
       <div className="admin-panel-heading"><div><p className="admin-kicker">Customer returns</p><h3>Record a case refund</h3></div></div>
-      <form onSubmit={submitRefund} style={{display:'grid',gap:12}}>
+      <form className="admin-finance-refund-form" onSubmit={submitRefund}>
         <div className="admin-form-grid">
           <label className="admin-field"><span>Approved / resolved case ID *</span><input required value={caseId} onChange={e=>setCaseId(e.target.value)} placeholder="Marketplace case UUID"/></label>
           <label className="admin-field"><span>Refund amount (PKR) *</span><input required type="number" min="0.01" step="0.01" value={refundAmount} onChange={e=>setRefundAmount(e.target.value)} placeholder="0.00"/></label>
           <label className="admin-field"><span>Refund method *</span><select value={refundMethod} onChange={e=>setRefundMethod(e.target.value)}><option value="cash">Cash</option><option value="bank_transfer">Bank transfer</option><option value="wallet">Wallet</option><option value="card_gateway">Card gateway (manual record)</option><option value="other">Other</option></select></label>
           <label className="admin-field"><span>Payment reference</span><input value={refundReference} onChange={e=>setRefundReference(e.target.value)} placeholder="Receipt / transaction ID"/></label>
         </div>
-        <label className="admin-field"><span>Admin note *</span><input required minLength={3} value={refundNote} onChange={e=>setRefundNote(e.target.value)} placeholder="Reason and refund handling details"/></label>
+        <label className="admin-field admin-finance-note"><span>Admin note *</span><input required minLength={3} value={refundNote} onChange={e=>setRefundNote(e.target.value)} placeholder="Reason and refund handling details"/></label>
         <div><button className="admin-button" disabled={saving}>Create pending refund record</button></div>
       </form>
     </section>
-    <section className="admin-panel" style={{marginBottom:20}}>
+    <section className="admin-panel admin-finance-panel admin-finance-balances" style={{marginBottom:20}}>
       <div className="admin-panel-heading"><div><p className="admin-kicker">Vendor payouts</p><h3>Settlement balances</h3></div><button type="button" className="admin-button admin-button--outline" onClick={loadBalances}><RefreshCw size={14}/> Refresh</button></div>
       {balances.length===0 ? <Empty title="No eligible vendor settlements" detail="Delivered, paid vendor order items with verified order-time commission snapshots will appear here."/> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Vendor</th><th>Payable items</th><th>Outstanding payable</th><th>Previously paid</th><th>Action</th></tr></thead><tbody>{balances.map(row=><tr key={row.seller_id}><td><strong>{row.shop_name}</strong></td><td>{row.eligible_items}</td><td>{formatMoney(row.eligible_amount)}</td><td>{formatMoney(row.paid_amount)}</td><td><button type="button" className="admin-small-button" onClick={()=>{setSellerId(row.seller_id);setCandidatePage(0)}}>{sellerId===row.seller_id?'Selected':'View payable items'}</button></td></tr>)}</tbody></table></div>}
       {selectedBalance && <div style={{marginTop:18,display:'grid',gap:12}}>
@@ -2086,15 +2086,15 @@ function Finance() {
         <button type="button" className="admin-button" disabled={saving||selectedItems.length===0||payoutNote.trim().length<3} onClick={()=>void payVendor()}>Record {formatMoney(selectedPayoutTotal)} payout for {selectedItems.length} items</button>
       </div>}
     </section>
-    <section className="admin-panel" style={{marginBottom:20}}>
+    <section className="admin-panel admin-finance-panel admin-finance-ledger" style={{marginBottom:20}}>
       <div className="admin-panel-heading"><div><p className="admin-kicker">Settlement ledger</p><h3>{payoutCount} vendor payouts recorded</h3></div></div>
       {payouts.length===0 ? <Empty title="No vendor payouts recorded" detail="Every recorded settlement will appear here with its vendor, amount, payment reference and date."/> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Vendor</th><th>Amount</th><th>Method</th><th>Reference</th><th>Status</th><th>Paid at</th><th>Batch ID</th></tr></thead><tbody>{payouts.map(row=><tr key={row.id}><td><strong>{row.shop_name}</strong></td><td>{formatMoney(row.amount)}</td><td>{row.method.replace('_',' ')}</td><td>{row.reference??'—'}</td><td><em className={statusClass(row.status)}>{row.status}</em></td><td>{formatDate(row.paid_at)}</td><td className="admin-mono">{row.id}</td></tr>)}</tbody></table><Pagination page={payoutPage} pageSize={pageSize} total={payoutCount} onPage={setPayoutPage} onPageSize={()=>setPayoutPage(0)}/></div>}
     </section>
-    <section className="admin-panel" style={{marginBottom:20}}>
+    <section className="admin-panel admin-finance-panel admin-finance-items" style={{marginBottom:20}}>
       <div className="admin-panel-heading"><div><p className="admin-kicker">Vendor line-item ledger</p><h3>{ledgerCount} settled order items</h3></div></div>
       {ledgerItems.length===0 ? <Empty title="No settled order items" detail="Each order item included in a vendor payout will be recorded here."/> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Vendor</th><th>Order</th><th>Product</th><th>Qty</th><th>Gross</th><th>Commission</th><th>Paid to vendor</th><th>Settlement batch</th></tr></thead><tbody>{ledgerItems.map(row=><tr key={row.id}><td>{row.shop_name}</td><td>{row.order_number}</td><td>{row.product_name_snapshot}</td><td>{row.quantity}</td><td>{formatMoney(row.gross_amount)}</td><td>{formatMoney(row.commission_amount)}</td><td><strong>{formatMoney(row.payout_amount)}</strong></td><td className="admin-mono">{row.batch_id}</td></tr>)}</tbody></table><Pagination page={ledgerPage} pageSize={pageSize} total={ledgerCount} onPage={setLedgerPage} onPageSize={()=>setLedgerPage(0)}/></div>}
     </section>
-    <section className="admin-panel">
+    <section className="admin-panel admin-finance-panel admin-finance-history">
       <div className="admin-panel-heading"><div><p className="admin-kicker">Refund history</p><h3>{refundCount} recorded refunds</h3></div><select value={refundStatus} onChange={e=>{setRefundStatus(e.target.value);setRefundPage(0)}}><option value="all">All statuses</option><option value="pending">Pending</option><option value="completed">Completed</option><option value="failed">Failed</option><option value="cancelled">Cancelled</option></select></div>
       {refunds.length===0 ? <Empty title="No refund records" detail="Refund records created from approved or resolved marketplace cases will appear here."/> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Case</th><th>Order</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th><th>Created</th><th>Actions</th></tr></thead><tbody>{refunds.map(row=><tr key={row.id}><td className="admin-mono">{row.case_id}</td><td className="admin-mono">{row.order_id}</td><td>{formatMoney(row.amount)}</td><td>{row.method.replace('_',' ')}</td><td><em className={statusClass(row.status)}>{row.status}</em></td><td>{row.reference??'—'}</td><td>{formatDate(row.created_at)}</td><td>{row.status==='pending' ? <div className="admin-action-row"><button type="button" className="admin-small-button" disabled={saving} onClick={()=>void updateRefund(row,'completed')}>Mark paid</button><button type="button" className="admin-small-button admin-small-button--danger" disabled={saving} onClick={()=>void updateRefund(row,'failed')}>Failed</button><button type="button" className="admin-small-button" disabled={saving} onClick={()=>void updateRefund(row,'cancelled')}>Cancel</button></div> : '—'}</td></tr>)}</tbody></table><Pagination page={refundPage} pageSize={pageSize} total={refundCount} onPage={setRefundPage} onPageSize={()=>setRefundPage(0)}/></div>}
     </section>

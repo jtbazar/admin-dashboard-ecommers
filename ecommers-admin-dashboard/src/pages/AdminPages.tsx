@@ -2518,6 +2518,10 @@ function ManualOrders() {
   const emptyItem = (): ManualItem => ({ mode: 'catalog', product_id: '', category_id: '', product_search: '', seller_id: '', product_name_snapshot: '', quantity: 1, unit_price: 0, seller_name_snapshot: '', sku_snapshot: '' })
   const { push } = useToast()
   const [items, setItems] = useState<Record<string, unknown>[]>([])
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(12)
+  const [total, setTotal] = useState(0)
   const [products, setProducts] = useState<AdminProduct[]>([])
   const [categories, setCategories] = useState<AdminCategory[]>([])
   const [productsLoading, setProductsLoading] = useState(false)
@@ -2546,9 +2550,12 @@ function ManualOrders() {
     void (async () => {
       try {
         const client = getSupabase() as any
-        const { data, error: queryError } = await client.from('manual_orders').select('*').order('created_at', { ascending: false }).limit(200)
+        let query = client.from('manual_orders').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(page * pageSize, page * pageSize + pageSize - 1)
+        if (search.trim()) query = query.or(`manual_order_number.ilike.%${search.trim()}%,customer_name.ilike.%${search.trim()}%,customer_phone.ilike.%${search.trim()}%`)
+        const { data, error: queryError, count } = await query
         if (queryError) throw new Error(queryError.message)
         setItems((data ?? []) as Record<string, unknown>[])
+        setTotal(count ?? 0)
       } catch (cause) { setError(cause instanceof Error ? cause.message : 'Manual orders could not be loaded.') }
       finally { setLoading(false) }
     })()
@@ -2617,7 +2624,7 @@ function ManualOrders() {
       push(cause instanceof Error ? cause.message : 'Manual order could not be removed.', 'error')
     }
   }
-  useEffect(() => { load(); loadProducts(); void listAdminCategories().then(setCategories).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Categories could not be loaded.')) }, [])
+  useEffect(() => { load(); loadProducts(); void listAdminCategories().then(setCategories).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Categories could not be loaded.')) }, [search, page, pageSize])
   const value = (row: Record<string, unknown>, ...keys: string[]) => {
     for (const key of keys) { const v = row[key]; if (v !== null && v !== undefined && v !== '') return String(v) }
     return '—'
@@ -2718,10 +2725,11 @@ function ManualOrders() {
       </div>
     </form>}
     <div className="admin-panel">
-      <div className="admin-panel-heading"><div><p className="admin-kicker">Saved records</p><h3>{items.length} manual orders</h3></div></div>
-      {loading ? <Loading /> : items.length === 0 ? <Empty title="No manual orders yet" detail="Add the first order using the “Add Manual Order” button above." /> :
+      <div className="admin-panel-heading"><div><p className="admin-kicker">Saved records</p><h3>{total} manual orders</h3></div></div>
+      <label className="admin-search admin-table-tools__search"><Search size={16}/><input aria-label="Search manual orders" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0) }} placeholder="Search order number, customer or phone"/></label>
+      {loading ? <Loading /> : items.length === 0 ? <Empty title="No manual orders found" detail="Try another search or add a new manual order." /> :
         <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Order number</th><th>Customer</th><th>Phone</th><th>Total</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
-        <tbody>{items.map((row,index)=><tr key={value(row,'id')==='—'?index:value(row,'id')}><td><Link className="admin-link-button" to={`/admin/manual-orders/${value(row,'id')}`}><strong>{value(row,'manual_order_number','order_number','id')}</strong><small>{value(row,'source')}</small></Link></td><td>{value(row,'customer_name')}<small>{value(row,'customer_email')}</small></td><td>{value(row,'customer_phone')}</td><td>{formatMoney(value(row,'total'))}</td><td><em className={statusClass(value(row,'order_status'))}>{value(row,'order_status')}</em></td><td>{formatDate(value(row,'created_at'))}</td><td><div className="admin-action-row"><button type="button" className="admin-small-button" onClick={() => void editManualOrder(row)} title={`Edit ${value(row,'manual_order_number')}`}><Edit2 size={14}/> Edit</button><button type="button" className="admin-small-button admin-small-button--danger" onClick={() => void deleteManualOrder(row)} title={`Remove ${value(row,'manual_order_number')}`}><Trash2 size={14}/> Delete</button></div></td></tr>)}</tbody></table></div>}
+        <tbody>{items.map((row,index)=><tr key={value(row,'id')==='—'?index:value(row,'id')}><td><Link className="admin-link-button" to={`/admin/manual-orders/${value(row,'id')}`}><strong>{value(row,'manual_order_number','order_number','id')}</strong><small>{value(row,'source')}</small></Link></td><td>{value(row,'customer_name')}<small>{value(row,'customer_email')}</small></td><td>{value(row,'customer_phone')}</td><td>{formatMoney(value(row,'total'))}</td><td><em className={statusClass(value(row,'order_status'))}>{value(row,'order_status')}</em></td><td>{formatDate(value(row,'created_at'))}</td><td><div className="admin-action-row"><button type="button" className="admin-small-button" onClick={() => void editManualOrder(row)} title={`Edit ${value(row,'manual_order_number')}`}><Edit2 size={14}/> Edit</button><button type="button" className="admin-small-button admin-small-button--danger" onClick={() => void deleteManualOrder(row)} title={`Remove ${value(row,'manual_order_number')}`}><Trash2 size={14}/> Delete</button></div></td></tr>)}</tbody></table><Pagination page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(size) => { setPageSize(size); setPage(0) }}/></div>}
     </div>
   </section>
 }

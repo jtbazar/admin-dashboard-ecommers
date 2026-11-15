@@ -2610,18 +2610,27 @@ function Finance() {
   }
   return <section className="admin-content admin-finance">
     <div className="admin-page-heading admin-finance-heading"><div><p className="admin-kicker">Finance operations</p><h2>Refunds & vendor settlements</h2><p className="admin-copy">Record refunds and verified vendor payouts. No bank or payment-gateway transfer is initiated from this screen.</p></div></div>
-    <section className="admin-panel admin-finance-panel admin-finance-refund" style={{marginBottom:20}}>
-      <div className="admin-panel-heading"><div><p className="admin-kicker">Customer returns</p><h3>Record a case refund</h3></div></div>
-      <form className="admin-finance-refund-form" onSubmit={submitRefund}>
-        <div className="admin-form-grid">
-          <label className="admin-field"><span>Approved / resolved case ID *</span><input required value={caseId} onChange={e=>setCaseId(e.target.value)} placeholder="Marketplace case UUID"/></label>
-          <label className="admin-field"><span>Refund amount (PKR) *</span><input required type="number" min="0.01" step="0.01" value={refundAmount} onChange={e=>setRefundAmount(e.target.value)} placeholder="0.00"/></label>
-          <label className="admin-field"><span>Refund method *</span><select value={refundMethod} onChange={e=>setRefundMethod(e.target.value)}><option value="cash">Cash</option><option value="bank_transfer">Bank transfer</option><option value="wallet">Wallet</option><option value="card_gateway">Card gateway (manual record)</option><option value="other">Other</option></select></label>
-          <label className="admin-field"><span>Payment reference</span><input value={refundReference} onChange={e=>setRefundReference(e.target.value)} placeholder="Receipt / transaction ID"/></label>
-        </div>
-        <label className="admin-field admin-finance-note"><span>Admin note *</span><input required minLength={3} value={refundNote} onChange={e=>setRefundNote(e.target.value)} placeholder="Reason and refund handling details"/></label>
-        <div><button className="admin-button" disabled={saving}>Create pending refund record</button></div>
-      </form>
+    <section className="admin-panel admin-finance-panel admin-finance-refund">
+      <div className="admin-panel-heading admin-finance-refund-heading"><div><p className="admin-kicker">Customer returns</p><h3>Record a case refund</h3><p className="admin-copy">Create an auditable pending record for an approved or resolved case.</p></div></div>
+      <div className="admin-finance-refund-layout">
+        <aside className="admin-finance-refund-aside">
+          <span className="admin-finance-refund-icon"><Wallet size={23} aria-hidden="true"/></span>
+          <p className="admin-finance-refund-aside-kicker">Refund record</p>
+          <h4>Keep every customer refund traceable.</h4>
+          <p>Enter the case, amount and handling details. The record starts as pending and can be updated from Refund history after the refund is verified.</p>
+          <ul><li>Only approved or resolved cases</li><li>Refund amount checked against eligible order balance</li><li>No payment or bank transfer is initiated here</li></ul>
+        </aside>
+        <form className="admin-finance-refund-form" onSubmit={submitRefund}>
+          <div className="admin-finance-refund-fields">
+            <label className="admin-field admin-finance-field--wide"><span>Approved / resolved case ID <b>*</b></span><input required value={caseId} onChange={e=>setCaseId(e.target.value)} placeholder="Paste marketplace case UUID" autoComplete="off"/></label>
+            <label className="admin-field"><span>Refund amount (PKR) <b>*</b></span><input required type="number" min="0.01" step="0.01" value={refundAmount} onChange={e=>setRefundAmount(e.target.value)} placeholder="0.00" inputMode="decimal"/></label>
+            <label className="admin-field"><span>Refund method <b>*</b></span><select value={refundMethod} onChange={e=>setRefundMethod(e.target.value)}><option value="cash">Cash</option><option value="bank_transfer">Bank transfer</option><option value="wallet">Wallet</option><option value="card_gateway">Card gateway (manual record)</option><option value="other">Other</option></select></label>
+            <label className="admin-field admin-finance-field--wide"><span>Payment reference <small>Optional</small></span><input value={refundReference} onChange={e=>setRefundReference(e.target.value)} placeholder="Receipt or transaction ID (if available)"/></label>
+            <label className="admin-field admin-finance-field--wide"><span>Admin note <b>*</b></span><textarea required minLength={3} rows={3} value={refundNote} onChange={e=>setRefundNote(e.target.value)} placeholder="Add the reason and how this refund was handled"/></label>
+          </div>
+          <div className="admin-finance-refund-actions"><span>Creates a pending record only.</span><button className="admin-button" disabled={saving}><Wallet size={16} aria-hidden="true"/> Create pending refund record</button></div>
+        </form>
+      </div>
     </section>
     <section className="admin-panel admin-finance-panel admin-finance-balances" style={{marginBottom:20}}>
       <div className="admin-panel-heading"><div><p className="admin-kicker">Vendor payouts</p><h3>Settlement balances</h3></div><button type="button" className="admin-button admin-button--outline" onClick={loadBalances}><RefreshCw size={14}/> Refresh</button></div>

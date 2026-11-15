@@ -817,3 +817,52 @@
 .admin-nav-section:first-child{margin-top:0;padding-top:0;border-top:0}
 .admin-app--collapsed .admin-nav-section{display:none}
 .admin-nav a{flex:0 0 auto}
+
+
+/* Finance operations — focused refund entry and consistent ledger workspace */
+.admin-finance{max-width:1440px;margin-inline:auto}
+.admin-finance-heading{margin-bottom:24px}
+.admin-finance-heading .admin-kicker{color:#c2410c;letter-spacing:.12em}
+.admin-finance-heading h2{font-size:clamp(25px,2.4vw,32px);line-height:1.15;letter-spacing:-.035em}
+.admin-finance-heading .admin-copy{max-width:760px;font-size:14px;line-height:1.65}
+.admin-finance-refund{padding:0;overflow:hidden;border:1px solid #e5e7eb;border-radius:18px;background:#fff;box-shadow:0 12px 32px rgba(15,23,42,.055)}
+.admin-finance-refund-heading{padding:22px 24px 16px;margin:0;border-bottom:1px solid #edf0f4}
+.admin-finance-refund-heading h3{font-size:20px;letter-spacing:-.025em;color:#0b1b3a}
+.admin-finance-refund-heading .admin-copy{margin:5px 0 0;font-size:13px}
+.admin-finance-refund-layout{display:grid;grid-template-columns:minmax(240px,.78fr) minmax(0,1.65fr);gap:22px;padding:22px 24px 24px}
+.admin-finance-refund-aside{align-self:stretch;padding:22px;border-radius:14px;background:linear-gradient(145deg,#0b1b3a 0%,#16365f 100%);color:#fff}
+.admin-finance-refund-icon{display:grid;place-items:center;width:46px;height:46px;border:1px solid rgba(255,255,255,.22);border-radius:13px;background:rgba(255,255,255,.1);color:#fdba74}
+.admin-finance-refund-aside-kicker{margin:18px 0 6px;color:#fdba74;font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase}
+.admin-finance-refund-aside h4{max-width:250px;margin:0;color:#fff;font-size:21px;line-height:1.22;letter-spacing:-.025em}
+.admin-finance-refund-aside>p:not(.admin-finance-refund-aside-kicker){margin:12px 0 18px;color:#dbe5f2;font-size:13px;line-height:1.65}
+.admin-finance-refund-aside ul{display:grid;gap:10px;margin:0;padding:14px 0 0;border-top:1px solid rgba(255,255,255,.17);list-style:none}
+.admin-finance-refund-aside li{position:relative;padding-left:19px;color:#f1f5f9;font-size:12px;line-height:1.45}
+.admin-finance-refund-aside li:before{position:absolute;left:0;top:1px;content:"✓";color:#86efac;font-weight:900}
+.admin-finance-refund-form{min-width:0;display:flex;flex-direction:column;gap:18px}
+.admin-finance-refund-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.admin-finance-refund-fields .admin-field{min-width:0;display:grid;align-content:start;gap:7px;color:#334155;font-size:12px;font-weight:750}
+.admin-finance-refund-fields .admin-field>span{display:flex;align-items:center;gap:5px}
+.admin-finance-refund-fields .admin-field b{color:#c2410c}
+.admin-finance-refund-fields .admin-field small{margin-left:auto;color:#94a3b8;font-size:11px;font-weight:600}
+.admin-finance-refund-fields input,.admin-finance-refund-fields select,.admin-finance-refund-fields textarea{width:100%;min-width:0;min-height:46px;padding:11px 13px;border:1px solid #dbe1e9;border-radius:10px;background:#fbfcfe;color:#0f172a;font-size:13px;outline:none;transition:border-color .18s,box-shadow .18s,background .18s}
+.admin-finance-refund-fields textarea{min-height:96px;resize:vertical}
+.admin-finance-refund-fields input:focus,.admin-finance-refund-fields select:focus,.admin-finance-refund-fields textarea:focus{border-color:#f97316;background:#fff;box-shadow:0 0 0 3px rgba(249,115,22,.13)}
+.admin-finance-field--wide{grid-column:1/-1}
+.admin-finance-refund-actions{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-top:15px;border-top:1px solid #edf0f4}
+.admin-finance-refund-actions>span{color:#64748b;font-size:12px}
+.admin-finance-refund-actions .admin-button{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:46px;padding:0 20px;border-radius:10px;background:#c2410c;color:#fff;font-size:13px;font-weight:750;box-shadow:0 5px 12px rgba(194,65,12,.18)}
+.admin-finance-refund-actions .admin-button:hover:not(:disabled){background:#9a3412;transform:translateY(-1px)}
+.admin-finance-refund-actions .admin-button:disabled{opacity:.55;cursor:not-allowed}
+.admin-finance-balances,.admin-finance-ledger,.admin-finance-items,.admin-finance-history{padding:20px 22px;border:1px solid #e5e7eb;border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.035)}
+.admin-finance .admin-panel-heading h3{color:#0b1b3a;font-size:18px;letter-spacing:-.02em}
+.admin-finance .admin-panel-heading .admin-kicker{color:#c2410c}
+.admin-finance .admin-table-wrap{border:1px solid #e9edf2;border-radius:12px}
+.admin-finance .admin-table{min-width:760px}
+.admin-finance .admin-table th{padding:12px 14px;background:#f8fafc;color:#475569;font-size:11px;font-weight:800;letter-spacing:.055em;text-transform:uppercase}
+.admin-finance .admin-table td{padding:13px 14px;border-top:1px solid #eef1f5;color:#334155;font-size:13px}
+.admin-finance .admin-table tbody tr:hover{background:#fbfdff}
+.admin-finance .admin-button--outline{display:inline-flex;align-items:center;gap:8px;min-height:40px;border-radius:9px}
+.admin-finance .admin-finance-history>.admin-panel-heading select{min-height:40px;padding:8px 12px;border:1px solid #dbe1e9;border-radius:9px;background:#fff;color:#334155}
+.admin-finance .admin-action-row{flex-wrap:wrap;gap:7px}
+@media(max-width:900px){.admin-finance-refund-layout{grid-template-columns:1fr}.admin-finance-refund-aside{display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:center}.admin-finance-refund-icon{grid-row:span 2}.admin-finance-refund-aside-kicker{margin:0}.admin-finance-refund-aside h4{max-width:none;font-size:18px}.admin-finance-refund-aside>p:not(.admin-finance-refund-aside-kicker),.admin-finance-refund-aside ul{grid-column:1/-1}}
+@media(max-width:600px){.admin-finance-refund-heading{padding:18px 16px 14px}.admin-finance-refund-layout{padding:15px;gap:15px}.admin-finance-refund-aside{padding:17px}.admin-finance-refund-fields{grid-template-columns:1fr;gap:13px}.admin-finance-field--wide{grid-column:auto}.admin-finance-refund-actions{align-items:stretch;flex-direction:column}.admin-finance-refund-actions .admin-button{width:100%}.admin-finance-balances,.admin-finance-ledger,.admin-finance-items,.admin-finance-history{padding:15px}.admin-finance .admin-panel-heading{align-items:flex-start;gap:12px;flex-wrap:wrap}}

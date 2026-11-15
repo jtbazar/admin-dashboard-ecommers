@@ -18,6 +18,7 @@ export function DriverManagement() {
   const [drivers, setDrivers] = useState<DriverOption[]>([])
   const [assignments, setAssignments] = useState<DriverAssignment[]>([])
   const [orderId, setOrderId] = useState('')
+  const [orderSearch, setOrderSearch] = useState('')
   const [driverId, setDriverId] = useState('')
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [companyNames, setCompanyNames] = useState<Record<string, string>>({})
@@ -146,6 +147,10 @@ export function DriverManagement() {
     return !q || [c.full_name, c.email, c.phone].some(v => (v ?? '').toLowerCase().includes(q))
   })
   const selected = customers.find(c => c.user_id === selectedCustomer)
+  const filteredOrders = orders.filter(o => {
+    const q = orderSearch.trim().toLowerCase()
+    return !q || o.order_number.toLowerCase().includes(q) || o.id.toLowerCase().includes(q)
+  })
 
   return (
     <main className="admin-content driver-management">
@@ -200,9 +205,25 @@ export function DriverManagement() {
       <section className="admin-panel driver-panel">
         <div className="admin-section-heading"><div><h2>Assign an order</h2><p>Choose an active customer order and an approved driver.</p></div><PackageCheck size={22}/></div>
         <div className="admin-form-grid driver-assignment-grid">
-          <label className="driver-field">Customer order<select className="driver-control" value={orderId} onChange={e => setOrderId(e.target.value)}><option value="">Select an active order</option>{orders.map(o => <option key={o.id} value={o.id}>{o.order_number} — {o.customer_name} ({o.order_status})</option>)}</select></label>
-          <label className="driver-field">Approved driver<select className="driver-control" value={driverId} onChange={e => setDriverId(e.target.value)}><option value="">Select a driver</option>{drivers.map(d => <option key={d.user_id} value={d.user_id}>{d.full_name}{d.company_name ? ' · ' + d.company_name : ''} — {d.phone}</option>)}</select></label>
+          <label className="driver-field">Search confirmed order
+            <input className="driver-control" value={orderSearch} onChange={e => setOrderSearch(e.target.value)} placeholder="Search by order number or order ID..." />
+          </label>
+          <label className="driver-field">Select confirmed order
+            <select className="driver-control" value={orderId} onChange={e => setOrderId(e.target.value)}>
+              <option value="">Select a confirmed order</option>
+              {filteredOrders.map(o => <option key={o.id} value={o.id}>{o.order_number} — {o.customer_name} · {o.order_status}</option>)}
+            </select>
+            <small className="driver-muted">{filteredOrders.length} confirmed order{filteredOrders.length === 1 ? '' : 's'} available</small>
+          </label>
+          <label className="driver-field">Approved driver
+            <select className="driver-control" value={driverId} onChange={e => setDriverId(e.target.value)}>
+              <option value="">Select a driver</option>
+              {drivers.map(d => <option key={d.user_id} value={d.user_id}>{d.full_name}{d.company_name ? ' · ' + d.company_name : ''} — {d.phone}</option>)}
+            </select>
+          </label>
         </div>
+        {orders.length === 0 && <p className="driver-empty">No confirmed, unassigned orders are available for driver assignment.</p>}
+        {orders.length > 0 && filteredOrders.length === 0 && <p className="driver-empty">No confirmed orders match that order number or ID.</p>}
         <button className="admin-button" disabled={busy || !orderId || !driverId} onClick={() => void assignDriver()}><Truck size={16}/> Assign driver</button>
       </section>
       <section className="admin-panel driver-panel">

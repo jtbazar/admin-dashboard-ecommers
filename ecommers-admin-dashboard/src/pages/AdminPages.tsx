@@ -13,28 +13,27 @@ import { ProductVideos } from './ProductVideos'
 import '../admin.css'
 
 const nav = [
-  { to: '/admin', label: 'Overview', icon: LayoutDashboard },
-  { to: '/admin/heroes', label: 'Heroes', icon: ImageIcon },
-  { to: '/admin/promotions', label: 'Banners & Ads', icon: Tag },
-  { to: '/admin/products', label: 'Products', icon: Package },
-  { to: '/admin/product-videos', label: 'Product Videos', icon: Film },
-  { to: '/admin/hot-deals', label: 'Campaign Manager', icon: Tag },
-  { to: '/admin/categories', label: 'Categories', icon: FolderTree },
-  { to: '/admin/orders', label: 'Orders', icon: ClipboardList },
-  { to: '/admin/vendor-products', label: 'Vendor Products', icon: Store },
-  { to: '/admin/reviews', label: 'Customer reviews', icon: Star },
-  { to: '/admin/manual-orders', label: 'Manual Orders', icon: Plus },
-  { to: '/admin/inventory', label: 'Inventory', icon: Boxes },
-  { to: '/admin/sellers', label: 'Sellers', icon: Store },
-  { to: '/admin/drivers', label: 'Drivers', icon: Truck },
-  { to: '/admin/push-notifications', label: 'Push Notifications', icon: Bell },
-  { to: '/admin/cases', label: 'Cases', icon: MessageSquare },
-  { to: '/admin/tickets', label: 'Support tickets', icon: MessageSquare },
-  { to: '/admin/customers', label: 'Customers', icon: Users },
-  { to: '/admin/settings', label: 'Store settings', icon: Settings },
-  { to: '/admin/audit', label: 'Audit log', icon: ShieldAlert },
+  { section: 'Dashboard', to: '/admin', label: 'Overview', icon: LayoutDashboard },
+  { section: 'Product catalogue & merchandising', to: '/admin/products', label: 'Products', icon: Package },
+  { section: 'Product catalogue & merchandising', to: '/admin/categories', label: 'Categories', icon: FolderTree },
+  { section: 'Product catalogue & merchandising', to: '/admin/heroes', label: 'Heroes', icon: ImageIcon },
+  { section: 'Product catalogue & merchandising', to: '/admin/promotions', label: 'Banners & Ads', icon: Tag },
+  { section: 'Product catalogue & merchandising', to: '/admin/product-videos', label: 'Product Videos', icon: Film },
+  { section: 'Product catalogue & merchandising', to: '/admin/hot-deals', label: 'Campaign Manager', icon: Tag },
+  { section: 'Product catalogue & merchandising', to: '/admin/vendor-products', label: 'Vendor Products', icon: Store },
+  { section: 'Product catalogue & merchandising', to: '/admin/reviews', label: 'Customer reviews', icon: Star },
+  { section: 'Orders & fulfilment', to: '/admin/orders', label: 'Orders', icon: ClipboardList },
+  { section: 'Orders & fulfilment', to: '/admin/manual-orders', label: 'Manual Orders', icon: Plus },
+  { section: 'Orders & fulfilment', to: '/admin/inventory', label: 'Inventory', icon: Boxes },
+  { section: 'People & marketplace', to: '/admin/sellers', label: 'Sellers', icon: Store },
+  { section: 'People & marketplace', to: '/admin/drivers', label: 'Drivers', icon: Truck },
+  { section: 'People & marketplace', to: '/admin/customers', label: 'Customers', icon: Users },
+  { section: 'Communication & support', to: '/admin/push-notifications', label: 'Push Notifications', icon: Bell },
+  { section: 'Communication & support', to: '/admin/cases', label: 'Cases', icon: MessageSquare },
+  { section: 'Communication & support', to: '/admin/tickets', label: 'Support tickets', icon: MessageSquare },
+  { section: 'System', to: '/admin/settings', label: 'Store settings', icon: Settings },
+  { section: 'System', to: '/admin/audit', label: 'Audit log', icon: ShieldAlert },
 ]
-
 function notificationSectionPath(item: AdminNotification): string | null {
   const title = `${item.title} ${item.body}`.toLowerCase()
   if (item.kind === 'order' || title.includes('order')) return '/admin/orders'
@@ -229,7 +228,7 @@ function AdminShell({ children }: { children: ReactNode }) {
   return <div className={`admin-app${collapsed ? ' admin-app--collapsed' : ''}`}>
     <aside className={`admin-sidebar ${open ? 'is-open' : ''}`}>
       <div className="admin-brand"><img className="admin-brand-logo" src="/jtbazar-logo.webp" alt="JTBazar" /><span>JTBazar<small>ADMIN STUDIO</small></span><button type="button" className="admin-sidebar-toggle admin-sidebar-toggle--brand" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>}</button></div>
-      <nav className="admin-nav" aria-label="Admin navigation">{nav.map(({ to, label, icon: Icon }) => { const badgeCount = notifications.filter((item) => !item.read_at && notificationSectionPath(item) === to).length; return <NavLink key={to} to={to} end={to === '/admin'} onClick={() => { setOpen(false); void markSectionRead(to) }}><Icon size={17} /><span>{label}</span>{badgeCount > 0 && <b className="admin-nav-badge" aria-label={badgeCount + " new items"}>{badgeCount > 99 ? "99+" : badgeCount}</b>}</NavLink> })}</nav>
+      <nav className="admin-nav" aria-label="Admin navigation">{nav.map(({ section, to, label, icon: Icon }, index) => { const badgeCount = notifications.filter((item) => !item.read_at && notificationSectionPath(item) === to).length; const showSection = index === 0 || nav[index - 1].section !== section; return <Fragment key={to}>{showSection && <div className="admin-nav-section">{section}</div>}<NavLink to={to} end={to === '/admin'} onClick={() => { setOpen(false); void markSectionRead(to) }} title={collapsed ? label : undefined}><Icon size={17} /><span>{label}</span>{badgeCount > 0 && <b className="admin-nav-badge" aria-label={badgeCount + " new items"}>{badgeCount > 99 ? "99+" : badgeCount}</b>}</NavLink></Fragment> })}</nav>
       <div className="admin-sidebar-footer"><Link to="/"><ArrowLeft size={15} /> View storefront</Link><button onClick={() => void logout()}><LogOut size={15} /> Sign out</button></div>
     </aside>
     {open && <button className="admin-overlay" aria-label="Close navigation" onClick={() => setOpen(false)} />}

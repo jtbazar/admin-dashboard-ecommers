@@ -2624,7 +2624,8 @@ function ManualOrders() {
       push(cause instanceof Error ? cause.message : 'Manual order could not be removed.', 'error')
     }
   }
-  useEffect(() => { load(); loadProducts(); void listAdminCategories().then(setCategories).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Categories could not be loaded.')) }, [search, page, pageSize])
+  useEffect(load, [search, page, pageSize])
+  useEffect(() => { loadProducts(); void listAdminCategories().then(setCategories).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Categories could not be loaded.')) }, [])
   const value = (row: Record<string, unknown>, ...keys: string[]) => {
     for (const key of keys) { const v = row[key]; if (v !== null && v !== undefined && v !== '') return String(v) }
     return '—'

@@ -810,3 +810,10 @@
 .push-spin{animation:pushSpin .9s linear infinite}@keyframes pushSpin{to{transform:rotate(360deg)}}
 @media(max-width:900px){.push-layout{grid-template-columns:1fr}.push-stats{grid-template-columns:1fr 1fr}.push-compose{grid-row:auto}}
 @media(max-width:600px){.push-hero{padding:18px;flex-wrap:wrap}.push-hero__copy{flex-basis:calc(100% - 75px)}.push-hero h2{font-size:21px}.push-refresh{margin-left:70px}.push-stats{grid-template-columns:1fr}.push-card{padding:17px}.push-card__heading h3{font-size:17px}}
+
+/* Grouped admin sidebar navigation */
+.admin-nav{display:flex;flex-direction:column;gap:4px}
+.admin-nav-section{margin:15px 10px 5px;padding-top:11px;border-top:1px solid #3b403a;color:#899184;font-size:9px;font-weight:800;letter-spacing:.13em;line-height:1.4;text-transform:uppercase}
+.admin-nav-section:first-child{margin-top:0;padding-top:0;border-top:0}
+.admin-app--collapsed .admin-nav-section{display:none}
+.admin-nav a{flex:0 0 auto}

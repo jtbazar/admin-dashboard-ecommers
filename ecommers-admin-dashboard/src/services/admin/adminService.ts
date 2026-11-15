@@ -1240,3 +1240,19 @@ export async function createAdminVendorSettlement(input: { sellerId: string; ord
   assertError(error)
   return String(data)
 }
+
+
+export type AdminSettlementBatch = { id: string; seller_id: string; shop_name: string; amount: number; method: string; reference: string | null; admin_note: string; status: string; paid_at: string }
+export async function listAdminVendorSettlementBatchesPage(page = 0, pageSize = 12) {
+  const client = getSupabase() as any
+  const { data, error, count } = await client.from('vendor_settlement_batches')
+    .select('id,seller_id,amount,method,reference,admin_note,status,paid_at', { count: 'exact' })
+    .order('paid_at', { ascending: false }).range(page * pageSize, page * pageSize + pageSize - 1)
+  assertError(error)
+  const rows = data ?? []
+  const sellerIds = [...new Set(rows.map((row: any) => row.seller_id))]
+  const sellers = sellerIds.length ? await client.from('seller_profiles').select('id,shop_name').in('id', sellerIds) : { data: [], error: null }
+  assertError(sellers.error)
+  const names = new Map((sellers.data ?? []).map((row: any) => [row.id, row.shop_name]))
+  return { items: rows.map((row: any) => ({ ...row, shop_name: names.get(row.seller_id) ?? 'Vendor' })) as AdminSettlementBatch[], count: count ?? 0 }
+}

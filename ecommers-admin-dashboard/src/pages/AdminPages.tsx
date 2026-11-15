@@ -1561,7 +1561,7 @@ function Cases() {
     {error ? <ErrorState message={error} retry={load} /> : items.length === 0 ? <Empty title="No cases" detail="Buyer returns, refund requests and complaints will appear here once submitted." /> : <div className="admin-table-wrap"><TableTools /><table className="admin-table"><thead><tr><th>Type</th><th>Customer reason</th><th>Order / product</th><th>Status</th><th>Opened</th><th>Actions</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}>
       <td><em className={statusClass(item.case_type)}>{item.case_type}</em></td>
       <td>{item.reason}</td>
-      <td><strong>{item.order?.order_number ?? item.order_id}</strong><small>{item.order_item?.product_name_snapshot ?? 'Product unavailable'}</small></td>
+      <td><strong>{item.order?.order_number ?? item.order_id}</strong><small>Case ID: {item.id}</small><small>{item.order_item?.product_name_snapshot ?? 'Product unavailable'}</small></td>
       <td><em className={statusClass(item.status)}>{item.status}</em></td>
       <td>{formatDate(item.created_at)}</td>
       <td><div className="admin-action-row"><button type="button" className="admin-small-button" onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}>{selectedId === item.id ? 'Hide details' : 'View details'}</button>{!['resolved', 'rejected'].includes(item.status) && <><button type="button" className="admin-small-button" onClick={() => void decide(item, 'approved')}>Approve</button><button type="button" className="admin-small-button admin-small-button--danger" onClick={() => void decide(item, 'rejected')}>Reject</button></>}</div>{item.admin_decision && <small>{item.admin_decision}</small>}</td>

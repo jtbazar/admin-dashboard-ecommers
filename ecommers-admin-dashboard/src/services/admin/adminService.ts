@@ -1257,4 +1257,90 @@ export async function listAdminAuditLogsPage(filters: AdminAuditFilters = {}, pa
   return { items: data ?? [], count: count ?? 0 }
 }
 
+export type AdminRefundRecord = { id: string; case_id: string; order_id: string; amount: number; method: string; status: string; reference: string | null; admin_note: string; created_at: string }
+export type AdminSettlementBalance = { seller_id: string; shop_name: string; eligible_items: number; eligible_amount: number; paid_amount: number }
+export type AdminSettlementCandidate = { order_item_id: string; order_id: string; order_number: string; product_name: string; quantity: number; gross_amount: number; commission_amount: number; payout_amount: number; delivered_at: string | null; total_count: number }
 
+export async function listAdminRefundRecordsPage(status = 'all', page = 0, pageSize = ADMIN_PAGE_SIZE) {
+  let query = (getSupabase() as any).from('admin_refund_records')
+    .select('id,case_id,order_id,amount,method,status,reference,admin_note,created_at', { count: 'exact' })
+    .order('created_at', { ascending: false }).range(page * pageSize, page * pageSize + pageSize - 1)
+  if (status !== 'all') query = query.eq('status', status)
+  const { data, error, count } = await query
+  assertError(error)
+  return { items: (data ?? []) as AdminRefundRecord[], count: count ?? 0 }
+}
+
+export async function listAdminVendorSettlementBalances(): Promise<AdminSettlementBalance[]> {
+  const { data, error } = await (getSupabase() as any).rpc('admin_list_vendor_settlement_balances')
+  assertError(error)
+  return (data ?? []) as AdminSettlementBalance[]
+}
+
+export async function listAdminVendorSettlementCandidates(sellerId: string, page = 0, pageSize = ADMIN_PAGE_SIZE) {
+  const { data, error } = await (getSupabase() as any).rpc('admin_list_vendor_settlement_candidates', { p_seller_id: sellerId, p_page: page, p_page_size: pageSize })
+  assertError(error)
+  const rows = (data ?? []) as AdminSettlementCandidate[]
+  return { items: rows, count: Number(rows[0]?.total_count ?? 0) }
+}
+
+export async function recordAdminCaseRefund(input: { caseId: string; amount: number; method: string; note: string; reference?: string }) {
+  const { data, error } = await (getSupabase() as any).rpc('admin_record_case_refund', {
+    p_case_id: input.caseId, p_amount: input.amount, p_method: input.method, p_admin_note: input.note, p_reference: input.reference ?? null,
+  })
+  assertError(error)
+  return String(data)
+}
+
+export async function updateAdminRefundStatus(input: { refundId: string; status: 'completed' | 'failed' | 'cancelled'; reference?: string; note?: string }) {
+  const { data, error } = await (getSupabase() as any).rpc('admin_update_refund_status', {
+    p_refund_id: input.refundId, p_status: input.status, p_reference: input.reference ?? null, p_admin_note: input.note ?? null,
+  })
+  assertError(error)
+  return data as AdminRefundRecord
+}
+
+export async function createAdminVendorSettlement(input: { sellerId: string; orderItemIds: string[]; method: string; note: string; reference?: string }) {
+  const { data, error } = await (getSupabase() as any).rpc('admin_create_vendor_settlement', {
+    p_seller_id: input.sellerId, p_order_item_ids: input.orderItemIds, p_method: input.method, p_admin_note: input.note, p_reference: input.reference ?? null,
+  })
+  assertError(error)
+  return String(data)
+}
+
+
+export type AdminSettlementBatch = { id: string; seller_id: string; shop_name: string; amount: number; method: string; reference: string | null; admin_note: string; status: string; paid_at: string }
+export async function listAdminVendorSettlementBatchesPage(page = 0, pageSize = 12) {
+  const client = getSupabase() as any
+  const { data, error, count } = await client.from('vendor_settlement_batches')
+    .select('id,seller_id,amount,method,reference,admin_note,status,paid_at', { count: 'exact' })
+    .order('paid_at', { ascending: false }).range(page * pageSize, page * pageSize + pageSize - 1)
+  assertError(error)
+  const rows = data ?? []
+  const sellerIds = [...new Set(rows.map((row: any) => row.seller_id))]
+  const sellers = sellerIds.length ? await client.from('seller_profiles').select('id,shop_name').in('id', sellerIds) : { data: [], error: null }
+  assertError(sellers.error)
+  const names = new Map((sellers.data ?? []).map((row: any) => [row.id, row.shop_name]))
+  return { items: rows.map((row: any) => ({ ...row, shop_name: names.get(row.seller_id) ?? 'Vendor' })) as AdminSettlementBatch[], count: count ?? 0 }
+}
+
+
+export type AdminSettlementLedgerItem = { id: string; batch_id: string; seller_id: string; shop_name: string; order_id: string; order_number: string; product_name_snapshot: string; quantity: number; gross_amount: number; commission_amount: number; payout_amount: number; created_at: string }
+export async function listAdminVendorSettlementItemsPage(page = 0, pageSize = 12) {
+  const client = getSupabase() as any
+  const { data, error, count } = await client.from('vendor_settlement_items')
+    .select('id,batch_id,seller_id,order_id,product_name_snapshot,quantity,gross_amount,commission_amount,payout_amount,created_at', { count: 'exact' })
+    .order('created_at', { ascending: false }).range(page * pageSize, page * pageSize + pageSize - 1)
+  assertError(error)
+  const rows = data ?? []
+  const orderIds = [...new Set(rows.map((row: any) => row.order_id))]
+  const sellerIds = [...new Set(rows.map((row: any) => row.seller_id))]
+  const [orders, sellers] = await Promise.all([
+    orderIds.length ? client.from('orders').select('id,order_number').in('id', orderIds) : { data: [], error: null },
+    sellerIds.length ? client.from('seller_profiles').select('id,shop_name').in('id', sellerIds) : { data: [], error: null },
+  ])
+  assertError(orders.error); assertError(sellers.error)
+  const orderNumbers = new Map((orders.data ?? []).map((row: any) => [row.id, row.order_number]))
+  const shopNames = new Map((sellers.data ?? []).map((row: any) => [row.id, row.shop_name]))
+  return { items: rows.map((row: any) => ({ ...row, order_number: orderNumbers.get(row.order_id) ?? row.order_id, shop_name: shopNames.get(row.seller_id) ?? 'Vendor' })) as AdminSettlementLedgerItem[], count: count ?? 0 }
+}

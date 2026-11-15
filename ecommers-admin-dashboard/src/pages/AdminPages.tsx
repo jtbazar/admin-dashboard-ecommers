@@ -1,10 +1,10 @@
 import { Fragment, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { Archive, ArrowLeft, BarChart3, Bell, Boxes, Check, CheckCheck, ChevronLeft, ChevronRight, CircleAlert, ClipboardList, Edit2, Film, FolderTree, Eye, EyeOff, Image as ImageIcon, Info, LayoutDashboard, LogOut, MapPin, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen, MessageSquare, Package, Plus, Printer, RefreshCw, Search, Send, Settings, ShieldAlert, Star, Store, Tag, Trash2, Truck, Users, Volume2, VolumeX, X } from 'lucide-react'
+import { Archive, ArrowLeft, BarChart3, Bell, Boxes, Check, CheckCheck, ChevronLeft, ChevronRight, CircleAlert, ClipboardList, Edit2, Film, FolderTree, Eye, EyeOff, Image as ImageIcon, Info, LayoutDashboard, LogOut, MapPin, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen, MessageSquare, Package, Plus, Printer, RefreshCw, Search, Send, Settings, ShieldAlert, Star, Store, Tag, Trash2, Truck, Users, Volume2, VolumeX, Wallet, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
-import { adjustInventory, decideMarketplaceCase, deleteAdminHero, deleteAdminPromotion, deleteProductVariant, getAdminOrderDetail, getAdminProductEditor, getAdminStoreSettings, getAdminFoodDeliverySettings, getAdminCommissionSettings, getAdminSummary, getVendorDocumentSignedUrl, listAdminCategories, listAdminCategoriesPage, listSellerApplicationsPage, listAdminHeroesPage, listAdminPromotionsPage, listAdminAuditLogsPage, listAdminAccountSuspensions, listAdminCustomers, listAdminInventory, listAdminNotifications, listAdminOrders, listAdminOrderVendors, listAdminVendorPickups, markAdminVendorPickedUp, listAdminProducts, listAdminProductsPage, listAdminVendorDirectoryPage, listAdminCustomerReviews, setAdminCustomerReviewStatus, listAdminSupportTickets, listAdminSellerSupportMessages, sendAdminSellerSupportMessage, listAdminCustomerSupportMessages, sendAdminCustomerSupportMessage, listMarketplaceCases, markAdminNotificationRead, markAllAdminNotificationsRead, sendAdminPushTest, sendAdminManualNotification, moderateProduct, deleteAdminProductImage, deleteAdminProductPermanently, listAdminProductDeletionRequests, reviewAdminProductDeletion, reviewSellerApplication, setAdminVendorLock, setAdminSupportTicketStatus, saveAdminHero, saveAdminPromotion, saveCategory, saveProduct, saveProductVariant, saveAdminProductInventory, setAdminAccountSuspension, updateAdminStoreSettings, updateAdminFoodDeliverySettings, updateAdminCommissionSettings, updateAdminSupportTicket, updateOrder, saveDeliveryCollection, addOrderNote, rejectAdminOrder, findCustomerDeliveryOrders, confirmOrdersWithDeliveryBatch, createFollowupDeliveryBatch, markDeliveryBatchDelivered, listOrderDeliveryBatches, updateProductStatus, updateProductsHotDeal, setAdminProductFeatured, uploadAdditionalProductImage, uploadPublicMedia, type AdminCaseDetail, type AdminCategory, type AdminCustomerReview, type AdminAccountSuspension, type AdminCustomer, type AdminHero, type AdminInventory, type AdminNotification, type AdminOrder, type AdminOrderVendor, type AdminProduct, type AdminProductDeletionRequest, type AdminPromotion, type AdminSeller, type AdminStoreSettings, type AdminFoodDeliverySettings, type AdminCommissionSettings, type AdminSummary, type AdminSupportInboxTicket, type AdminSupportChatMessage, type AdminVariant } from '../services/admin/adminService'
+import { adjustInventory, decideMarketplaceCase, deleteAdminHero, deleteAdminPromotion, deleteProductVariant, getAdminOrderDetail, getAdminProductEditor, getAdminStoreSettings, getAdminFoodDeliverySettings, getAdminCommissionSettings, getAdminSummary, getVendorDocumentSignedUrl, listAdminCategories, listAdminAuditLogsPage, listAdminPromotionsPage, listAdminHeroesPage, listSellerApplicationsPage, listAdminCategoriesPage, listAdminAccountSuspensions, listAdminCustomers, listAdminHeroes, listAdminInventory, listAdminNotifications, listAdminOrders, listAdminOrderVendors, listAdminVendorPickups, markAdminVendorPickedUp, listAdminProducts, listAdminProductsPage, listAdminVendorDirectoryPage, listAdminPromotions, listAdminCustomerReviews, setAdminCustomerReviewStatus, listAdminSupportTickets, listAdminSellerSupportMessages, sendAdminSellerSupportMessage, listAdminCustomerSupportMessages, sendAdminCustomerSupportMessage, listAuditLogs, listMarketplaceCases, listAdminRefundRecordsPage, listAdminVendorSettlementBalances, listAdminVendorSettlementCandidates, listAdminVendorSettlementBatchesPage, listAdminVendorSettlementItemsPage, recordAdminCaseRefund, updateAdminRefundStatus, createAdminVendorSettlement, listSellerApplications, markAdminNotificationRead, markAllAdminNotificationsRead, sendAdminPushTest, sendAdminManualNotification, moderateProduct, deleteAdminProductImage, deleteAdminProductPermanently, listAdminProductDeletionRequests, reviewAdminProductDeletion, reviewSellerApplication, setAdminVendorLock, setAdminSupportTicketStatus, saveAdminHero, saveAdminPromotion, saveCategory, saveProduct, saveProductVariant, saveAdminProductInventory, setAdminAccountSuspension, updateAdminStoreSettings, updateAdminFoodDeliverySettings, updateAdminCommissionSettings, updateAdminSupportTicket, updateOrder, saveDeliveryCollection, addOrderNote, rejectAdminOrder, findCustomerDeliveryOrders, confirmOrdersWithDeliveryBatch, createFollowupDeliveryBatch, markDeliveryBatchDelivered, listOrderDeliveryBatches, updateProductStatus, updateProductsHotDeal, setAdminProductFeatured, uploadAdditionalProductImage, uploadPublicMedia, type AdminCaseDetail, type AdminCategory, type AdminCustomerReview, type AdminAccountSuspension, type AdminCustomer, type AdminHero, type AdminInventory, type AdminNotification, type AdminOrder, type AdminOrderVendor, type AdminProduct, type AdminProductDeletionRequest, type AdminPromotion, type AdminSeller, type AdminStoreSettings, type AdminFoodDeliverySettings, type AdminCommissionSettings, type AdminSummary, type AdminSupportInboxTicket, type AdminSupportChatMessage, type AdminVariant, type AdminRefundRecord, type AdminSettlementBalance, type AdminSettlementCandidate, type AdminSettlementBatch, type AdminSettlementLedgerItem } from '../services/admin/adminService'
 import type { Database } from '../types/database'
 import { getSupabase } from '../lib/supabase'
 import { isValidEmail, isValidPakistaniMobile, normalizePakistaniMobile } from '../utils/contactValidation'
@@ -22,6 +22,7 @@ const nav = [
   { section: 'Product catalogue & merchandising', to: '/admin/hot-deals', label: 'Campaign Manager', icon: Tag },
   { section: 'Product catalogue & merchandising', to: '/admin/vendor-products', label: 'Vendor Products', icon: Store },
   { section: 'Product catalogue & merchandising', to: '/admin/reviews', label: 'Customer reviews', icon: Star },
+  { section: 'Orders & fulfilment', to: '/admin/finance', label: 'Refunds & Settlements', icon: Wallet },
   { section: 'Orders & fulfilment', to: '/admin/orders', label: 'Orders', icon: ClipboardList },
   { section: 'Orders & fulfilment', to: '/admin/manual-orders', label: 'Manual Orders', icon: Plus },
   { section: 'Orders & fulfilment', to: '/admin/inventory', label: 'Inventory', icon: Boxes },
@@ -237,6 +238,7 @@ function AdminShell({ children }: { children: ReactNode }) {
 }
 
 function AdminContent({ path }: { path: string }) {
+  if (path === '/admin/finance') return <Finance />
   if (path === '/admin') return <Overview />
   if (path === '/admin/heroes') return <Heroes />
   if (path === '/admin/promotions') return <Promotions />
@@ -2528,6 +2530,623 @@ function Heroes() {
             </tbody>
           </table>
           <Pagination page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(size) => { setPageSize(size); setPage(0) }}/>
+        </div>
+      )}
+    </section>
+  )
+}
+
+
+function Finance() {
+  const { push } = useToast()
+  const [balances, setBalances] = useState<AdminSettlementBalance[]>([])
+  const [sellerId, setSellerId] = useState('')
+  const [candidates, setCandidates] = useState<AdminSettlementCandidate[]>([])
+  const [candidatePage, setCandidatePage] = useState(0)
+  const [candidateCount, setCandidateCount] = useState(0)
+  const [selectedItems, setSelectedItems] = useState<string[]>([])
+  const [refunds, setRefunds] = useState<AdminRefundRecord[]>([])
+  const [payouts, setPayouts] = useState<AdminSettlementBatch[]>([])
+  const [ledgerItems, setLedgerItems] = useState<AdminSettlementLedgerItem[]>([])
+  const [ledgerPage, setLedgerPage] = useState(0)
+  const [ledgerCount, setLedgerCount] = useState(0)
+  const [payoutPage, setPayoutPage] = useState(0)
+  const [payoutCount, setPayoutCount] = useState(0)
+  const [refundStatus, setRefundStatus] = useState('all')
+  const [refundPage, setRefundPage] = useState(0)
+  const [refundCount, setRefundCount] = useState(0)
+  const [caseId, setCaseId] = useState('')
+  const [refundAmount, setRefundAmount] = useState('')
+  const [refundMethod, setRefundMethod] = useState('cash')
+  const [refundReference, setRefundReference] = useState('')
+  const [refundNote, setRefundNote] = useState('')
+  const [payoutMethod, setPayoutMethod] = useState('bank_transfer')
+  const [payoutReference, setPayoutReference] = useState('')
+  const [payoutNote, setPayoutNote] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const pageSize = 12
+  const loadBalances = () => void listAdminVendorSettlementBalances().then(rows => { setBalances(rows); if (!sellerId && rows.length) setSellerId(rows[0].seller_id) }).catch(cause => setError(cause instanceof Error ? cause.message : 'Vendor balances could not be loaded.'))
+  const loadRefunds = () => void listAdminRefundRecordsPage(refundStatus, refundPage, pageSize).then(result => { setRefunds(result.items); setRefundCount(result.count) }).catch(cause => setError(cause instanceof Error ? cause.message : 'Refund records could not be loaded.'))
+  const loadLedger = () => void listAdminVendorSettlementItemsPage(ledgerPage, pageSize).then(result => { setLedgerItems(result.items); setLedgerCount(result.count) }).catch(cause => setError(cause instanceof Error ? cause.message : 'Settlement ledger could not be loaded.'))
+  const loadPayouts = () => void listAdminVendorSettlementBatchesPage(payoutPage, pageSize).then(result => { setPayouts(result.items); setPayoutCount(result.count) }).catch(cause => setError(cause instanceof Error ? cause.message : 'Vendor payout history could not be loaded.'))
+  const loadCandidates = () => { if (!sellerId) { setCandidates([]); setCandidateCount(0); return } void listAdminVendorSettlementCandidates(sellerId, candidatePage, pageSize).then(result => { setCandidates(result.items); setCandidateCount(result.count); setSelectedItems([]) }).catch(cause => setError(cause instanceof Error ? cause.message : 'Payable order items could not be loaded.')) }
+  useEffect(loadBalances, [])
+  useEffect(loadRefunds, [refundStatus, refundPage])
+  useEffect(loadPayouts, [payoutPage])
+  useEffect(loadLedger, [ledgerPage])
+  useEffect(loadCandidates, [sellerId, candidatePage])
+  const selectedBalance = balances.find(row => row.seller_id === sellerId)
+  const selectedPayoutTotal = candidates.filter(row => selectedItems.includes(row.order_item_id)).reduce((sum,row) => sum + Number(row.payout_amount),0)
+  async function submitRefund(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setSaving(true)
+    try {
+      await recordAdminCaseRefund({ caseId: caseId.trim(), amount: Number(refundAmount), method: refundMethod, reference: refundReference, note: refundNote })
+      push('Refund record created as pending. Mark it completed only after the money has actually been returned.', 'success')
+      setCaseId(''); setRefundAmount(''); setRefundReference(''); setRefundNote(''); setRefundPage(0); await listAdminRefundRecordsPage(refundStatus, 0, pageSize).then(result => { setRefunds(result.items); setRefundCount(result.count) })
+    } catch (cause) { push(cause instanceof Error ? cause.message : 'Refund could not be recorded.', 'error') }
+    finally { setSaving(false) }
+  }
+  async function payVendor() {
+    if (!sellerId || selectedItems.length === 0) return
+    if (!window.confirm('Confirm that this vendor payout has actually been sent? The selected order items will be permanently marked as settled.')) return
+    setSaving(true)
+    try {
+      await createAdminVendorSettlement({ sellerId, orderItemIds: selectedItems, method: payoutMethod, reference: payoutReference, note: payoutNote })
+      push('Vendor settlement recorded successfully.', 'success')
+      setSelectedItems([]); setPayoutReference(''); setPayoutNote(''); setPayoutPage(0); loadBalances(); loadCandidates(); loadPayouts()
+    } catch (cause) { push(cause instanceof Error ? cause.message : 'Vendor settlement could not be recorded.', 'error') }
+    finally { setSaving(false) }
+  }
+  async function updateRefund(row: AdminRefundRecord, status: 'completed' | 'failed' | 'cancelled') {
+    const reference = status === 'completed' ? window.prompt('Enter bank / wallet / cash receipt reference (if available)', row.reference ?? '') ?? undefined : row.reference ?? undefined
+    if (status === 'completed' && reference === undefined) return
+    const note = window.prompt('Add a short admin note (optional)', row.admin_note) ?? undefined
+    if (note === undefined) return
+    setSaving(true)
+    try { await updateAdminRefundStatus({ refundId: row.id, status, reference, note }); push('Refund status updated.', 'success'); loadRefunds() }
+    catch (cause) { push(cause instanceof Error ? cause.message : 'Refund status could not be updated.', 'error') }
+    finally { setSaving(false) }
+  }
+  return <section className="admin-content admin-finance">
+    <div className="admin-page-heading admin-finance-heading"><div><p className="admin-kicker">Finance operations</p><h2>Refunds & vendor settlements</h2><p className="admin-copy">Record refunds and verified vendor payouts. No bank or payment-gateway transfer is initiated from this screen.</p></div></div>
+    <section className="admin-panel admin-finance-panel admin-finance-refund" style={{marginBottom:20}}>
+      <div className="admin-panel-heading"><div><p className="admin-kicker">Customer returns</p><h3>Record a case refund</h3></div></div>
+      <form className="admin-finance-refund-form" onSubmit={submitRefund}>
+        <div className="admin-form-grid">
+          <label className="admin-field"><span>Approved / resolved case ID *</span><input required value={caseId} onChange={e=>setCaseId(e.target.value)} placeholder="Marketplace case UUID"/></label>
+          <label className="admin-field"><span>Refund amount (PKR) *</span><input required type="number" min="0.01" step="0.01" value={refundAmount} onChange={e=>setRefundAmount(e.target.value)} placeholder="0.00"/></label>
+          <label className="admin-field"><span>Refund method *</span><select value={refundMethod} onChange={e=>setRefundMethod(e.target.value)}><option value="cash">Cash</option><option value="bank_transfer">Bank transfer</option><option value="wallet">Wallet</option><option value="card_gateway">Card gateway (manual record)</option><option value="other">Other</option></select></label>
+          <label className="admin-field"><span>Payment reference</span><input value={refundReference} onChange={e=>setRefundReference(e.target.value)} placeholder="Receipt / transaction ID"/></label>
+        </div>
+        <label className="admin-field admin-finance-note"><span>Admin note *</span><input required minLength={3} value={refundNote} onChange={e=>setRefundNote(e.target.value)} placeholder="Reason and refund handling details"/></label>
+        <div><button className="admin-button" disabled={saving}>Create pending refund record</button></div>
+      </form>
+    </section>
+    <section className="admin-panel admin-finance-panel admin-finance-balances" style={{marginBottom:20}}>
+      <div className="admin-panel-heading"><div><p className="admin-kicker">Vendor payouts</p><h3>Settlement balances</h3></div><button type="button" className="admin-button admin-button--outline" onClick={loadBalances}><RefreshCw size={14}/> Refresh</button></div>
+      {balances.length===0 ? <Empty title="No eligible vendor settlements" detail="Delivered, paid vendor order items with verified order-time commission snapshots will appear here."/> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Vendor</th><th>Payable items</th><th>Outstanding payable</th><th>Previously paid</th><th>Action</th></tr></thead><tbody>{balances.map(row=><tr key={row.seller_id}><td><strong>{row.shop_name}</strong></td><td>{row.eligible_items}</td><td>{formatMoney(row.eligible_amount)}</td><td>{formatMoney(row.paid_amount)}</td><td><button type="button" className="admin-small-button" onClick={()=>{setSellerId(row.seller_id);setCandidatePage(0)}}>{sellerId===row.seller_id?'Selected':'View payable items'}</button></td></tr>)}</tbody></table></div>}
+      {selectedBalance && <div style={{marginTop:18,display:'grid',gap:12}}>
+        <div className="admin-panel-heading"><div><h3>Payable items — {selectedBalance.shop_name}</h3><p className="admin-copy">Only delivered and paid orders with saved historical prices are eligible. Vendor payout uses the order-time vendor base price × quantity; commission is shown separately. Each line can be settled once.</p></div><strong>{formatMoney(selectedBalance.eligible_amount)} outstanding</strong></div>
+        {candidates.length===0 ? <Empty title="No payable items on this page" detail="This vendor may have no remaining eligible delivered orders."/> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Select</th><th>Order</th><th>Product</th><th>Qty</th><th>Gross</th><th>Commission</th><th>Vendor payout</th></tr></thead><tbody>{candidates.map(row=><tr key={row.order_item_id}><td><input type="checkbox" checked={selectedItems.includes(row.order_item_id)} onChange={e=>setSelectedItems(current=>e.target.checked?[...current,row.order_item_id]:current.filter(id=>id!==row.order_item_id))}/></td><td>{row.order_number}</td><td>{row.product_name}</td><td>{row.quantity}</td><td>{formatMoney(row.gross_amount)}</td><td>{formatMoney(row.commission_amount)}</td><td><strong>{formatMoney(row.payout_amount)}</strong></td></tr>)}</tbody></table><Pagination page={candidatePage} pageSize={pageSize} total={candidateCount} onPage={setCandidatePage} onPageSize={()=>setCandidatePage(0)}/></div>}
+        <div className="admin-form-grid">
+          <label className="admin-field"><span>Payout method *</span><select value={payoutMethod} onChange={e=>setPayoutMethod(e.target.value)}><option value="bank_transfer">Bank transfer</option><option value="cash">Cash</option><option value="wallet">Wallet</option><option value="other">Other</option></select></label>
+          <label className="admin-field"><span>Payment reference</span><input value={payoutReference} onChange={e=>setPayoutReference(e.target.value)} placeholder="Bank transaction / receipt ID"/></label>
+          <label className="admin-field"><span>Admin note *</span><input value={payoutNote} onChange={e=>setPayoutNote(e.target.value)} minLength={3} placeholder="Payout details"/></label>
+        </div>
+        <button type="button" className="admin-button" disabled={saving||selectedItems.length===0||payoutNote.trim().length<3} onClick={()=>void payVendor()}>Record {formatMoney(selectedPayoutTotal)} payout for {selectedItems.length} items</button>
+      </div>}
+    </section>
+    <section className="admin-panel admin-finance-panel admin-finance-ledger" style={{marginBottom:20}}>
+      <div className="admin-panel-heading"><div><p className="admin-kicker">Settlement ledger</p><h3>{payoutCount} vendor payouts recorded</h3></div></div>
+      {payouts.length===0 ? <Empty title="No vendor payouts recorded" detail="Every recorded settlement will appear here with its vendor, amount, payment reference and date."/> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Vendor</th><th>Amount</th><th>Method</th><th>Reference</th><th>Status</th><th>Paid at</th><th>Batch ID</th></tr></thead><tbody>{payouts.map(row=><tr key={row.id}><td><strong>{row.shop_name}</strong></td><td>{formatMoney(row.amount)}</td><td>{row.method.replace('_',' ')}</td><td>{row.reference??'—'}</td><td><em className={statusClass(row.status)}>{row.status}</em></td><td>{formatDate(row.paid_at)}</td><td className="admin-mono">{row.id}</td></tr>)}</tbody></table><Pagination page={payoutPage} pageSize={pageSize} total={payoutCount} onPage={setPayoutPage} onPageSize={()=>setPayoutPage(0)}/></div>}
+    </section>
+    <section className="admin-panel admin-finance-panel admin-finance-items" style={{marginBottom:20}}>
+      <div className="admin-panel-heading"><div><p className="admin-kicker">Vendor line-item ledger</p><h3>{ledgerCount} settled order items</h3></div></div>
+      {ledgerItems.length===0 ? <Empty title="No settled order items" detail="Each order item included in a vendor payout will be recorded here."/> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Vendor</th><th>Order</th><th>Product</th><th>Qty</th><th>Gross</th><th>Commission</th><th>Paid to vendor</th><th>Settlement batch</th></tr></thead><tbody>{ledgerItems.map(row=><tr key={row.id}><td>{row.shop_name}</td><td>{row.order_number}</td><td>{row.product_name_snapshot}</td><td>{row.quantity}</td><td>{formatMoney(row.gross_amount)}</td><td>{formatMoney(row.commission_amount)}</td><td><strong>{formatMoney(row.payout_amount)}</strong></td><td className="admin-mono">{row.batch_id}</td></tr>)}</tbody></table><Pagination page={ledgerPage} pageSize={pageSize} total={ledgerCount} onPage={setLedgerPage} onPageSize={()=>setLedgerPage(0)}/></div>}
+    </section>
+    <section className="admin-panel admin-finance-panel admin-finance-history">
+      <div className="admin-panel-heading"><div><p className="admin-kicker">Refund history</p><h3>{refundCount} recorded refunds</h3></div><select value={refundStatus} onChange={e=>{setRefundStatus(e.target.value);setRefundPage(0)}}><option value="all">All statuses</option><option value="pending">Pending</option><option value="completed">Completed</option><option value="failed">Failed</option><option value="cancelled">Cancelled</option></select></div>
+      {refunds.length===0 ? <Empty title="No refund records" detail="Refund records created from approved or resolved marketplace cases will appear here."/> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Case</th><th>Order</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th><th>Created</th><th>Actions</th></tr></thead><tbody>{refunds.map(row=><tr key={row.id}><td className="admin-mono">{row.case_id}</td><td className="admin-mono">{row.order_id}</td><td>{formatMoney(row.amount)}</td><td>{row.method.replace('_',' ')}</td><td><em className={statusClass(row.status)}>{row.status}</em></td><td>{row.reference??'—'}</td><td>{formatDate(row.created_at)}</td><td>{row.status==='pending' ? <div className="admin-action-row"><button type="button" className="admin-small-button" disabled={saving} onClick={()=>void updateRefund(row,'completed')}>Mark paid</button><button type="button" className="admin-small-button admin-small-button--danger" disabled={saving} onClick={()=>void updateRefund(row,'failed')}>Failed</button><button type="button" className="admin-small-button" disabled={saving} onClick={()=>void updateRefund(row,'cancelled')}>Cancel</button></div> : '—'}</td></tr>)}</tbody></table><Pagination page={refundPage} pageSize={pageSize} total={refundCount} onPage={setRefundPage} onPageSize={()=>setRefundPage(0)}/></div>}
+    </section>
+    {error && <ErrorState message={error} retry={()=>{loadBalances();loadRefunds();loadCandidates()}}/>}
+  </section>
+}
+
+function Audit() { const [items, setItems] = useState<Array<{ id: string; action: string; entity: string; entity_id: string | null; created_at: string }>>([]); const [error, setError] = useState<string | null>(null); const load = () => void listAuditLogs().then(setItems).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Audit log could not be loaded.')); useEffect(load, []); useAutoRefresh(load); return <section className="admin-content"><div className="admin-page-heading"><div><p className="admin-kicker">Sensitive changes</p><h2>Audit log</h2></div></div>{error ? <ErrorState message={error} retry={load} /> : items.length === 0 ? <Empty title="No audit events" detail="Product, category, inventory, note, and order status changes will be recorded by database triggers." /> : <div className="admin-table-wrap"><TableTools /><table className="admin-table"><thead><tr><th>Action</th><th>Entity</th><th>Entity ID</th><th>When</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td><em className={statusClass(item.action.toLowerCase())}>{item.action}</em></td><td>{item.entity}</td><td className="admin-mono">{item.entity_id ?? '—'}</td><td>{formatDate(item.created_at)}</td></tr>)}</tbody></table></div>}</section> }
+
+function Promotions() {
+  const { push } = useToast()
+  const [items, setItems] = useState<AdminPromotion[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [editingPromo, setEditingPromo] = useState<AdminPromotion | null>(null)
+  const [promoImages, setPromoImages] = useState<string[]>([])
+  const [uploadingPromoImages, setUploadingPromoImages] = useState(false)
+
+  const load = (quiet = false) => {
+    if (!quiet) setLoading(true)
+    setError(null)
+    void listAdminPromotions()
+      .then(setItems)
+      .catch((cause) => setError(cause instanceof Error ? cause.message : 'Promotions could not be loaded.'))
+      .finally(() => { if (!quiet) setLoading(false) })
+  }
+
+  useEffect(load, [])
+  useAutoRefresh(load)
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    try {
+      await saveAdminPromotion(
+        {
+          title: String(data.get('title') ?? '').trim(),
+          description: String(data.get('description') ?? '').trim() || null,
+          banner_image_url: promoImages[0] ?? null,
+          banner_image_urls: promoImages,
+          cta_text: String(data.get('cta_text') ?? '').trim() || null,
+          cta_destination: String(data.get('cta_destination') ?? '').trim() || null,
+          is_platform_wide: data.get('is_platform_wide') === 'on',
+          status: String(data.get('status') ?? 'approved') as AdminPromotion['status'],
+          display_position: String(data.get('display_position') ?? 'hero_banner'),
+          target_platform: String(data.get('target_platform') ?? 'both') as AdminPromotion['target_platform'],
+          campaign_type: String(data.get('campaign_type') ?? 'banner') as AdminPromotion['campaign_type'],
+          show_on_launch: data.get('show_on_launch') === 'on',
+          starts_at: String(data.get('starts_at') ?? '').trim() ? new Date(String(data.get('starts_at'))).toISOString() : null,
+          ends_at: String(data.get('ends_at') ?? '').trim() ? new Date(String(data.get('ends_at'))).toISOString() : null,
+          priority: Number(data.get('priority') ?? 0),
+          coupon_code: String(data.get('coupon_code') ?? '').trim() || null,
+          discount_percent: data.get('discount_percent') ? Number(data.get('discount_percent')) : null,
+        },
+        editingPromo?.id
+      )
+      push('Promotion campaign saved.')
+      setShowForm(false)
+      setEditingPromo(null)
+      load()
+    } catch (cause) {
+      push(cause instanceof Error ? cause.message : 'Promotion could not be saved.', 'error')
+    }
+  }
+
+  async function removePromo(id: string) {
+    if (!window.confirm('Delete this promotional campaign?')) return
+    try {
+      await deleteAdminPromotion(id)
+      push('Promotion deleted.')
+      load()
+    } catch (cause) {
+      push(cause instanceof Error ? cause.message : 'Delete failed.', 'error')
+    }
+  }
+
+  return (
+    <section className="admin-content">
+      <div className="admin-page-heading">
+        <div>
+          <p className="admin-kicker">Campaign management</p>
+          <h2>Banners & Ads Manager</h2>
+        </div>
+        <button
+          className="admin-button"
+          onClick={() => {
+            setEditingPromo(null)
+            setPromoImages([])
+            setShowForm(true)
+          }}
+        >
+          <Plus size={16} /> New platform campaign
+        </button>
+      </div>
+
+      {(showForm || editingPromo) && (
+        <form className="admin-form admin-panel" onSubmit={(event) => void submit(event)}>
+          <div className="admin-panel-heading">
+            <h3>{editingPromo ? 'Edit campaign' : 'New platform promotion'}</h3>
+            <button
+              type="button"
+              className="admin-icon-button"
+              onClick={() => {
+                setShowForm(false)
+                setEditingPromo(null)
+                setPromoImages([])
+              }}
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <div className="admin-form-grid">
+            <label>
+              Title <input name="title" defaultValue={editingPromo?.title ?? ''} required />
+            </label>
+            <label>
+              Coupon code <input name="coupon_code" defaultValue={editingPromo?.coupon_code ?? ''} placeholder="e.g. SAVE20" />
+            </label>
+            <label>
+              Discount % <input name="discount_percent" type="number" min="0" max="100" defaultValue={editingPromo?.discount_percent ?? ''} placeholder="20" />
+            </label>
+            <label>
+              Display position
+              <select name="display_position" defaultValue={editingPromo?.display_position ?? 'hero_banner'}>
+                <option value="hero_banner">Hero Banner</option>
+                <option value="seller_banner">Become a Seller Banner</option>
+                <option value="top_promo">Top Promo Bar</option>
+                <option value="category_feature">Category Feature</option>
+                <option value="before_popular_products">Above Popular / Featured Products</option>
+                <option value="product_strip">Product Strip</option>
+                <option value="after_new_arrivals">Below New Arrivals</option>
+                <option value="offer_section">Offer Section</option>
+              </select>
+            </label>
+            <label>
+              Campaign type
+              <select name="campaign_type" defaultValue={editingPromo?.campaign_type ?? 'banner'}>
+                <option value="banner">Homepage banner</option>
+                <option value="popup">Opening popup ad</option>
+              </select>
+            </label>
+            <label>
+              Show on
+              <select name="target_platform" defaultValue={editingPromo?.target_platform ?? 'both'}>
+                <option value="both">Website + Android app</option>
+                <option value="website">Website only</option>
+                <option value="android">Android app only</option>
+              </select>
+            </label>
+            <label>
+              Start date/time <input name="starts_at" type="datetime-local" defaultValue={toLocalDateTimeInput(editingPromo?.starts_at)} />
+            </label>
+            <label>
+              End date/time <input name="ends_at" type="datetime-local" defaultValue={toLocalDateTimeInput(editingPromo?.ends_at)} />
+            </label>
+            <label className="admin-check">
+              <input name="show_on_launch" type="checkbox" defaultChecked={editingPromo?.show_on_launch ?? false} /> Show popup on fresh app/website opening
+            </label>
+            <label>
+              Priority <input name="priority" type="number" defaultValue={editingPromo?.priority ?? 0} />
+            </label>
+            <label>
+              Status
+              <select name="status" defaultValue={editingPromo?.status ?? 'approved'}>
+                <option value="pending_review">Pending Review</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="hidden">Hidden</option>
+                <option value="archived">Archived</option>
+              </select>
+            </label>
+            <label className="admin-form-span">
+              <span>Upload banner images</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/avif"
+                multiple
+                disabled={uploadingPromoImages}
+                onChange={(event) => {
+                  const input = event.currentTarget
+                  const files = Array.from(input.files ?? [])
+                  if (!files.length) return
+                  setUploadingPromoImages(true)
+                  void Promise.all(files.map((file) => uploadPublicMedia(file, 'promotions')))
+                    .then((urls) => setPromoImages((current) => [...current, ...urls]))
+                    .catch((cause) => push(cause instanceof Error ? cause.message : 'Banner images could not be uploaded.', 'error'))
+                    .finally(() => {
+                      setUploadingPromoImages(false)
+                      input.value = ''
+                    })
+                }}
+              />
+              <small>Choose one or more JPG, PNG, WebP or AVIF images, up to 8 MB each.</small>
+              {uploadingPromoImages && <small>Uploading images…</small>}
+              {promoImages.length > 0 && (
+                <div className="admin-promotion-image-list">
+                  {promoImages.map((url, index) => (
+                    <div className="admin-promotion-image" key={`${url}-${index}`}>
+                      <img src={url} alt={`Campaign banner ${index + 1}`} />
+                      <span>Image {index + 1}</span>
+                      <button type="button" className="admin-icon-button" aria-label={`Remove image ${index + 1}`} onClick={() => setPromoImages((current) => current.filter((_, imageIndex) => imageIndex !== index))}><X size={14} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </label>
+            <label className="admin-form-span">
+              <span>CTA text & link</span>
+              <input name="cta_text" defaultValue={editingPromo?.cta_text ?? ''} placeholder="CTA Text" />
+              <input name="cta_destination" defaultValue={editingPromo?.cta_destination ?? ''} placeholder="CTA Link e.g. /shop" />
+            </label>
+            <label className="admin-form-span">
+              <span>Description</span>
+              <textarea name="description" rows={3} defaultValue={editingPromo?.description ?? ''} />
+            </label>
+            <label className="admin-check">
+              <input name="is_platform_wide" type="checkbox" defaultChecked={editingPromo?.is_platform_wide ?? true} /> Platform-wide promotion
+            </label>
+          </div>
+          <div className="admin-form-actions">
+            <button
+              type="button"
+              className="admin-button admin-button--outline"
+              onClick={() => {
+                setShowForm(false)
+                setEditingPromo(null)
+              }}
+            >
+              Cancel
+            </button>
+            <button className="admin-button" disabled={uploadingPromoImages}>{uploadingPromoImages ? 'Uploading…' : 'Save campaign'}</button>
+          </div>
+        </form>
+      )}
+
+      {error ? (
+        <ErrorState message={error} retry={load} />
+      ) : loading ? (
+        <Loading />
+      ) : items.length === 0 ? (
+        <Empty
+          title="No promotional campaigns found"
+          detail="Create platform-wide banners or review seller promotional submissions here."
+        />
+      ) : (
+        <div className="admin-table-wrap"><TableTools />
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Placement</th>
+                <th>Discount</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <strong>{item.title}</strong>
+                    <small>{item.coupon_code ? `Code: ${item.coupon_code}` : 'No coupon code'}</small>
+                  </td>
+                  <td>{item.display_position}</td>
+                  <td>{item.discount_percent ? `${item.discount_percent}% OFF` : 'Banner'}</td>
+                  <td>{item.is_platform_wide ? 'Platform' : 'Vendor'}</td>
+                  <td>
+                    <em className={statusClass(item.status)}>{item.status}</em>
+                  </td>
+                  <td>
+                    <div className="admin-action-row">
+                      <button className="admin-icon-button" title="Edit" onClick={() => { setPromoImages(item.banner_image_urls?.length ? item.banner_image_urls : item.banner_image_url ? [item.banner_image_url] : []); setEditingPromo(item) }}>
+                        <Edit2 size={15} />
+                      </button>
+                      <button className="admin-icon-button" title="Delete" onClick={() => void removePromo(item.id)}>
+                        <X size={15} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function Heroes() {
+  const { push } = useToast()
+  const [items, setItems] = useState<AdminHero[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [editingHero, setEditingHero] = useState<AdminHero | null>(null)
+  const [heroFile, setHeroFile] = useState<File | null>(null)
+  const [heroPreview, setHeroPreview] = useState<string | null>(null)
+  const [savingHero, setSavingHero] = useState(false)
+
+  useEffect(() => {
+    if (!heroFile) { setHeroPreview(null); return }
+    const preview = URL.createObjectURL(heroFile)
+    setHeroPreview(preview)
+    return () => URL.revokeObjectURL(preview)
+  }, [heroFile])
+
+  const load = (quiet = false) => {
+    if (!quiet) setLoading(true)
+    setError(null)
+    void listAdminHeroes()
+      .then(setItems)
+      .catch((cause) => setError(cause instanceof Error ? cause.message : 'Heroes could not be loaded.'))
+      .finally(() => { if (!quiet) setLoading(false) })
+  }
+
+  useEffect(load, [])
+  useAutoRefresh(load)
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    setSavingHero(true)
+    try {
+      let imageUrl = editingHero?.image_url ?? ""
+      if (heroFile) {
+        imageUrl = await uploadPublicMedia(heroFile, "heroes")
+      } else if (String(data.get("image_url") ?? "").trim()) {
+        imageUrl = String(data.get("image_url") ?? "").trim()
+      }
+      if (!imageUrl) throw new Error('Choose a hero image or enter an image URL.')
+      if (!/^https:\/\//i.test(imageUrl) && !imageUrl.startsWith('/')) throw new Error('Use an HTTPS image URL.')
+
+      await saveAdminHero(
+        {
+          title: String(data.get("title") ?? "").trim(),
+          subtitle: String(data.get("subtitle") ?? "").trim() || null,
+          cta_text: String(data.get("cta_text") ?? "").trim() || null,
+          cta_destination: String(data.get("cta_destination") ?? "").trim() || null,
+          image_url: imageUrl,
+          display_order: Number(data.get("display_order") ?? 0),
+          status: String(data.get("status") ?? "published") as AdminHero["status"],
+        },
+        editingHero?.id
+      )
+      push("Hero slide saved.")
+      setShowForm(false)
+      setEditingHero(null)
+      setHeroFile(null)
+      load()
+    } catch (cause) {
+      push(cause instanceof Error ? cause.message : "Hero slide could not be saved.", "error")
+    } finally {
+      setSavingHero(false)
+    }
+  }
+
+  async function removeHero(id: string) {
+    if (!window.confirm('Delete this hero slide?')) return
+    try {
+      await deleteAdminHero(id)
+      push('Hero slide deleted.')
+      load()
+    } catch (cause) {
+      push(cause instanceof Error ? cause.message : 'Delete failed.', 'error')
+    }
+  }
+
+  return (
+    <section className="admin-content">
+      <div className="admin-page-heading">
+        <div>
+          <p className="admin-kicker">Storefront branding</p>
+          <h2>Homepage Heroes</h2>
+        </div>
+        <button
+          className="admin-button"
+          onClick={() => {
+            setEditingHero(null)
+            setHeroFile(null)
+            setShowForm(true)
+          }}
+        >
+          <Plus size={16} /> New hero slide
+        </button>
+      </div>
+
+      {(showForm || editingHero) && (
+        <form className="admin-form admin-panel" onSubmit={(event) => void submit(event)}>
+          <div className="admin-panel-heading">
+            <h3>{editingHero ? 'Edit hero slide' : 'New hero slide'}</h3>
+            <button
+              type="button"
+              className="admin-icon-button"
+              onClick={() => {
+                setShowForm(false)
+                setEditingHero(null)
+                setHeroFile(null)
+              }}
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <div className="admin-form-grid">
+            <label>
+              Title <input name="title" defaultValue={editingHero?.title ?? ''} required />
+            </label>
+            <label>
+              Subtitle <input name="subtitle" defaultValue={editingHero?.subtitle ?? ''} />
+            </label>
+            <label>
+              CTA text <input name="cta_text" defaultValue={editingHero?.cta_text ?? ''} placeholder="e.g. Shop Now" />
+            </label>
+            <label>
+              CTA destination <input name="cta_destination" defaultValue={editingHero?.cta_destination ?? ''} placeholder="e.g. /shop" />
+            </label>
+            <label className="admin-form-span">
+              <span>Hero image (JPG, PNG, WebP or AVIF; max 8 MB)</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" onChange={(event) => { const file = event.target.files?.[0] ?? null; if (file && (file.size > 8 * 1024 * 1024 || !['image/jpeg','image/png','image/webp','image/avif'].includes(file.type))) { push('Choose a JPG, PNG, WebP or AVIF image up to 8 MB.', 'error'); event.target.value = ''; setHeroFile(null); return } setHeroFile(file) }} />
+              <small>Upload a file or use an existing hosted image URL.</small>
+              <input name="image_url" defaultValue={editingHero?.image_url ?? ''} placeholder="https://..." />
+              {(heroPreview || editingHero?.image_url) && <img src={heroPreview ?? editingHero?.image_url ?? ''} alt="Hero image preview" style={{ display: 'block', maxWidth: 420, maxHeight: 180, objectFit: 'cover', borderRadius: 8, marginTop: 10 }} />}
+            </label>
+            <label>
+              Display order <input name="display_order" type="number" defaultValue={editingHero?.display_order ?? 0} />
+            </label>
+            <label>
+              Status
+              <select name="status" defaultValue={editingHero?.status ?? 'published'}>
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+                <option value="archived">Archived</option>
+              </select>
+            </label>
+          </div>
+          <div className="admin-form-actions">
+            <button
+              type="button"
+              className="admin-button admin-button--outline"
+              onClick={() => {
+                setShowForm(false)
+                setEditingHero(null)
+                setHeroFile(null)
+              }}
+            >
+              Cancel
+            </button>
+            <button className="admin-button" disabled={savingHero}>{savingHero ? "Saving…" : "Save hero slide"}</button>
+          </div>
+        </form>
+      )}
+
+      {error ? (
+        <ErrorState message={error} retry={load} />
+      ) : loading ? (
+        <Loading />
+      ) : items.length === 0 ? (
+        <Empty
+          title="No homepage heroes configured"
+          detail="Create your first hero slide to customize the storefront homepage hero banner dynamically."
+        />
+      ) : (
+        <div className="admin-table-wrap"><TableTools />
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>CTA Link</th>
+                <th>Order</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <strong>{item.title}</strong>
+                    <small>{item.subtitle || 'No subtitle'}</small>
+                  </td>
+                  <td>{item.cta_destination || '—'}</td>
+                  <td>{item.display_order}</td>
+                  <td>
+                    <em className={statusClass(item.status)}>{item.status}</em>
+                  </td>
+                  <td>
+                    <div className="admin-action-row">
+                      <button className="admin-icon-button" title="Edit" onClick={() => setEditingHero(item)}>
+                        <Edit2 size={15} />
+                      </button>
+                      <button className="admin-icon-button" title="Delete" onClick={() => void removeHero(item.id)}>
+                        <X size={15} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </section>

@@ -1,10 +1,10 @@
 import { Fragment, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { Archive, ArrowLeft, BarChart3, Bell, Boxes, Check, CheckCheck, ChevronLeft, ChevronRight, CircleAlert, ClipboardList, Edit2, Film, FolderTree, Eye, EyeOff, Image as ImageIcon, Info, LayoutDashboard, LogOut, MapPin, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen, MessageSquare, Package, Plus, Printer, RefreshCw, Search, Send, Settings, ShieldAlert, Star, Store, Tag, Trash2, Truck, Users, Volume2, VolumeX, Wallet, X } from 'lucide-react'
+import { Archive, ArrowLeft, BarChart3, Bell, Boxes, Check, CheckCheck, ChevronLeft, ChevronRight, CircleAlert, ClipboardList, Edit2, Film, FolderTree, Eye, EyeOff, Image as ImageIcon, Info, LayoutDashboard, LogOut, MapPin, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen, MessageSquare, Package, Plus, Printer, RefreshCw, Search, Send, Settings, ShieldAlert, Star, Store, Tag, Trash2, Truck, Users, Volume2, VolumeX, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
-import { adjustInventory, decideMarketplaceCase, deleteAdminHero, deleteAdminPromotion, deleteProductVariant, getAdminOrderDetail, getAdminProductEditor, getAdminStoreSettings, getAdminFoodDeliverySettings, getAdminCommissionSettings, getAdminSummary, getVendorDocumentSignedUrl, listAdminCategories, listAdminCategoriesPage, listSellerApplicationsPage, listAdminHeroesPage, listAdminPromotionsPage, listAdminAuditLogsPage, listAdminAccountSuspensions, listAdminCustomers, listAdminInventory, listAdminNotifications, listAdminOrders, listAdminOrderVendors, listAdminVendorPickups, markAdminVendorPickedUp, listAdminProducts, listAdminProductsPage, listAdminVendorDirectoryPage, listAdminCustomerReviews, setAdminCustomerReviewStatus, listAdminSupportTickets, listAdminSellerSupportMessages, sendAdminSellerSupportMessage, listAdminCustomerSupportMessages, sendAdminCustomerSupportMessage, listMarketplaceCases, listAdminRefundRecordsPage, listAdminVendorSettlementBalances, listAdminVendorSettlementCandidates, recordAdminCaseRefund, updateAdminRefundStatus, createAdminVendorSettlement, markAdminNotificationRead, markAllAdminNotificationsRead, sendAdminPushTest, sendAdminManualNotification, moderateProduct, deleteAdminProductImage, deleteAdminProductPermanently, listAdminProductDeletionRequests, reviewAdminProductDeletion, reviewSellerApplication, setAdminVendorLock, setAdminSupportTicketStatus, saveAdminHero, saveAdminPromotion, saveCategory, saveProduct, saveProductVariant, saveAdminProductInventory, setAdminAccountSuspension, updateAdminStoreSettings, updateAdminFoodDeliverySettings, updateAdminCommissionSettings, updateAdminSupportTicket, updateOrder, saveDeliveryCollection, addOrderNote, rejectAdminOrder, findCustomerDeliveryOrders, confirmOrdersWithDeliveryBatch, createFollowupDeliveryBatch, markDeliveryBatchDelivered, listOrderDeliveryBatches, updateProductStatus, updateProductsHotDeal, setAdminProductFeatured, uploadAdditionalProductImage, uploadPublicMedia, type AdminCaseDetail, type AdminCategory, type AdminCustomerReview, type AdminAccountSuspension, type AdminCustomer, type AdminHero, type AdminInventory, type AdminNotification, type AdminOrder, type AdminOrderVendor, type AdminProduct, type AdminProductDeletionRequest, type AdminPromotion, type AdminSeller, type AdminStoreSettings, type AdminFoodDeliverySettings, type AdminCommissionSettings, type AdminSummary, type AdminSupportInboxTicket, type AdminSupportChatMessage, type AdminVariant, type AdminRefundRecord, type AdminSettlementBalance, type AdminSettlementCandidate } from '../services/admin/adminService'
+import { adjustInventory, decideMarketplaceCase, deleteAdminHero, deleteAdminPromotion, deleteProductVariant, getAdminOrderDetail, getAdminProductEditor, getAdminStoreSettings, getAdminFoodDeliverySettings, getAdminCommissionSettings, getAdminSummary, getVendorDocumentSignedUrl, listAdminCategories, listAdminCategoriesPage, listSellerApplicationsPage, listAdminHeroesPage, listAdminPromotionsPage, listAdminAuditLogsPage, listAdminAccountSuspensions, listAdminCustomers, listAdminInventory, listAdminNotifications, listAdminOrders, listAdminOrderVendors, listAdminVendorPickups, markAdminVendorPickedUp, listAdminProducts, listAdminProductsPage, listAdminVendorDirectoryPage, listAdminCustomerReviews, setAdminCustomerReviewStatus, listAdminSupportTickets, listAdminSellerSupportMessages, sendAdminSellerSupportMessage, listAdminCustomerSupportMessages, sendAdminCustomerSupportMessage, listMarketplaceCases, markAdminNotificationRead, markAllAdminNotificationsRead, sendAdminPushTest, sendAdminManualNotification, moderateProduct, deleteAdminProductImage, deleteAdminProductPermanently, listAdminProductDeletionRequests, reviewAdminProductDeletion, reviewSellerApplication, setAdminVendorLock, setAdminSupportTicketStatus, saveAdminHero, saveAdminPromotion, saveCategory, saveProduct, saveProductVariant, saveAdminProductInventory, setAdminAccountSuspension, updateAdminStoreSettings, updateAdminFoodDeliverySettings, updateAdminCommissionSettings, updateAdminSupportTicket, updateOrder, saveDeliveryCollection, addOrderNote, rejectAdminOrder, findCustomerDeliveryOrders, confirmOrdersWithDeliveryBatch, createFollowupDeliveryBatch, markDeliveryBatchDelivered, listOrderDeliveryBatches, updateProductStatus, updateProductsHotDeal, setAdminProductFeatured, uploadAdditionalProductImage, uploadPublicMedia, type AdminCaseDetail, type AdminCategory, type AdminCustomerReview, type AdminAccountSuspension, type AdminCustomer, type AdminHero, type AdminInventory, type AdminNotification, type AdminOrder, type AdminOrderVendor, type AdminProduct, type AdminProductDeletionRequest, type AdminPromotion, type AdminSeller, type AdminStoreSettings, type AdminFoodDeliverySettings, type AdminCommissionSettings, type AdminSummary, type AdminSupportInboxTicket, type AdminSupportChatMessage, type AdminVariant } from '../services/admin/adminService'
 import type { Database } from '../types/database'
 import { getSupabase } from '../lib/supabase'
 import { isValidEmail, isValidPakistaniMobile, normalizePakistaniMobile } from '../utils/contactValidation'
@@ -25,7 +25,6 @@ const nav = [
   { section: 'Orders & fulfilment', to: '/admin/orders', label: 'Orders', icon: ClipboardList },
   { section: 'Orders & fulfilment', to: '/admin/manual-orders', label: 'Manual Orders', icon: Plus },
   { section: 'Orders & fulfilment', to: '/admin/inventory', label: 'Inventory', icon: Boxes },
-  { section: 'Orders & fulfilment', to: '/admin/finance', label: 'Refunds & Settlements', icon: Wallet },
   { section: 'People & marketplace', to: '/admin/sellers', label: 'Sellers', icon: Store },
   { section: 'People & marketplace', to: '/admin/drivers', label: 'Drivers', icon: Truck },
   { section: 'People & marketplace', to: '/admin/customers', label: 'Customers', icon: Users },
@@ -253,7 +252,6 @@ function AdminContent({ path }: { path: string }) {
   if (/^\/admin\/manual-orders\/[^/]+$/.test(path)) return <ManualOrderDetailPage orderId={path.split('/').pop()!} />
   if (/^\/admin\/orders\/[^/]+$/.test(path)) return <OrderDetailPage orderId={path.split('/').pop()!} />
   if (path === '/admin/inventory') return <Inventory />
-  if (path === '/admin/finance') return <Finance />
   if (path === '/admin/sellers') return <Sellers />
   if (path === '/admin/drivers') return <DriverManagement />
   if (path === '/admin/push-notifications') return <PushNotifications />
@@ -855,7 +853,7 @@ function Categories() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(12)
-  const [total, setTotal] = useState(0)
+  const [totalRecords, setTotalRecords] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<AdminCategory | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -889,7 +887,7 @@ function Categories() {
       <label className="admin-form-span"><span>Category image (JPG, PNG, WebP or AVIF; max 8 MB)</span><input type="file" accept="image/jpeg,image/png,image/webp,image/avif" onChange={(event) => { const file = event.target.files?.[0] ?? null; if (file && (file.size > 8 * 1024 * 1024 || !['image/jpeg','image/png','image/webp','image/avif'].includes(file.type))) { push('Choose a JPG, PNG, WebP or AVIF image up to 8 MB.', 'error'); event.target.value = ''; setImage(null); return } setImage(file) }} /></label>
       {(imagePreview || editing?.image_url) && <img src={imagePreview ?? editing?.image_url ?? ''} alt="Category image preview" style={{ maxWidth: 220, maxHeight: 140, objectFit: 'cover', borderRadius: 8 }} />}
     </div><div className="admin-form-actions"><button type="button" className="admin-button admin-button--outline" onClick={() => { setShowForm(false); setEditing(null); setImage(null) }}>Cancel</button><button className="admin-button" disabled={saving}>{saving ? 'Saving…' : editing ? 'Save category' : 'Create category'}</button></div></form>}
-    {error ? <ErrorState message={error} retry={load} /> : loading ? <Loading /> : items.length === 0 ? <Empty title="No categories yet" detail="Create your first live category, then assign products to it." /> : <div className="admin-table-wrap"><div className="admin-table-tools"><div className="admin-table-tools__main"><label className="admin-search admin-table-tools__search"><Search size={16}/><input aria-label="Search categories" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0) }} placeholder="Search categories by name or slug"/></label></div></div><table className="admin-table"><thead><tr><th>Name</th><th>Slug</th><th>Visibility</th><th>Availability</th><th>Order</th><th>Updated</th><th>Actions</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td><strong>{item.name}</strong><small>{item.description || 'No description'}</small></td><td>{item.slug}{item.is_food_category && <small>Food Category</small>}</td><td><em className={statusClass(item.is_active ? 'active' : 'hidden')}>{item.is_active ? 'active' : 'inactive / hidden'}</em></td><td><em className={statusClass(item.is_coming_soon ? 'pending' : 'published')}>{item.is_coming_soon ? 'Coming soon' : 'Available'}</em></td><td>{item.sort_order}</td><td>{formatDate(item.updated_at)}</td><td><button type="button" className="admin-small-button" onClick={() => startEdit(item)}><Edit2 size={14} /> Edit</button></td></tr>)}</tbody></table><Pagination page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(size) => { setPageSize(size); setPage(0) }}/></div>}
+    {error ? <ErrorState message={error} retry={load} /> : loading ? <Loading /> : items.length === 0 ? <Empty title="No categories yet" detail="Create your first live category, then assign products to it." /> : <div className="admin-table-wrap"><div className="admin-table-tools"><div className="admin-table-tools__main"><label className="admin-search admin-table-tools__search"><Search size={16}/><input aria-label="Search categories" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0) }} placeholder="Search categories by name or slug"/></label></div></div><table className="admin-table"><thead><tr><th>Name</th><th>Slug</th><th>Visibility</th><th>Availability</th><th>Order</th><th>Updated</th><th>Actions</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td><strong>{item.name}</strong><small>{item.description || 'No description'}</small></td><td>{item.slug}{item.is_food_category && <small>Food Category</small>}</td><td><em className={statusClass(item.is_active ? 'active' : 'hidden')}>{item.is_active ? 'active' : 'inactive / hidden'}</em></td><td><em className={statusClass(item.is_coming_soon ? 'pending' : 'published')}>{item.is_coming_soon ? 'Coming soon' : 'Available'}</em></td><td>{item.sort_order}</td><td>{formatDate(item.updated_at)}</td><td><button type="button" className="admin-small-button" onClick={() => startEdit(item)}><Edit2 size={14} /> Edit</button></td></tr>)}</tbody></table><Pagination page={page} pageSize={pageSize} total={totalRecords} onPage={setPage} onPageSize={(size) => { setPageSize(size); setPage(0) }}/></div>}
   </section>
 }
 
@@ -1994,103 +1992,6 @@ function StoreSettings() {
   return <section className="admin-content"><div className="admin-page-heading"><div><p className="admin-kicker">Storefront defaults and contact details</p><h2>Store settings</h2></div></div><form key={settings.updated_at} className="admin-form admin-panel" onSubmit={(event) => void submit(event)}><div className="admin-panel-heading"><div><h3>Public store configuration</h3><p className="admin-copy">These values are read by the storefront checkout, footer and help pages. Delivery fee and cash-on-delivery availability are enforced again by the database when an order is placed.</p></div></div><div className="admin-form-grid"><label className="admin-form-span">Store name<input name="store_name" defaultValue={settings.store_name} maxLength={160} required /></label><label>Support email<input name="support_email" type="email" defaultValue={settings.support_email ?? ''} placeholder="support@example.com" /></label><label>Support phone<input name="support_phone" type="tel" maxLength={13} pattern="(03[0-9]{9}|\+923[0-9]{9})" defaultValue={settings.support_phone ?? ''} placeholder="03001234567 or +923001234567" /></label><label>Support WhatsApp<input name="support_whatsapp" defaultValue={settings.support_whatsapp ?? ''} placeholder="+92 300 0000000" /></label><label>Standard delivery fee (PKR)<input name="delivery_fee" type="number" min="0" step="0.01" defaultValue={settings.delivery_fee} required /></label><label>Additional delivery fee (PKR)<input name="additional_delivery_fee" type="number" min="0" step="0.01" defaultValue={settings.additional_delivery_fee} required /><small>Default 0: pending products can be delivered later without charging a second delivery fee.</small></label><label className="admin-check"><input name="free_delivery_enabled" type="checkbox" defaultChecked={settings.free_delivery_enabled} /> Enable free delivery</label><label>Return window (days)<input name="return_window_days" type="number" min="0" step="1" defaultValue={settings.return_window_days} required /></label><label className="admin-check"><input name="cod_enabled" type="checkbox" defaultChecked={settings.cod_enabled} /> Cash on delivery available</label></div><div className="admin-panel-heading"><div><h3>JTBazar Food &amp; Shops opening hours</h3><p className="admin-copy">These hours control the live OPEN NOW / SHOP CLOSED status and countdown shown on the customer homepage. Times use Pakistan Standard Time. Set closing day to “Next day” for overnight schedules.</p></div></div><div className="admin-hours-grid">{MARKETPLACE_HOUR_DAYS.map(([day, label]) => { const saved = ((settings as any).marketplace_hours ?? DEFAULT_MARKETPLACE_HOURS)[day] ?? DEFAULT_MARKETPLACE_HOURS[day]; return <div className="admin-hours-row" key={day}><label className="admin-check"><input name={`hours_enabled_${day}`} type="checkbox" defaultChecked={saved.enabled} /> {label}</label><label>Opens<input name={`hours_open_${day}`} type="time" defaultValue={saved.open} /></label><label>Closes<input name={`hours_close_${day}`} type="time" defaultValue={saved.close} /></label><label>Closing day<select name={`hours_offset_${day}`} defaultValue={String(saved.close_day_offset)}><option value="0">Same day</option><option value="1">Next day</option></select></label></div> })}</div><div className="admin-form-actions"><button className="admin-button" disabled={saving}>{saving ? 'Saving…' : 'Save settings'}</button></div></form><form className="admin-form admin-panel" onSubmit={(event) => void submitCommission(event)}><div className="admin-panel-heading"><div><h3>Vendor commission settings</h3><p className="admin-copy">Vendors enter their own base price. JTBazar adds the configured commission once to calculate the customer price. Category rates override the default rate. Existing published listings are not repriced automatically.</p></div></div>{commissionSettings ? <><div className="admin-form-grid"><label>Default commission (%)<input name="default_commission" type="number" min="0" max="100" step="0.01" defaultValue={commissionSettings.default_percent} required /></label></div><div className="admin-hours-grid">{commissionCategories.map((category) => <label key={category.id}>{category.name} (%)<input name={`commission_${category.id}`} type="number" min="0" max="100" step="0.01" placeholder={`Use default (${commissionSettings.default_percent}%)`} defaultValue={commissionSettings.category_rates[category.id] ?? ''} /></label>)}</div><p className="admin-copy">Discounts are applied to the final customer price after commission is added. Commission is not added again at checkout, and category overrides apply to new or edited listings only.</p><div className="admin-form-actions"><button className="admin-button" disabled={commissionSaving}>{commissionSaving ? 'Saving…' : 'Save commission rates'}</button></div></> : <Loading />}</form><form key={foodLocation ? `${foodLocation.hub_lat ?? "none"}-${foodLocation.hub_lng ?? "none"}-${foodLocation.radius_km}` : "loading"} className="admin-form admin-panel" onSubmit={(event) => void saveFoodLocation(event)}><div className="admin-panel-heading"><div><h3>JTBazar food delivery operating location</h3><p className="admin-copy">No permanent warehouse is required. Use the map to select your current operating/pickup point whenever it changes. JTBazar-owned Food &amp; Groceries orders are accepted only within this radius. Vendor-owned food orders continue using each vendor shop location.</p></div></div><FoodLocationMap initialPoint={foodLocation?.hub_lat != null && foodLocation.hub_lng != null ? { lat: foodLocation.hub_lat, lng: foodLocation.hub_lng } : null} onSelect={setSelectedFoodPoint} /><div className="admin-form-grid"><label>Delivery radius (km)<input name="radius_km" type="number" min="0.1" max="50" step="0.1" defaultValue={foodLocation?.radius_km ?? 5} required /></label></div><p className="admin-copy">{selectedFoodPoint ? `Selected operating point: ${selectedFoodPoint.lat}, ${selectedFoodPoint.lng}` : foodLocation?.hub_lat != null && foodLocation.hub_lng != null ? `Saved operating point: ${foodLocation.hub_lat}, ${foodLocation.hub_lng}` : 'No current operating location selected. Use “Use my current location” or click the map; JTBazar-owned food orders remain blocked until you save a point.'}</p><div className="admin-form-actions"><button className="admin-button" disabled={foodLocationSaving || !foodLocation || !selectedFoodPoint}>{foodLocationSaving ? 'Saving…' : 'Save food delivery location'}</button></div></form></section>
 }
 
-function Finance() {
-  const { push } = useToast()
-  const [balances, setBalances] = useState<AdminSettlementBalance[]>([])
-  const [sellerId, setSellerId] = useState('')
-  const [candidates, setCandidates] = useState<AdminSettlementCandidate[]>([])
-  const [candidatePage, setCandidatePage] = useState(0)
-  const [candidateCount, setCandidateCount] = useState(0)
-  const [selectedItems, setSelectedItems] = useState<string[]>([])
-  const [refunds, setRefunds] = useState<AdminRefundRecord[]>([])
-  const [refundStatus, setRefundStatus] = useState('all')
-  const [refundPage, setRefundPage] = useState(0)
-  const [refundCount, setRefundCount] = useState(0)
-  const [caseId, setCaseId] = useState('')
-  const [refundAmount, setRefundAmount] = useState('')
-  const [refundMethod, setRefundMethod] = useState('cash')
-  const [refundReference, setRefundReference] = useState('')
-  const [refundNote, setRefundNote] = useState('')
-  const [payoutMethod, setPayoutMethod] = useState('bank_transfer')
-  const [payoutReference, setPayoutReference] = useState('')
-  const [payoutNote, setPayoutNote] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const pageSize = 12
-  const loadBalances = () => void listAdminVendorSettlementBalances().then(rows => { setBalances(rows); if (!sellerId && rows.length) setSellerId(rows[0].seller_id) }).catch(cause => setError(cause instanceof Error ? cause.message : 'Vendor balances could not be loaded.'))
-  const loadRefunds = () => void listAdminRefundRecordsPage(refundStatus, refundPage, pageSize).then(result => { setRefunds(result.items); setRefundCount(result.count) }).catch(cause => setError(cause instanceof Error ? cause.message : 'Refund records could not be loaded.')).finally(() => setLoading(false))
-  const loadCandidates = () => { if (!sellerId) { setCandidates([]); setCandidateCount(0); return } void listAdminVendorSettlementCandidates(sellerId, candidatePage, pageSize).then(result => { setCandidates(result.items); setCandidateCount(result.count); setSelectedItems([]) }).catch(cause => setError(cause instanceof Error ? cause.message : 'Payable order items could not be loaded.')) }
-  useEffect(() => { loadBalances(); loadRefunds() }, [refundStatus, refundPage])
-  useEffect(loadCandidates, [sellerId, candidatePage])
-  const selectedBalance = balances.find(row => row.seller_id === sellerId)
-  async function submitRefund(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setSaving(true)
-    try {
-      await recordAdminCaseRefund({ caseId: caseId.trim(), amount: Number(refundAmount), method: refundMethod, reference: refundReference, note: refundNote })
-      push('Refund record created as pending. Mark it completed only after the money has actually been returned.', 'success')
-      setCaseId(''); setRefundAmount(''); setRefundReference(''); setRefundNote(''); setRefundPage(0); await listAdminRefundRecordsPage(refundStatus, 0, pageSize).then(result => { setRefunds(result.items); setRefundCount(result.count) })
-    } catch (cause) { push(cause instanceof Error ? cause.message : 'Refund could not be recorded.', 'error') }
-    finally { setSaving(false) }
-  }
-  async function payVendor() {
-    if (!sellerId || selectedItems.length === 0) return
-    if (!window.confirm('Confirm that this vendor payout has actually been sent? The selected order items will be permanently marked as settled.')) return
-    setSaving(true)
-    try {
-      await createAdminVendorSettlement({ sellerId, orderItemIds: selectedItems, method: payoutMethod, reference: payoutReference, note: payoutNote })
-      push('Vendor settlement recorded successfully.', 'success')
-      setSelectedItems([]); setPayoutReference(''); setPayoutNote(''); loadBalances(); loadCandidates()
-    } catch (cause) { push(cause instanceof Error ? cause.message : 'Vendor settlement could not be recorded.', 'error') }
-    finally { setSaving(false) }
-  }
-  async function updateRefund(row: AdminRefundRecord, status: 'completed' | 'failed' | 'cancelled') {
-    const reference = status === 'completed' ? window.prompt('Enter bank / wallet / cash receipt reference (if available)', row.reference ?? '') ?? undefined : row.reference ?? undefined
-    if (status === 'completed' && reference === undefined) return
-    const note = window.prompt('Add a short admin note (optional)', row.admin_note) ?? undefined
-    if (note === undefined) return
-    setSaving(true)
-    try { await updateAdminRefundStatus({ refundId: row.id, status, reference, note }); push('Refund status updated.', 'success'); loadRefunds() }
-    catch (cause) { push(cause instanceof Error ? cause.message : 'Refund status could not be updated.', 'error') }
-    finally { setSaving(false) }
-  }
-  return <section className="admin-content">
-    <div className="admin-page-heading"><div><p className="admin-kicker">Finance operations</p><h2>Refunds & vendor settlements</h2><p className="admin-copy">Record refunds and verified vendor payouts. No bank or payment-gateway transfer is initiated from this screen.</p></div></div>
-    <section className="admin-panel" style={{marginBottom:20}}>
-      <div className="admin-panel-heading"><div><p className="admin-kicker">Customer returns</p><h3>Record a case refund</h3></div></div>
-      <form onSubmit={submitRefund} style={{display:'grid',gap:12}}>
-        <div className="admin-form-grid">
-          <label className="admin-field"><span>Approved / resolved case ID *</span><input required value={caseId} onChange={e=>setCaseId(e.target.value)} placeholder="Marketplace case UUID"/></label>
-          <label className="admin-field"><span>Refund amount (PKR) *</span><input required type="number" min="0.01" step="0.01" value={refundAmount} onChange={e=>setRefundAmount(e.target.value)} placeholder="0.00"/></label>
-          <label className="admin-field"><span>Refund method *</span><select value={refundMethod} onChange={e=>setRefundMethod(e.target.value)}><option value="cash">Cash</option><option value="bank_transfer">Bank transfer</option><option value="wallet">Wallet</option><option value="card_gateway">Card gateway (manual record)</option><option value="other">Other</option></select></label>
-          <label className="admin-field"><span>Payment reference</span><input value={refundReference} onChange={e=>setRefundReference(e.target.value)} placeholder="Receipt / transaction ID"/></label>
-        </div>
-        <label className="admin-field"><span>Admin note *</span><input required minLength={3} value={refundNote} onChange={e=>setRefundNote(e.target.value)} placeholder="Reason and refund handling details"/></label>
-        <div><button className="admin-button" disabled={saving}>Create pending refund record</button></div>
-      </form>
-    </section>
-    <section className="admin-panel" style={{marginBottom:20}}>
-      <div className="admin-panel-heading"><div><p className="admin-kicker">Vendor payouts</p><h3>Settlement balances</h3></div><button type="button" className="admin-button admin-button--outline" onClick={loadBalances}><RefreshCw size={14}/> Refresh</button></div>
-      {balances.length===0 ? <Empty title="No eligible vendor settlements" detail="Delivered vendor order items with verified order-time commission snapshots will appear here."/> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Vendor</th><th>Payable items</th><th>Outstanding payable</th><th>Previously paid</th><th>Action</th></tr></thead><tbody>{balances.map(row=><tr key={row.seller_id}><td><strong>{row.shop_name}</strong></td><td>{row.eligible_items}</td><td>{formatMoney(row.eligible_amount)}</td><td>{formatMoney(row.paid_amount)}</td><td><button type="button" className="admin-small-button" onClick={()=>{setSellerId(row.seller_id);setCandidatePage(0)}}>{sellerId===row.seller_id?'Selected':'View payable items'}</button></td></tr>)}</tbody></table></div>}
-      {selectedBalance && <div style={{marginTop:18,display:'grid',gap:12}}>
-        <div className="admin-panel-heading"><div><h3>Payable items — {selectedBalance.shop_name}</h3><p className="admin-copy">Only delivered order items with saved historical prices are eligible. Each line can be settled once.</p></div><strong>{formatMoney(selectedBalance.eligible_amount)} outstanding</strong></div>
-        {candidates.length===0 ? <Empty title="No payable items on this page" detail="This vendor may have no remaining eligible delivered orders."/> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Select</th><th>Order</th><th>Product</th><th>Qty</th><th>Gross</th><th>Commission</th><th>Vendor payout</th></tr></thead><tbody>{candidates.map(row=><tr key={row.order_item_id}><td><input type="checkbox" checked={selectedItems.includes(row.order_item_id)} onChange={e=>setSelectedItems(current=>e.target.checked?[...current,row.order_item_id]:current.filter(id=>id!==row.order_item_id))}/></td><td>{row.order_number}</td><td>{row.product_name}</td><td>{row.quantity}</td><td>{formatMoney(row.gross_amount)}</td><td>{formatMoney(row.commission_amount)}</td><td><strong>{formatMoney(row.payout_amount)}</strong></td></tr>)}</tbody></table><Pagination page={candidatePage} pageSize={pageSize} total={candidateCount} onPage={setCandidatePage} onPageSize={()=>setCandidatePage(0)}/></div>}
-        <div className="admin-form-grid">
-          <label className="admin-field"><span>Payout method *</span><select value={payoutMethod} onChange={e=>setPayoutMethod(e.target.value)}><option value="bank_transfer">Bank transfer</option><option value="cash">Cash</option><option value="wallet">Wallet</option><option value="other">Other</option></select></label>
-          <label className="admin-field"><span>Payment reference</span><input value={payoutReference} onChange={e=>setPayoutReference(e.target.value)} placeholder="Bank transaction / receipt ID"/></label>
-          <label className="admin-field"><span>Admin note *</span><input value={payoutNote} onChange={e=>setPayoutNote(e.target.value)} minLength={3} placeholder="Payout details"/></label>
-        </div>
-        <button type="button" className="admin-button" disabled={saving||selectedItems.length===0||payoutNote.trim().length<3} onClick={()=>void payVendor()}>Record payout for {selectedItems.length} selected items</button>
-      </div>}
-    </section>
-    <section className="admin-panel">
-      <div className="admin-panel-heading"><div><p className="admin-kicker">Refund history</p><h3>{refundCount} recorded refunds</h3></div><select value={refundStatus} onChange={e=>{setRefundStatus(e.target.value);setRefundPage(0)}}><option value="all">All statuses</option><option value="pending">Pending</option><option value="completed">Completed</option><option value="failed">Failed</option><option value="cancelled">Cancelled</option></select></div>
-      {refunds.length===0 ? <Empty title="No refund records" detail="Refund records created from approved or resolved marketplace cases will appear here."/> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Case</th><th>Order</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th><th>Created</th><th>Actions</th></tr></thead><tbody>{refunds.map(row=><tr key={row.id}><td className="admin-mono">{row.case_id}</td><td className="admin-mono">{row.order_id}</td><td>{formatMoney(row.amount)}</td><td>{row.method.replace('_',' ')}</td><td><em className={statusClass(row.status)}>{row.status}</em></td><td>{row.reference??'—'}</td><td>{formatDate(row.created_at)}</td><td>{row.status==='pending' ? <div className="admin-action-row"><button type="button" className="admin-small-button" disabled={saving} onClick={()=>void updateRefund(row,'completed')}>Mark paid</button><button type="button" className="admin-small-button admin-small-button--danger" disabled={saving} onClick={()=>void updateRefund(row,'failed')}>Failed</button><button type="button" className="admin-small-button" disabled={saving} onClick={()=>void updateRefund(row,'cancelled')}>Cancel</button></div> : '—'}</td></tr>)}</tbody></table><Pagination page={refundPage} pageSize={pageSize} total={refundCount} onPage={setRefundPage} onPageSize={()=>setRefundPage(0)}/></div>}
-    </section>
-    {error && <ErrorState message={error} retry={()=>{loadBalances();loadRefunds();loadCandidates()}}/>}
-  </section>
-}
-
 function Audit() {
   const [items, setItems] = useState<Array<{ id: string; actor_id: string | null; action: string; entity: string; entity_id: string | null; created_at: string }>>([])
   const [search, setSearch] = useState('')
@@ -2676,7 +2577,7 @@ function ManualOrders() {
         const { data, error: queryError, count } = await query
         if (queryError) throw new Error(queryError.message)
         setItems((data ?? []) as Record<string, unknown>[])
-        setTotal(count ?? 0)
+        setTotalRecords(count ?? 0)
       } catch (cause) { setError(cause instanceof Error ? cause.message : 'Manual orders could not be loaded.') }
       finally { setLoading(false) }
     })()
@@ -2847,7 +2748,7 @@ function ManualOrders() {
       </div>
     </form>}
     <div className="admin-panel">
-      <div className="admin-panel-heading"><div><p className="admin-kicker">Saved records</p><h3>{total} manual orders</h3></div></div>
+      <div className="admin-panel-heading"><div><p className="admin-kicker">Saved records</p><h3>{totalRecords} manual orders</h3></div></div>
       <label className="admin-search admin-table-tools__search"><Search size={16}/><input aria-label="Search manual orders" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0) }} placeholder="Search order number, customer or phone"/></label>
       {loading ? <Loading /> : items.length === 0 ? <Empty title="No manual orders found" detail="Try another search or add a new manual order." /> :
         <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Order number</th><th>Customer</th><th>Phone</th><th>Total</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>

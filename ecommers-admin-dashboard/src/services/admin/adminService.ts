@@ -1188,7 +1188,74 @@ export async function deleteAdminProductVideo(video: AdminProductVideo): Promise
   assertError(removed.error)
 }
 
+
+
+export type AdminPageResult<T> = { items: T[]; count: number }
 const ADMIN_PAGE_SIZE = 12
+
+export async function listAdminCategoriesPage(search = '', page = 0, pageSize = ADMIN_PAGE_SIZE): Promise<AdminPageResult<AdminCategory>> {
+  let query = getSupabase().from('categories').select('id, parent_id, name, slug, description, eyebrow, image_url, is_active, is_coming_soon, is_food_category, sort_order, seo_title, seo_description, created_at, updated_at', { count: 'exact' })
+    .order('sort_order').order('name').range(page * pageSize, page * pageSize + pageSize - 1)
+  if (search.trim()) query = query.or(`name.ilike.%${search.trim().replace(/[,%()]/g, ' ')}%,slug.ilike.%${search.trim().replace(/[,%()]/g, ' ')}%`)
+  const { data, error, count } = await query
+  assertError(error)
+  return { items: (data ?? []) as AdminCategory[], count: count ?? 0 }
+}
+
+export async function listAdminInventoryPage(search = '', page = 0, pageSize = ADMIN_PAGE_SIZE): Promise<AdminPageResult<AdminInventory>> {
+  let query = getSupabase().from('product_inventory')
+    .select('id, product_id, variant_id, quantity, low_stock_threshold, updated_at, products!inner(name), product_variants(option_label, option_value)', { count: 'exact' })
+    .order('updated_at', { ascending: false }).range(page * pageSize, page * pageSize + pageSize - 1)
+  if (search.trim()) query = query.ilike('products.name', `%${search.trim()}%`)
+  const { data, error, count } = await query
+  assertError(error)
+  const items = (data ?? []).map((row: any) => {
+    const product = Array.isArray(row.products) ? row.products[0] : row.products
+    const variant = Array.isArray(row.product_variants) ? row.product_variants[0] : row.product_variants
+    return { ...row, product_name: product?.name ?? 'Unknown product', variant_name: variant ? `${variant.option_label}: ${variant.option_value}` : null } as AdminInventory
+  })
+  return { items, count: count ?? 0 }
+}
+
+export async function listSellerApplicationsPage(status = 'all', search = '', page = 0, pageSize = ADMIN_PAGE_SIZE): Promise<AdminPageResult<AdminSeller>> {
+  let query = getSupabase().from('seller_profiles').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(page * pageSize, page * pageSize + pageSize - 1)
+  if (status !== 'all') query = query.eq('status', status as Database['public']['Tables']['seller_profiles']['Row']['status'])
+  if (search.trim()) query = query.or(`shop_name.ilike.%${search.trim()}%,contact_email.ilike.%${search.trim()}%,phone.ilike.%${search.trim()}%`)
+  const { data, error, count } = await query
+  assertError(error)
+  return { items: (data ?? []) as AdminSeller[], count: count ?? 0 }
+}
+
+export async function listAdminHeroesPage(search = '', page = 0, pageSize = ADMIN_PAGE_SIZE): Promise<AdminPageResult<AdminHero>> {
+  let query = getSupabase().from('homepage_heroes').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(page * pageSize, page * pageSize + pageSize - 1)
+  if (search.trim()) query = query.or(`title.ilike.%${search.trim()}%,subtitle.ilike.%${search.trim()}%`)
+  const { data, error, count } = await query
+  assertError(error)
+  return { items: (data ?? []) as AdminHero[], count: count ?? 0 }
+}
+
+export async function listAdminPromotionsPage(search = '', page = 0, pageSize = ADMIN_PAGE_SIZE): Promise<AdminPageResult<AdminPromotion>> {
+  let query = getSupabase().from('promotions').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(page * pageSize, page * pageSize + pageSize - 1)
+  if (search.trim()) query = query.or(`title.ilike.%${search.trim()}%,coupon_code.ilike.%${search.trim()}%`)
+  const { data, error, count } = await query
+  assertError(error)
+  return { items: (data ?? []) as AdminPromotion[], count: count ?? 0 }
+}
+
+export type AdminAuditFilters = { search?: string; actorId?: string; action?: string; entity?: string; dateFrom?: string; dateTo?: string }
+export async function listAdminAuditLogsPage(filters: AdminAuditFilters = {}, page = 0, pageSize = ADMIN_PAGE_SIZE) {
+  let query = (getSupabase() as any).from('admin_audit_logs').select('id, actor_id, action, entity, entity_id, details, created_at', { count: 'exact' }).order('created_at', { ascending: false }).range(page * pageSize, page * pageSize + pageSize - 1)
+  const search = filters.search?.trim()
+  if (search) query = query.or(`action.ilike.%${search}%,entity.ilike.%${search}%,entity_id.ilike.%${search}%`)
+  if (filters.actorId?.trim()) { if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(filters.actorId.trim())) throw new Error('Actor ID must be a valid user UUID.'); query = query.eq('actor_id', filters.actorId.trim()) }
+  if (filters.action?.trim()) query = query.eq('action', filters.action.trim())
+  if (filters.entity?.trim()) query = query.eq('entity', filters.entity.trim())
+  if (filters.dateFrom) query = query.gte('created_at', new Date(filters.dateFrom + 'T00:00:00').toISOString())
+  if (filters.dateTo) query = query.lt('created_at', new Date(new Date(filters.dateTo + 'T00:00:00').getTime() + 86400000).toISOString())
+  const { data, error, count } = await query
+  assertError(error)
+  return { items: data ?? [], count: count ?? 0 }
+}
 
 export type AdminRefundRecord = { id: string; case_id: string; order_id: string; amount: number; method: string; status: string; reference: string | null; admin_note: string; created_at: string }
 export type AdminSettlementBalance = { seller_id: string; shop_name: string; eligible_items: number; eligible_amount: number; paid_amount: number }

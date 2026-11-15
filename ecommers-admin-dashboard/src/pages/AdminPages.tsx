@@ -4,7 +4,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { Archive, ArrowLeft, BarChart3, Bell, Boxes, Check, CheckCheck, ChevronLeft, ChevronRight, CircleAlert, ClipboardList, Edit2, Film, FolderTree, Eye, EyeOff, Image as ImageIcon, Info, LayoutDashboard, LogOut, MapPin, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen, MessageSquare, Package, Plus, Printer, RefreshCw, Search, Send, Settings, ShieldAlert, Star, Store, Tag, Trash2, Truck, Users, Volume2, VolumeX, Wallet, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
-import { adjustInventory, decideMarketplaceCase, deleteAdminHero, deleteAdminPromotion, deleteProductVariant, getAdminOrderDetail, getAdminProductEditor, getAdminStoreSettings, getAdminFoodDeliverySettings, getAdminCommissionSettings, getAdminSummary, getVendorDocumentSignedUrl, listAdminCategories, listAdminAccountSuspensions, listAdminCustomers, listAdminHeroes, listAdminInventory, listAdminNotifications, listAdminOrders, listAdminOrderVendors, listAdminVendorPickups, markAdminVendorPickedUp, listAdminProducts, listAdminProductsPage, listAdminVendorDirectoryPage, listAdminPromotions, listAdminCustomerReviews, setAdminCustomerReviewStatus, listAdminSupportTickets, listAdminSellerSupportMessages, sendAdminSellerSupportMessage, listAdminCustomerSupportMessages, sendAdminCustomerSupportMessage, listAuditLogs, listMarketplaceCases, listAdminRefundRecordsPage, listAdminVendorSettlementBalances, listAdminVendorSettlementCandidates, listAdminVendorSettlementBatchesPage, listAdminVendorSettlementItemsPage, recordAdminCaseRefund, updateAdminRefundStatus, createAdminVendorSettlement, listSellerApplications, markAdminNotificationRead, markAllAdminNotificationsRead, sendAdminPushTest, sendAdminManualNotification, moderateProduct, deleteAdminProductImage, deleteAdminProductPermanently, listAdminProductDeletionRequests, reviewAdminProductDeletion, reviewSellerApplication, setAdminVendorLock, setAdminSupportTicketStatus, saveAdminHero, saveAdminPromotion, saveCategory, saveProduct, saveProductVariant, saveAdminProductInventory, setAdminAccountSuspension, updateAdminStoreSettings, updateAdminFoodDeliverySettings, updateAdminCommissionSettings, updateAdminSupportTicket, updateOrder, saveDeliveryCollection, addOrderNote, rejectAdminOrder, findCustomerDeliveryOrders, confirmOrdersWithDeliveryBatch, createFollowupDeliveryBatch, markDeliveryBatchDelivered, listOrderDeliveryBatches, updateProductStatus, updateProductsHotDeal, setAdminProductFeatured, uploadAdditionalProductImage, uploadPublicMedia, type AdminCaseDetail, type AdminCategory, type AdminCustomerReview, type AdminAccountSuspension, type AdminCustomer, type AdminHero, type AdminInventory, type AdminNotification, type AdminOrder, type AdminOrderVendor, type AdminProduct, type AdminProductDeletionRequest, type AdminPromotion, type AdminSeller, type AdminStoreSettings, type AdminFoodDeliverySettings, type AdminCommissionSettings, type AdminSummary, type AdminSupportInboxTicket, type AdminSupportChatMessage, type AdminVariant, type AdminRefundRecord, type AdminSettlementBalance, type AdminSettlementCandidate, type AdminSettlementBatch, type AdminSettlementLedgerItem } from '../services/admin/adminService'
+import { adjustInventory, decideMarketplaceCase, deleteAdminHero, deleteAdminPromotion, deleteProductVariant, getAdminOrderDetail, getAdminProductEditor, getAdminStoreSettings, getAdminFoodDeliverySettings, getAdminCommissionSettings, getAdminSummary, getVendorDocumentSignedUrl, listAdminCategories, listAdminAuditLogsPage, listAdminPromotionsPage, listAdminHeroesPage, listSellerApplicationsPage, listAdminCategoriesPage, listAdminAccountSuspensions, listAdminCustomers, listAdminHeroes, listAdminInventory, listAdminNotifications, listAdminOrders, listAdminOrderVendors, listAdminVendorPickups, markAdminVendorPickedUp, listAdminProducts, listAdminProductsPage, listAdminVendorDirectoryPage, listAdminPromotions, listAdminCustomerReviews, setAdminCustomerReviewStatus, listAdminSupportTickets, listAdminSellerSupportMessages, sendAdminSellerSupportMessage, listAdminCustomerSupportMessages, sendAdminCustomerSupportMessage, listAuditLogs, listMarketplaceCases, listAdminRefundRecordsPage, listAdminVendorSettlementBalances, listAdminVendorSettlementCandidates, listAdminVendorSettlementBatchesPage, listAdminVendorSettlementItemsPage, recordAdminCaseRefund, updateAdminRefundStatus, createAdminVendorSettlement, listSellerApplications, markAdminNotificationRead, markAllAdminNotificationsRead, sendAdminPushTest, sendAdminManualNotification, moderateProduct, deleteAdminProductImage, deleteAdminProductPermanently, listAdminProductDeletionRequests, reviewAdminProductDeletion, reviewSellerApplication, setAdminVendorLock, setAdminSupportTicketStatus, saveAdminHero, saveAdminPromotion, saveCategory, saveProduct, saveProductVariant, saveAdminProductInventory, setAdminAccountSuspension, updateAdminStoreSettings, updateAdminFoodDeliverySettings, updateAdminCommissionSettings, updateAdminSupportTicket, updateOrder, saveDeliveryCollection, addOrderNote, rejectAdminOrder, findCustomerDeliveryOrders, confirmOrdersWithDeliveryBatch, createFollowupDeliveryBatch, markDeliveryBatchDelivered, listOrderDeliveryBatches, updateProductStatus, updateProductsHotDeal, setAdminProductFeatured, uploadAdditionalProductImage, uploadPublicMedia, type AdminCaseDetail, type AdminCategory, type AdminCustomerReview, type AdminAccountSuspension, type AdminCustomer, type AdminHero, type AdminInventory, type AdminNotification, type AdminOrder, type AdminOrderVendor, type AdminProduct, type AdminProductDeletionRequest, type AdminPromotion, type AdminSeller, type AdminStoreSettings, type AdminFoodDeliverySettings, type AdminCommissionSettings, type AdminSummary, type AdminSupportInboxTicket, type AdminSupportChatMessage, type AdminVariant, type AdminRefundRecord, type AdminSettlementBalance, type AdminSettlementCandidate, type AdminSettlementBatch, type AdminSettlementLedgerItem } from '../services/admin/adminService'
 import type { Database } from '../types/database'
 import { getSupabase } from '../lib/supabase'
 import { isValidEmail, isValidPakistaniMobile, normalizePakistaniMobile } from '../utils/contactValidation'
@@ -22,10 +22,10 @@ const nav = [
   { section: 'Product catalogue & merchandising', to: '/admin/hot-deals', label: 'Campaign Manager', icon: Tag },
   { section: 'Product catalogue & merchandising', to: '/admin/vendor-products', label: 'Vendor Products', icon: Store },
   { section: 'Product catalogue & merchandising', to: '/admin/reviews', label: 'Customer reviews', icon: Star },
+  { section: 'Orders & fulfilment', to: '/admin/finance', label: 'Refunds & Settlements', icon: Wallet },
   { section: 'Orders & fulfilment', to: '/admin/orders', label: 'Orders', icon: ClipboardList },
   { section: 'Orders & fulfilment', to: '/admin/manual-orders', label: 'Manual Orders', icon: Plus },
   { section: 'Orders & fulfilment', to: '/admin/inventory', label: 'Inventory', icon: Boxes },
-  { section: 'Orders & fulfilment', to: '/admin/finance', label: 'Refunds & Settlements', icon: Wallet },
   { section: 'People & marketplace', to: '/admin/sellers', label: 'Sellers', icon: Store },
   { section: 'People & marketplace', to: '/admin/drivers', label: 'Drivers', icon: Truck },
   { section: 'People & marketplace', to: '/admin/customers', label: 'Customers', icon: Users },
@@ -238,6 +238,7 @@ function AdminShell({ children }: { children: ReactNode }) {
 }
 
 function AdminContent({ path }: { path: string }) {
+  if (path === '/admin/finance') return <Finance />
   if (path === '/admin') return <Overview />
   if (path === '/admin/heroes') return <Heroes />
   if (path === '/admin/promotions') return <Promotions />
@@ -253,7 +254,6 @@ function AdminContent({ path }: { path: string }) {
   if (/^\/admin\/manual-orders\/[^/]+$/.test(path)) return <ManualOrderDetailPage orderId={path.split('/').pop()!} />
   if (/^\/admin\/orders\/[^/]+$/.test(path)) return <OrderDetailPage orderId={path.split('/').pop()!} />
   if (path === '/admin/inventory') return <Inventory />
-  if (path === '/admin/finance') return <Finance />
   if (path === '/admin/sellers') return <Sellers />
   if (path === '/admin/drivers') return <DriverManagement />
   if (path === '/admin/push-notifications') return <PushNotifications />
@@ -852,6 +852,10 @@ function HotDeals() {
 function Categories() {
   const { push } = useToast()
   const [items, setItems] = useState<AdminCategory[]>([])
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(12)
+  const [total, setTotal] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<AdminCategory | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -859,8 +863,8 @@ function Categories() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
-  const load = (quiet = false) => { if (!quiet) setLoading(true); setError(null); void listAdminCategories().then((next) => setItems((current) => mergeRowsById(current, next))).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Categories could not be loaded.')).finally(() => { if (!quiet) setLoading(false) }) }
-  useEffect(load, [])
+  const load = (quiet = false) => { if (!quiet) setLoading(true); setError(null); void listAdminCategoriesPage(search, page, pageSize).then((result) => { setItems(result.items); setTotal(result.count) }).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Categories could not be loaded.')).finally(() => { if (!quiet) setLoading(false) }) }
+  useEffect(load, [search, page, pageSize])
   useAutoRefresh(load)
   useEffect(() => { if (!image) { setImagePreview(null); return } const url = URL.createObjectURL(image); setImagePreview(url); return () => URL.revokeObjectURL(url) }, [image])
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -871,8 +875,8 @@ function Categories() {
       const imageUrl = image ? await uploadPublicMedia(image, 'categories') : editing?.image_url ?? null
       const savedCategory = await saveCategory({ name: String(data.get('name') ?? '').trim(), slug: String(data.get('slug') ?? '').trim(), description: String(data.get('description') ?? ''), is_active: data.get('is_active') === 'on', is_coming_soon: data.get('is_coming_soon') === 'on', is_food_category: data.get('is_food_category') === 'on', sort_order: Number(data.get('sort_order') ?? 0), parent_id: editing?.parent_id ?? null, eyebrow: editing?.eyebrow ?? null, image_url: imageUrl, seo_title: editing?.seo_title ?? null, seo_description: editing?.seo_description ?? null }, editing?.id)
       if (!savedCategory) throw new Error('The category could not be verified after saving.')
-      setItems((current) => editing ? current.map((row) => row.id === savedCategory.id ? { ...row, ...savedCategory } : row) : [...current, savedCategory as AdminCategory].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)))
       push(editing ? 'Category updated.' : 'Category created.')
+      load()
       setShowForm(false); setEditing(null); setImage(null)
     } catch (cause) { push(cause instanceof Error ? cause.message : 'Category could not be saved.', 'error') }
     finally { setSaving(false) }
@@ -885,7 +889,7 @@ function Categories() {
       <label className="admin-form-span"><span>Category image (JPG, PNG, WebP or AVIF; max 8 MB)</span><input type="file" accept="image/jpeg,image/png,image/webp,image/avif" onChange={(event) => { const file = event.target.files?.[0] ?? null; if (file && (file.size > 8 * 1024 * 1024 || !['image/jpeg','image/png','image/webp','image/avif'].includes(file.type))) { push('Choose a JPG, PNG, WebP or AVIF image up to 8 MB.', 'error'); event.target.value = ''; setImage(null); return } setImage(file) }} /></label>
       {(imagePreview || editing?.image_url) && <img src={imagePreview ?? editing?.image_url ?? ''} alt="Category image preview" style={{ maxWidth: 220, maxHeight: 140, objectFit: 'cover', borderRadius: 8 }} />}
     </div><div className="admin-form-actions"><button type="button" className="admin-button admin-button--outline" onClick={() => { setShowForm(false); setEditing(null); setImage(null) }}>Cancel</button><button className="admin-button" disabled={saving}>{saving ? 'Saving…' : editing ? 'Save category' : 'Create category'}</button></div></form>}
-    {error ? <ErrorState message={error} retry={load} /> : loading ? <Loading /> : items.length === 0 ? <Empty title="No categories yet" detail="Create your first live category, then assign products to it." /> : <div className="admin-table-wrap"><TableTools /><table className="admin-table"><thead><tr><th>Name</th><th>Slug</th><th>Visibility</th><th>Availability</th><th>Order</th><th>Updated</th><th>Actions</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td><strong>{item.name}</strong><small>{item.description || 'No description'}</small></td><td>{item.slug}{item.is_food_category && <small>Food Category</small>}</td><td><em className={statusClass(item.is_active ? 'active' : 'hidden')}>{item.is_active ? 'active' : 'inactive / hidden'}</em></td><td><em className={statusClass(item.is_coming_soon ? 'pending' : 'published')}>{item.is_coming_soon ? 'Coming soon' : 'Available'}</em></td><td>{item.sort_order}</td><td>{formatDate(item.updated_at)}</td><td><button type="button" className="admin-small-button" onClick={() => startEdit(item)}><Edit2 size={14} /> Edit</button></td></tr>)}</tbody></table></div>}
+    {error ? <ErrorState message={error} retry={load} /> : loading ? <Loading /> : items.length === 0 ? <Empty title="No categories yet" detail="Create your first live category, then assign products to it." /> : <div className="admin-table-wrap"><div className="admin-table-tools"><div className="admin-table-tools__main"><label className="admin-search admin-table-tools__search"><Search size={16}/><input aria-label="Search categories" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0) }} placeholder="Search categories by name or slug"/></label></div></div><table className="admin-table"><thead><tr><th>Name</th><th>Slug</th><th>Visibility</th><th>Availability</th><th>Order</th><th>Updated</th><th>Actions</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td><strong>{item.name}</strong><small>{item.description || 'No description'}</small></td><td>{item.slug}{item.is_food_category && <small>Food Category</small>}</td><td><em className={statusClass(item.is_active ? 'active' : 'hidden')}>{item.is_active ? 'active' : 'inactive / hidden'}</em></td><td><em className={statusClass(item.is_coming_soon ? 'pending' : 'published')}>{item.is_coming_soon ? 'Coming soon' : 'Available'}</em></td><td>{item.sort_order}</td><td>{formatDate(item.updated_at)}</td><td><button type="button" className="admin-small-button" onClick={() => startEdit(item)}><Edit2 size={14} /> Edit</button></td></tr>)}</tbody></table><Pagination page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(size) => { setPageSize(size); setPage(0) }}/></div>}
   </section>
 }
 
@@ -1409,6 +1413,10 @@ function Inventory() {
 function Sellers() {
   const { push } = useToast()
   const [items, setItems] = useState<AdminSeller[]>([])
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(12)
+  const [total, setTotal] = useState(0)
   const [status, setStatus] = useState('all')
   const [error, setError] = useState<string | null>(null)
   const [detailsTarget, setDetailsTarget] = useState<AdminSeller | null>(null)
@@ -1417,9 +1425,9 @@ function Sellers() {
   const [savingReview, setSavingReview] = useState(false)
   const load = () => {
     setError(null)
-    void listSellerApplications(status).then(setItems).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Seller applications could not be loaded.'))
+    void listSellerApplicationsPage(status, search, page, pageSize).then((result) => { setItems(result.items); setTotal(result.count) }).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Seller applications could not be loaded.'))
   }
-  useEffect(load, [status])
+  useEffect(load, [status, search, page, pageSize])
   useAutoRefresh(load)
 
   async function review(item: AdminSeller, next: AdminSeller['status'], reviewReason?: string) {
@@ -1464,12 +1472,12 @@ function Sellers() {
   return <section className="admin-content">
     <div className="admin-page-heading">
       <div><p className="admin-kicker">Marketplace governance</p><h2>Seller applications</h2><p className="admin-copy">Review vendor contact, address and location details before approving applications.</p></div>
-      <select value={status} onChange={(event) => setStatus(event.target.value)}>
+      <label className="admin-search"><Search size={16}/><input aria-label="Search sellers" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0) }} placeholder="Search shop, email or phone"/></label><select value={status} onChange={(event) => { setStatus(event.target.value); setPage(0) }}>
         <option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="suspended">Suspended</option><option value="all">All</option>
       </select>
     </div>
     {error ? <ErrorState message={error} retry={load} /> : items.length === 0 ? <Empty title="No seller applications" detail="Change the filter to Pending to focus on applications awaiting review." /> :
-      <div className="admin-table-wrap"><TableTools /><table className="admin-table">
+      <div className="admin-table-wrap"><table className="admin-table">
         <thead><tr><th>Shop</th><th>Contact</th><th>Status</th><th>Submitted</th><th>Actions</th></tr></thead>
         <tbody>{items.map((item) => <Fragment key={item.id}>
           <tr>
@@ -1487,7 +1495,7 @@ function Sellers() {
           </tr>
 
         </Fragment>)}</tbody>
-      </table></div>}
+      </table><Pagination page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(size) => { setPageSize(size); setPage(0) }}/></div>}
     {detailsTarget && <div className="admin-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailsTarget(null) }}>
       <section className="admin-modal admin-seller-details-modal" role="dialog" aria-modal="true" aria-labelledby="seller-details-title">
         <div className="admin-panel-heading"><div><p className="admin-kicker">Seller application details</p><h3 id="seller-details-title">{detailsTarget.shop_name}</h3><p className="admin-copy">{detailsTarget.slug}</p></div><button type="button" className="admin-icon-button" aria-label="Close details" onClick={() => setDetailsTarget(null)}><X size={17} /></button></div>
@@ -1561,7 +1569,7 @@ function Cases() {
     {error ? <ErrorState message={error} retry={load} /> : items.length === 0 ? <Empty title="No cases" detail="Buyer returns, refund requests and complaints will appear here once submitted." /> : <div className="admin-table-wrap"><TableTools /><table className="admin-table"><thead><tr><th>Type</th><th>Customer reason</th><th>Order / product</th><th>Status</th><th>Opened</th><th>Actions</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}>
       <td><em className={statusClass(item.case_type)}>{item.case_type}</em></td>
       <td>{item.reason}</td>
-      <td><strong>{item.order?.order_number ?? item.order_id}</strong><small>Case ID: {item.id}</small><small>{item.order_item?.product_name_snapshot ?? 'Product unavailable'}</small></td>
+      <td><strong>{item.order?.order_number ?? item.order_id}</strong><small>{item.order_item?.product_name_snapshot ?? 'Product unavailable'}</small></td>
       <td><em className={statusClass(item.status)}>{item.status}</em></td>
       <td>{formatDate(item.created_at)}</td>
       <td><div className="admin-action-row"><button type="button" className="admin-small-button" onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}>{selectedId === item.id ? 'Hide details' : 'View details'}</button>{!['resolved', 'rejected'].includes(item.status) && <><button type="button" className="admin-small-button" onClick={() => void decide(item, 'approved')}>Approve</button><button type="button" className="admin-small-button admin-small-button--danger" onClick={() => void decide(item, 'rejected')}>Reject</button></>}</div>{item.admin_decision && <small>{item.admin_decision}</small>}</td>
@@ -1985,6 +1993,549 @@ function StoreSettings() {
   if (!settings) return <Loading />
   return <section className="admin-content"><div className="admin-page-heading"><div><p className="admin-kicker">Storefront defaults and contact details</p><h2>Store settings</h2></div></div><form key={settings.updated_at} className="admin-form admin-panel" onSubmit={(event) => void submit(event)}><div className="admin-panel-heading"><div><h3>Public store configuration</h3><p className="admin-copy">These values are read by the storefront checkout, footer and help pages. Delivery fee and cash-on-delivery availability are enforced again by the database when an order is placed.</p></div></div><div className="admin-form-grid"><label className="admin-form-span">Store name<input name="store_name" defaultValue={settings.store_name} maxLength={160} required /></label><label>Support email<input name="support_email" type="email" defaultValue={settings.support_email ?? ''} placeholder="support@example.com" /></label><label>Support phone<input name="support_phone" type="tel" maxLength={13} pattern="(03[0-9]{9}|\+923[0-9]{9})" defaultValue={settings.support_phone ?? ''} placeholder="03001234567 or +923001234567" /></label><label>Support WhatsApp<input name="support_whatsapp" defaultValue={settings.support_whatsapp ?? ''} placeholder="+92 300 0000000" /></label><label>Standard delivery fee (PKR)<input name="delivery_fee" type="number" min="0" step="0.01" defaultValue={settings.delivery_fee} required /></label><label>Additional delivery fee (PKR)<input name="additional_delivery_fee" type="number" min="0" step="0.01" defaultValue={settings.additional_delivery_fee} required /><small>Default 0: pending products can be delivered later without charging a second delivery fee.</small></label><label className="admin-check"><input name="free_delivery_enabled" type="checkbox" defaultChecked={settings.free_delivery_enabled} /> Enable free delivery</label><label>Return window (days)<input name="return_window_days" type="number" min="0" step="1" defaultValue={settings.return_window_days} required /></label><label className="admin-check"><input name="cod_enabled" type="checkbox" defaultChecked={settings.cod_enabled} /> Cash on delivery available</label></div><div className="admin-panel-heading"><div><h3>JTBazar Food &amp; Shops opening hours</h3><p className="admin-copy">These hours control the live OPEN NOW / SHOP CLOSED status and countdown shown on the customer homepage. Times use Pakistan Standard Time. Set closing day to “Next day” for overnight schedules.</p></div></div><div className="admin-hours-grid">{MARKETPLACE_HOUR_DAYS.map(([day, label]) => { const saved = ((settings as any).marketplace_hours ?? DEFAULT_MARKETPLACE_HOURS)[day] ?? DEFAULT_MARKETPLACE_HOURS[day]; return <div className="admin-hours-row" key={day}><label className="admin-check"><input name={`hours_enabled_${day}`} type="checkbox" defaultChecked={saved.enabled} /> {label}</label><label>Opens<input name={`hours_open_${day}`} type="time" defaultValue={saved.open} /></label><label>Closes<input name={`hours_close_${day}`} type="time" defaultValue={saved.close} /></label><label>Closing day<select name={`hours_offset_${day}`} defaultValue={String(saved.close_day_offset)}><option value="0">Same day</option><option value="1">Next day</option></select></label></div> })}</div><div className="admin-form-actions"><button className="admin-button" disabled={saving}>{saving ? 'Saving…' : 'Save settings'}</button></div></form><form className="admin-form admin-panel" onSubmit={(event) => void submitCommission(event)}><div className="admin-panel-heading"><div><h3>Vendor commission settings</h3><p className="admin-copy">Vendors enter their own base price. JTBazar adds the configured commission once to calculate the customer price. Category rates override the default rate. Existing published listings are not repriced automatically.</p></div></div>{commissionSettings ? <><div className="admin-form-grid"><label>Default commission (%)<input name="default_commission" type="number" min="0" max="100" step="0.01" defaultValue={commissionSettings.default_percent} required /></label></div><div className="admin-hours-grid">{commissionCategories.map((category) => <label key={category.id}>{category.name} (%)<input name={`commission_${category.id}`} type="number" min="0" max="100" step="0.01" placeholder={`Use default (${commissionSettings.default_percent}%)`} defaultValue={commissionSettings.category_rates[category.id] ?? ''} /></label>)}</div><p className="admin-copy">Discounts are applied to the final customer price after commission is added. Commission is not added again at checkout, and category overrides apply to new or edited listings only.</p><div className="admin-form-actions"><button className="admin-button" disabled={commissionSaving}>{commissionSaving ? 'Saving…' : 'Save commission rates'}</button></div></> : <Loading />}</form><form key={foodLocation ? `${foodLocation.hub_lat ?? "none"}-${foodLocation.hub_lng ?? "none"}-${foodLocation.radius_km}` : "loading"} className="admin-form admin-panel" onSubmit={(event) => void saveFoodLocation(event)}><div className="admin-panel-heading"><div><h3>JTBazar food delivery operating location</h3><p className="admin-copy">No permanent warehouse is required. Use the map to select your current operating/pickup point whenever it changes. JTBazar-owned Food &amp; Groceries orders are accepted only within this radius. Vendor-owned food orders continue using each vendor shop location.</p></div></div><FoodLocationMap initialPoint={foodLocation?.hub_lat != null && foodLocation.hub_lng != null ? { lat: foodLocation.hub_lat, lng: foodLocation.hub_lng } : null} onSelect={setSelectedFoodPoint} /><div className="admin-form-grid"><label>Delivery radius (km)<input name="radius_km" type="number" min="0.1" max="50" step="0.1" defaultValue={foodLocation?.radius_km ?? 5} required /></label></div><p className="admin-copy">{selectedFoodPoint ? `Selected operating point: ${selectedFoodPoint.lat}, ${selectedFoodPoint.lng}` : foodLocation?.hub_lat != null && foodLocation.hub_lng != null ? `Saved operating point: ${foodLocation.hub_lat}, ${foodLocation.hub_lng}` : 'No current operating location selected. Use “Use my current location” or click the map; JTBazar-owned food orders remain blocked until you save a point.'}</p><div className="admin-form-actions"><button className="admin-button" disabled={foodLocationSaving || !foodLocation || !selectedFoodPoint}>{foodLocationSaving ? 'Saving…' : 'Save food delivery location'}</button></div></form></section>
 }
+
+function Audit() {
+  const [items, setItems] = useState<Array<{ id: string; actor_id: string | null; action: string; entity: string; entity_id: string | null; created_at: string }>>([])
+  const [search, setSearch] = useState('')
+  const [actorId, setActorId] = useState('')
+  const [action, setAction] = useState('')
+  const [entity, setEntity] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(12)
+  const [total, setTotal] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const load = () => void listAdminAuditLogsPage({ search, actorId, action, entity, dateFrom, dateTo }, page, pageSize)
+    .then((result) => { setItems(result.items); setTotal(result.count); setError(null) })
+    .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Audit log could not be loaded.'))
+  useEffect(load, [search, actorId, action, entity, dateFrom, dateTo, page, pageSize]); useAutoRefresh(load)
+  const resetFilters = () => { setSearch(''); setActorId(''); setAction(''); setEntity(''); setDateFrom(''); setDateTo(''); setPage(0) }
+  return <section className="admin-content">
+    <div className="admin-page-heading"><div><p className="admin-kicker">Sensitive changes</p><h2>Audit log</h2><p className="admin-copy">Search and filter the complete audit history. Filters are applied by the database before pagination.</p></div></div>
+    <div className="admin-panel" style={{display:'grid',gap:12,marginBottom:16}}>
+      <div className="admin-form-grid">
+        <label className="admin-field"><span>Search</span><input value={search} onChange={event=>{setSearch(event.target.value);setPage(0)}} placeholder="Action, entity or record ID"/></label>
+        <label className="admin-field"><span>Actor user ID</span><input value={actorId} onChange={event=>{setActorId(event.target.value);setPage(0)}} placeholder="Admin UUID"/></label>
+        <label className="admin-field"><span>Action (exact)</span><input value={action} onChange={event=>{setAction(event.target.value);setPage(0)}} placeholder="e.g. update, approve"/></label>
+        <label className="admin-field"><span>Entity (exact)</span><input value={entity} onChange={event=>{setEntity(event.target.value);setPage(0)}} placeholder="e.g. orders, products"/></label>
+        <label className="admin-field"><span>From date</span><input type="date" value={dateFrom} max={dateTo || undefined} onChange={event=>{setDateFrom(event.target.value);setPage(0)}}/></label>
+        <label className="admin-field"><span>To date</span><input type="date" value={dateTo} min={dateFrom || undefined} onChange={event=>{setDateTo(event.target.value);setPage(0)}}/></label>
+      </div>
+      <div><button type="button" className="admin-button admin-button--outline" onClick={resetFilters}>Clear filters</button></div>
+    </div>
+    {error ? <ErrorState message={error} retry={load} /> : items.length === 0 ? <Empty title="No audit events" detail="No records match the selected filters." /> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Action</th><th>Entity</th><th>Entity ID</th><th>Actor ID</th><th>When</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td><em className={statusClass(item.action.toLowerCase())}>{item.action}</em></td><td>{item.entity}</td><td className="admin-mono">{item.entity_id ?? '—'}</td><td className="admin-mono">{item.actor_id ?? '—'}</td><td>{formatDate(item.created_at)}</td></tr>)}</tbody></table><Pagination page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(size) => { setPageSize(size); setPage(0) }}/></div>}
+  </section>
+}
+
+function Promotions() {
+  const { push } = useToast()
+  const [items, setItems] = useState<AdminPromotion[]>([])
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(12)
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [editingPromo, setEditingPromo] = useState<AdminPromotion | null>(null)
+  const [promoImages, setPromoImages] = useState<string[]>([])
+  const [uploadingPromoImages, setUploadingPromoImages] = useState(false)
+
+  const load = (quiet = false) => {
+    if (!quiet) setLoading(true)
+    setError(null)
+    void listAdminPromotionsPage(search, page, pageSize)
+      .then((result) => { setItems(result.items); setTotal(result.count) })
+      .catch((cause) => setError(cause instanceof Error ? cause.message : 'Promotions could not be loaded.'))
+      .finally(() => { if (!quiet) setLoading(false) })
+  }
+
+  useEffect(load, [search, page, pageSize])
+  useAutoRefresh(load)
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    try {
+      await saveAdminPromotion(
+        {
+          title: String(data.get('title') ?? '').trim(),
+          description: String(data.get('description') ?? '').trim() || null,
+          banner_image_url: promoImages[0] ?? null,
+          banner_image_urls: promoImages,
+          cta_text: String(data.get('cta_text') ?? '').trim() || null,
+          cta_destination: String(data.get('cta_destination') ?? '').trim() || null,
+          is_platform_wide: data.get('is_platform_wide') === 'on',
+          status: String(data.get('status') ?? 'approved') as AdminPromotion['status'],
+          display_position: String(data.get('display_position') ?? 'hero_banner'),
+          target_platform: String(data.get('target_platform') ?? 'both') as AdminPromotion['target_platform'],
+          campaign_type: String(data.get('campaign_type') ?? 'banner') as AdminPromotion['campaign_type'],
+          show_on_launch: data.get('show_on_launch') === 'on',
+          starts_at: String(data.get('starts_at') ?? '').trim() ? new Date(String(data.get('starts_at'))).toISOString() : null,
+          ends_at: String(data.get('ends_at') ?? '').trim() ? new Date(String(data.get('ends_at'))).toISOString() : null,
+          priority: Number(data.get('priority') ?? 0),
+          coupon_code: String(data.get('coupon_code') ?? '').trim() || null,
+          discount_percent: data.get('discount_percent') ? Number(data.get('discount_percent')) : null,
+        },
+        editingPromo?.id
+      )
+      push('Promotion campaign saved.')
+      setShowForm(false)
+      setEditingPromo(null)
+      load()
+    } catch (cause) {
+      push(cause instanceof Error ? cause.message : 'Promotion could not be saved.', 'error')
+    }
+  }
+
+  async function removePromo(id: string) {
+    if (!window.confirm('Delete this promotional campaign?')) return
+    try {
+      await deleteAdminPromotion(id)
+      push('Promotion deleted.')
+      load()
+    } catch (cause) {
+      push(cause instanceof Error ? cause.message : 'Delete failed.', 'error')
+    }
+  }
+
+  return (
+    <section className="admin-content">
+      <div className="admin-page-heading">
+        <div>
+          <p className="admin-kicker">Campaign management</p>
+          <h2>Banners & Ads Manager</h2>
+        </div>
+        <button
+          className="admin-button"
+          onClick={() => {
+            setEditingPromo(null)
+            setPromoImages([])
+            setShowForm(true)
+          }}
+        >
+          <Plus size={16} /> New platform campaign
+        </button>
+      </div>
+
+      {(showForm || editingPromo) && (
+        <form className="admin-form admin-panel" onSubmit={(event) => void submit(event)}>
+          <div className="admin-panel-heading">
+            <h3>{editingPromo ? 'Edit campaign' : 'New platform promotion'}</h3>
+            <button
+              type="button"
+              className="admin-icon-button"
+              onClick={() => {
+                setShowForm(false)
+                setEditingPromo(null)
+                setPromoImages([])
+              }}
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <div className="admin-form-grid">
+            <label>
+              Title <input name="title" defaultValue={editingPromo?.title ?? ''} required />
+            </label>
+            <label>
+              Coupon code <input name="coupon_code" defaultValue={editingPromo?.coupon_code ?? ''} placeholder="e.g. SAVE20" />
+            </label>
+            <label>
+              Discount % <input name="discount_percent" type="number" min="0" max="100" defaultValue={editingPromo?.discount_percent ?? ''} placeholder="20" />
+            </label>
+            <label>
+              Display position
+              <select name="display_position" defaultValue={editingPromo?.display_position ?? 'hero_banner'}>
+                <option value="hero_banner">Hero Banner</option>
+                <option value="seller_banner">Become a Seller Banner</option>
+                <option value="top_promo">Top Promo Bar</option>
+                <option value="category_feature">Category Feature</option>
+                <option value="before_popular_products">Above Popular / Featured Products</option>
+                <option value="product_strip">Product Strip</option>
+                <option value="after_new_arrivals">Below New Arrivals</option>
+                <option value="offer_section">Offer Section</option>
+              </select>
+            </label>
+            <label>
+              Campaign type
+              <select name="campaign_type" defaultValue={editingPromo?.campaign_type ?? 'banner'}>
+                <option value="banner">Homepage banner</option>
+                <option value="popup">Opening popup ad</option>
+              </select>
+            </label>
+            <label>
+              Show on
+              <select name="target_platform" defaultValue={editingPromo?.target_platform ?? 'both'}>
+                <option value="both">Website + Android app</option>
+                <option value="website">Website only</option>
+                <option value="android">Android app only</option>
+              </select>
+            </label>
+            <label>
+              Start date/time <input name="starts_at" type="datetime-local" defaultValue={toLocalDateTimeInput(editingPromo?.starts_at)} />
+            </label>
+            <label>
+              End date/time <input name="ends_at" type="datetime-local" defaultValue={toLocalDateTimeInput(editingPromo?.ends_at)} />
+            </label>
+            <label className="admin-check">
+              <input name="show_on_launch" type="checkbox" defaultChecked={editingPromo?.show_on_launch ?? false} /> Show popup on fresh app/website opening
+            </label>
+            <label>
+              Priority <input name="priority" type="number" defaultValue={editingPromo?.priority ?? 0} />
+            </label>
+            <label>
+              Status
+              <select name="status" defaultValue={editingPromo?.status ?? 'approved'}>
+                <option value="pending_review">Pending Review</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="hidden">Hidden</option>
+                <option value="archived">Archived</option>
+              </select>
+            </label>
+            <label className="admin-form-span">
+              <span>Upload banner images</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/avif"
+                multiple
+                disabled={uploadingPromoImages}
+                onChange={(event) => {
+                  const input = event.currentTarget
+                  const files = Array.from(input.files ?? [])
+                  if (!files.length) return
+                  setUploadingPromoImages(true)
+                  void Promise.all(files.map((file) => uploadPublicMedia(file, 'promotions')))
+                    .then((urls) => setPromoImages((current) => [...current, ...urls]))
+                    .catch((cause) => push(cause instanceof Error ? cause.message : 'Banner images could not be uploaded.', 'error'))
+                    .finally(() => {
+                      setUploadingPromoImages(false)
+                      input.value = ''
+                    })
+                }}
+              />
+              <small>Choose one or more JPG, PNG, WebP or AVIF images, up to 8 MB each.</small>
+              {uploadingPromoImages && <small>Uploading images…</small>}
+              {promoImages.length > 0 && (
+                <div className="admin-promotion-image-list">
+                  {promoImages.map((url, index) => (
+                    <div className="admin-promotion-image" key={`${url}-${index}`}>
+                      <img src={url} alt={`Campaign banner ${index + 1}`} />
+                      <span>Image {index + 1}</span>
+                      <button type="button" className="admin-icon-button" aria-label={`Remove image ${index + 1}`} onClick={() => setPromoImages((current) => current.filter((_, imageIndex) => imageIndex !== index))}><X size={14} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </label>
+            <label className="admin-form-span">
+              <span>CTA text & link</span>
+              <input name="cta_text" defaultValue={editingPromo?.cta_text ?? ''} placeholder="CTA Text" />
+              <input name="cta_destination" defaultValue={editingPromo?.cta_destination ?? ''} placeholder="CTA Link e.g. /shop" />
+            </label>
+            <label className="admin-form-span">
+              <span>Description</span>
+              <textarea name="description" rows={3} defaultValue={editingPromo?.description ?? ''} />
+            </label>
+            <label className="admin-check">
+              <input name="is_platform_wide" type="checkbox" defaultChecked={editingPromo?.is_platform_wide ?? true} /> Platform-wide promotion
+            </label>
+          </div>
+          <div className="admin-form-actions">
+            <button
+              type="button"
+              className="admin-button admin-button--outline"
+              onClick={() => {
+                setShowForm(false)
+                setEditingPromo(null)
+              }}
+            >
+              Cancel
+            </button>
+            <button className="admin-button" disabled={uploadingPromoImages}>{uploadingPromoImages ? 'Uploading…' : 'Save campaign'}</button>
+          </div>
+        </form>
+      )}
+
+      {error ? (
+        <ErrorState message={error} retry={load} />
+      ) : loading ? (
+        <Loading />
+      ) : items.length === 0 ? (
+        <Empty
+          title="No promotional campaigns found"
+          detail="Create platform-wide banners or review seller promotional submissions here."
+        />
+      ) : (
+        <div className="admin-table-wrap"><div className="admin-table-tools"><div className="admin-table-tools__main"><label className="admin-search admin-table-tools__search"><Search size={16}/><input aria-label="Search promotions" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0) }} placeholder="Search title or coupon code"/></label></div></div>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Placement</th>
+                <th>Discount</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <strong>{item.title}</strong>
+                    <small>{item.coupon_code ? `Code: ${item.coupon_code}` : 'No coupon code'}</small>
+                  </td>
+                  <td>{item.display_position}</td>
+                  <td>{item.discount_percent ? `${item.discount_percent}% OFF` : 'Banner'}</td>
+                  <td>{item.is_platform_wide ? 'Platform' : 'Vendor'}</td>
+                  <td>
+                    <em className={statusClass(item.status)}>{item.status}</em>
+                  </td>
+                  <td>
+                    <div className="admin-action-row">
+                      <button className="admin-icon-button" title="Edit" onClick={() => { setPromoImages(item.banner_image_urls?.length ? item.banner_image_urls : item.banner_image_url ? [item.banner_image_url] : []); setEditingPromo(item) }}>
+                        <Edit2 size={15} />
+                      </button>
+                      <button className="admin-icon-button" title="Delete" onClick={() => void removePromo(item.id)}>
+                        <X size={15} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <Pagination page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(size) => { setPageSize(size); setPage(0) }}/>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function Heroes() {
+  const { push } = useToast()
+  const [items, setItems] = useState<AdminHero[]>([])
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(12)
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [editingHero, setEditingHero] = useState<AdminHero | null>(null)
+  const [heroFile, setHeroFile] = useState<File | null>(null)
+  const [heroPreview, setHeroPreview] = useState<string | null>(null)
+  const [savingHero, setSavingHero] = useState(false)
+
+  useEffect(() => {
+    if (!heroFile) { setHeroPreview(null); return }
+    const preview = URL.createObjectURL(heroFile)
+    setHeroPreview(preview)
+    return () => URL.revokeObjectURL(preview)
+  }, [heroFile])
+
+  const load = (quiet = false) => {
+    if (!quiet) setLoading(true)
+    setError(null)
+    void listAdminHeroesPage(search, page, pageSize)
+      .then((result) => { setItems(result.items); setTotal(result.count) })
+      .catch((cause) => setError(cause instanceof Error ? cause.message : 'Heroes could not be loaded.'))
+      .finally(() => { if (!quiet) setLoading(false) })
+  }
+
+  useEffect(load, [search, page, pageSize])
+  useAutoRefresh(load)
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    setSavingHero(true)
+    try {
+      let imageUrl = editingHero?.image_url ?? ""
+      if (heroFile) {
+        imageUrl = await uploadPublicMedia(heroFile, "heroes")
+      } else if (String(data.get("image_url") ?? "").trim()) {
+        imageUrl = String(data.get("image_url") ?? "").trim()
+      }
+      if (!imageUrl) throw new Error('Choose a hero image or enter an image URL.')
+      if (!/^https:\/\//i.test(imageUrl) && !imageUrl.startsWith('/')) throw new Error('Use an HTTPS image URL.')
+
+      await saveAdminHero(
+        {
+          title: String(data.get("title") ?? "").trim(),
+          subtitle: String(data.get("subtitle") ?? "").trim() || null,
+          cta_text: String(data.get("cta_text") ?? "").trim() || null,
+          cta_destination: String(data.get("cta_destination") ?? "").trim() || null,
+          image_url: imageUrl,
+          display_order: Number(data.get("display_order") ?? 0),
+          status: String(data.get("status") ?? "published") as AdminHero["status"],
+        },
+        editingHero?.id
+      )
+      push("Hero slide saved.")
+      setShowForm(false)
+      setEditingHero(null)
+      setHeroFile(null)
+      load()
+    } catch (cause) {
+      push(cause instanceof Error ? cause.message : "Hero slide could not be saved.", "error")
+    } finally {
+      setSavingHero(false)
+    }
+  }
+
+  async function removeHero(id: string) {
+    if (!window.confirm('Delete this hero slide?')) return
+    try {
+      await deleteAdminHero(id)
+      push('Hero slide deleted.')
+      load()
+    } catch (cause) {
+      push(cause instanceof Error ? cause.message : 'Delete failed.', 'error')
+    }
+  }
+
+  return (
+    <section className="admin-content">
+      <div className="admin-page-heading">
+        <div>
+          <p className="admin-kicker">Storefront branding</p>
+          <h2>Homepage Heroes</h2>
+        </div>
+        <button
+          className="admin-button"
+          onClick={() => {
+            setEditingHero(null)
+            setHeroFile(null)
+            setShowForm(true)
+          }}
+        >
+          <Plus size={16} /> New hero slide
+        </button>
+      </div>
+
+      {(showForm || editingHero) && (
+        <form className="admin-form admin-panel" onSubmit={(event) => void submit(event)}>
+          <div className="admin-panel-heading">
+            <h3>{editingHero ? 'Edit hero slide' : 'New hero slide'}</h3>
+            <button
+              type="button"
+              className="admin-icon-button"
+              onClick={() => {
+                setShowForm(false)
+                setEditingHero(null)
+                setHeroFile(null)
+              }}
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <div className="admin-form-grid">
+            <label>
+              Title <input name="title" defaultValue={editingHero?.title ?? ''} required />
+            </label>
+            <label>
+              Subtitle <input name="subtitle" defaultValue={editingHero?.subtitle ?? ''} />
+            </label>
+            <label>
+              CTA text <input name="cta_text" defaultValue={editingHero?.cta_text ?? ''} placeholder="e.g. Shop Now" />
+            </label>
+            <label>
+              CTA destination <input name="cta_destination" defaultValue={editingHero?.cta_destination ?? ''} placeholder="e.g. /shop" />
+            </label>
+            <label className="admin-form-span">
+              <span>Hero image (JPG, PNG, WebP or AVIF; max 8 MB)</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" onChange={(event) => { const file = event.target.files?.[0] ?? null; if (file && (file.size > 8 * 1024 * 1024 || !['image/jpeg','image/png','image/webp','image/avif'].includes(file.type))) { push('Choose a JPG, PNG, WebP or AVIF image up to 8 MB.', 'error'); event.target.value = ''; setHeroFile(null); return } setHeroFile(file) }} />
+              <small>Upload a file or use an existing hosted image URL.</small>
+              <input name="image_url" defaultValue={editingHero?.image_url ?? ''} placeholder="https://..." />
+              {(heroPreview || editingHero?.image_url) && <img src={heroPreview ?? editingHero?.image_url ?? ''} alt="Hero image preview" style={{ display: 'block', maxWidth: 420, maxHeight: 180, objectFit: 'cover', borderRadius: 8, marginTop: 10 }} />}
+            </label>
+            <label>
+              Display order <input name="display_order" type="number" defaultValue={editingHero?.display_order ?? 0} />
+            </label>
+            <label>
+              Status
+              <select name="status" defaultValue={editingHero?.status ?? 'published'}>
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+                <option value="archived">Archived</option>
+              </select>
+            </label>
+          </div>
+          <div className="admin-form-actions">
+            <button
+              type="button"
+              className="admin-button admin-button--outline"
+              onClick={() => {
+                setShowForm(false)
+                setEditingHero(null)
+                setHeroFile(null)
+              }}
+            >
+              Cancel
+            </button>
+            <button className="admin-button" disabled={savingHero}>{savingHero ? "Saving…" : "Save hero slide"}</button>
+          </div>
+        </form>
+      )}
+
+      {error ? (
+        <ErrorState message={error} retry={load} />
+      ) : loading ? (
+        <Loading />
+      ) : items.length === 0 ? (
+        <Empty
+          title="No homepage heroes configured"
+          detail="Create your first hero slide to customize the storefront homepage hero banner dynamically."
+        />
+      ) : (
+        <div className="admin-table-wrap"><div className="admin-table-tools"><div className="admin-table-tools__main"><label className="admin-search admin-table-tools__search"><Search size={16}/><input aria-label="Search heroes" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0) }} placeholder="Search hero title or subtitle"/></label></div></div>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>CTA Link</th>
+                <th>Order</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <strong>{item.title}</strong>
+                    <small>{item.subtitle || 'No subtitle'}</small>
+                  </td>
+                  <td>{item.cta_destination || '—'}</td>
+                  <td>{item.display_order}</td>
+                  <td>
+                    <em className={statusClass(item.status)}>{item.status}</em>
+                  </td>
+                  <td>
+                    <div className="admin-action-row">
+                      <button className="admin-icon-button" title="Edit" onClick={() => setEditingHero(item)}>
+                        <Edit2 size={15} />
+                      </button>
+                      <button className="admin-icon-button" title="Delete" onClick={() => void removeHero(item.id)}>
+                        <X size={15} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <Pagination page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(size) => { setPageSize(size); setPage(0) }}/>
+        </div>
+      )}
+    </section>
+  )
+}
+
 
 function Finance() {
   const { push } = useToast()
@@ -2608,6 +3159,10 @@ function ManualOrders() {
   const emptyItem = (): ManualItem => ({ mode: 'catalog', product_id: '', category_id: '', product_search: '', seller_id: '', product_name_snapshot: '', quantity: 1, unit_price: 0, seller_name_snapshot: '', sku_snapshot: '' })
   const { push } = useToast()
   const [items, setItems] = useState<Record<string, unknown>[]>([])
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(12)
+  const [totalRecords, setTotalRecords] = useState(0)
   const [products, setProducts] = useState<AdminProduct[]>([])
   const [categories, setCategories] = useState<AdminCategory[]>([])
   const [productsLoading, setProductsLoading] = useState(false)
@@ -2636,9 +3191,12 @@ function ManualOrders() {
     void (async () => {
       try {
         const client = getSupabase() as any
-        const { data, error: queryError } = await client.from('manual_orders').select('*').order('created_at', { ascending: false }).limit(200)
+        let query = client.from('manual_orders').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(page * pageSize, page * pageSize + pageSize - 1)
+        if (search.trim()) query = query.or(`manual_order_number.ilike.%${search.trim()}%,customer_name.ilike.%${search.trim()}%,customer_phone.ilike.%${search.trim()}%`)
+        const { data, error: queryError, count } = await query
         if (queryError) throw new Error(queryError.message)
         setItems((data ?? []) as Record<string, unknown>[])
+        setTotalRecords(count ?? 0)
       } catch (cause) { setError(cause instanceof Error ? cause.message : 'Manual orders could not be loaded.') }
       finally { setLoading(false) }
     })()
@@ -2707,7 +3265,8 @@ function ManualOrders() {
       push(cause instanceof Error ? cause.message : 'Manual order could not be removed.', 'error')
     }
   }
-  useEffect(() => { load(); loadProducts(); void listAdminCategories().then(setCategories).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Categories could not be loaded.')) }, [])
+  useEffect(load, [search, page, pageSize])
+  useEffect(() => { loadProducts(); void listAdminCategories().then(setCategories).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Categories could not be loaded.')) }, [])
   const value = (row: Record<string, unknown>, ...keys: string[]) => {
     for (const key of keys) { const v = row[key]; if (v !== null && v !== undefined && v !== '') return String(v) }
     return '—'
@@ -2808,10 +3367,11 @@ function ManualOrders() {
       </div>
     </form>}
     <div className="admin-panel">
-      <div className="admin-panel-heading"><div><p className="admin-kicker">Saved records</p><h3>{items.length} manual orders</h3></div></div>
-      {loading ? <Loading /> : items.length === 0 ? <Empty title="No manual orders yet" detail="Add the first order using the “Add Manual Order” button above." /> :
+      <div className="admin-panel-heading"><div><p className="admin-kicker">Saved records</p><h3>{totalRecords} manual orders</h3></div></div>
+      <label className="admin-search admin-table-tools__search"><Search size={16}/><input aria-label="Search manual orders" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0) }} placeholder="Search order number, customer or phone"/></label>
+      {loading ? <Loading /> : items.length === 0 ? <Empty title="No manual orders found" detail="Try another search or add a new manual order." /> :
         <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Order number</th><th>Customer</th><th>Phone</th><th>Total</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
-        <tbody>{items.map((row,index)=><tr key={value(row,'id')==='—'?index:value(row,'id')}><td><Link className="admin-link-button" to={`/admin/manual-orders/${value(row,'id')}`}><strong>{value(row,'manual_order_number','order_number','id')}</strong><small>{value(row,'source')}</small></Link></td><td>{value(row,'customer_name')}<small>{value(row,'customer_email')}</small></td><td>{value(row,'customer_phone')}</td><td>{formatMoney(value(row,'total'))}</td><td><em className={statusClass(value(row,'order_status'))}>{value(row,'order_status')}</em></td><td>{formatDate(value(row,'created_at'))}</td><td><div className="admin-action-row"><button type="button" className="admin-small-button" onClick={() => void editManualOrder(row)} title={`Edit ${value(row,'manual_order_number')}`}><Edit2 size={14}/> Edit</button><button type="button" className="admin-small-button admin-small-button--danger" onClick={() => void deleteManualOrder(row)} title={`Remove ${value(row,'manual_order_number')}`}><Trash2 size={14}/> Delete</button></div></td></tr>)}</tbody></table></div>}
+        <tbody>{items.map((row,index)=><tr key={value(row,'id')==='—'?index:value(row,'id')}><td><Link className="admin-link-button" to={`/admin/manual-orders/${value(row,'id')}`}><strong>{value(row,'manual_order_number','order_number','id')}</strong><small>{value(row,'source')}</small></Link></td><td>{value(row,'customer_name')}<small>{value(row,'customer_email')}</small></td><td>{value(row,'customer_phone')}</td><td>{formatMoney(value(row,'total'))}</td><td><em className={statusClass(value(row,'order_status'))}>{value(row,'order_status')}</em></td><td>{formatDate(value(row,'created_at'))}</td><td><div className="admin-action-row"><button type="button" className="admin-small-button" onClick={() => void editManualOrder(row)} title={`Edit ${value(row,'manual_order_number')}`}><Edit2 size={14}/> Edit</button><button type="button" className="admin-small-button admin-small-button--danger" onClick={() => void deleteManualOrder(row)} title={`Remove ${value(row,'manual_order_number')}`}><Trash2 size={14}/> Delete</button></div></td></tr>)}</tbody></table><Pagination page={page} pageSize={pageSize} total={totalRecords} onPage={setPage} onPageSize={(size) => { setPageSize(size); setPage(0) }}/></div>}
     </div>
   </section>
 }

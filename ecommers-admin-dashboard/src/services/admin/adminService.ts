@@ -1188,3 +1188,53 @@ export async function deleteAdminProductVideo(video: AdminProductVideo): Promise
   assertError(removed.error)
 }
 
+export type AdminRefundRecord = { id: string; case_id: string; order_id: string; amount: number; method: string; status: string; reference: string | null; admin_note: string; created_at: string }
+export type AdminSettlementBalance = { seller_id: string; shop_name: string; eligible_items: number; eligible_amount: number; paid_amount: number }
+export type AdminSettlementCandidate = { order_item_id: string; order_id: string; order_number: string; product_name: string; quantity: number; gross_amount: number; commission_amount: number; payout_amount: number; delivered_at: string | null; total_count: number }
+
+export async function listAdminRefundRecordsPage(status = 'all', page = 0, pageSize = ADMIN_PAGE_SIZE) {
+  let query = (getSupabase() as any).from('admin_refund_records')
+    .select('id,case_id,order_id,amount,method,status,reference,admin_note,created_at', { count: 'exact' })
+    .order('created_at', { ascending: false }).range(page * pageSize, page * pageSize + pageSize - 1)
+  if (status !== 'all') query = query.eq('status', status)
+  const { data, error, count } = await query
+  assertError(error)
+  return { items: (data ?? []) as AdminRefundRecord[], count: count ?? 0 }
+}
+
+export async function listAdminVendorSettlementBalances(): Promise<AdminSettlementBalance[]> {
+  const { data, error } = await (getSupabase() as any).rpc('admin_list_vendor_settlement_balances')
+  assertError(error)
+  return (data ?? []) as AdminSettlementBalance[]
+}
+
+export async function listAdminVendorSettlementCandidates(sellerId: string, page = 0, pageSize = ADMIN_PAGE_SIZE) {
+  const { data, error } = await (getSupabase() as any).rpc('admin_list_vendor_settlement_candidates', { p_seller_id: sellerId, p_page: page, p_page_size: pageSize })
+  assertError(error)
+  const rows = (data ?? []) as AdminSettlementCandidate[]
+  return { items: rows, count: Number(rows[0]?.total_count ?? 0) }
+}
+
+export async function recordAdminCaseRefund(input: { caseId: string; amount: number; method: string; note: string; reference?: string }) {
+  const { data, error } = await (getSupabase() as any).rpc('admin_record_case_refund', {
+    p_case_id: input.caseId, p_amount: input.amount, p_method: input.method, p_admin_note: input.note, p_reference: input.reference ?? null,
+  })
+  assertError(error)
+  return String(data)
+}
+
+export async function updateAdminRefundStatus(input: { refundId: string; status: 'completed' | 'failed' | 'cancelled'; reference?: string; note?: string }) {
+  const { data, error } = await (getSupabase() as any).rpc('admin_update_refund_status', {
+    p_refund_id: input.refundId, p_status: input.status, p_reference: input.reference ?? null, p_admin_note: input.note ?? null,
+  })
+  assertError(error)
+  return data as AdminRefundRecord
+}
+
+export async function createAdminVendorSettlement(input: { sellerId: string; orderItemIds: string[]; method: string; note: string; reference?: string }) {
+  const { data, error } = await (getSupabase() as any).rpc('admin_create_vendor_settlement', {
+    p_seller_id: input.sellerId, p_order_item_ids: input.orderItemIds, p_method: input.method, p_admin_note: input.note, p_reference: input.reference ?? null,
+  })
+  assertError(error)
+  return String(data)
+}

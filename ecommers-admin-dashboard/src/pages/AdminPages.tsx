@@ -1411,6 +1411,10 @@ function Inventory() {
 function Sellers() {
   const { push } = useToast()
   const [items, setItems] = useState<AdminSeller[]>([])
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(12)
+  const [total, setTotal] = useState(0)
   const [status, setStatus] = useState('all')
   const [error, setError] = useState<string | null>(null)
   const [detailsTarget, setDetailsTarget] = useState<AdminSeller | null>(null)
@@ -1419,9 +1423,9 @@ function Sellers() {
   const [savingReview, setSavingReview] = useState(false)
   const load = () => {
     setError(null)
-    void listSellerApplications(status).then(setItems).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Seller applications could not be loaded.'))
+    void listSellerApplicationsPage(status, search, page, pageSize).then((result) => { setItems(result.items); setTotal(result.count) }).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Seller applications could not be loaded.'))
   }
-  useEffect(load, [status])
+  useEffect(load, [status, search, page, pageSize])
   useAutoRefresh(load)
 
   async function review(item: AdminSeller, next: AdminSeller['status'], reviewReason?: string) {
@@ -1466,12 +1470,12 @@ function Sellers() {
   return <section className="admin-content">
     <div className="admin-page-heading">
       <div><p className="admin-kicker">Marketplace governance</p><h2>Seller applications</h2><p className="admin-copy">Review vendor contact, address and location details before approving applications.</p></div>
-      <select value={status} onChange={(event) => setStatus(event.target.value)}>
+      <label className="admin-search"><Search size={16}/><input aria-label="Search sellers" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0) }} placeholder="Search shop, email or phone"/></label><select value={status} onChange={(event) => { setStatus(event.target.value); setPage(0) }}>
         <option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="suspended">Suspended</option><option value="all">All</option>
       </select>
     </div>
     {error ? <ErrorState message={error} retry={load} /> : items.length === 0 ? <Empty title="No seller applications" detail="Change the filter to Pending to focus on applications awaiting review." /> :
-      <div className="admin-table-wrap"><TableTools /><table className="admin-table">
+      <div className="admin-table-wrap"><table className="admin-table">
         <thead><tr><th>Shop</th><th>Contact</th><th>Status</th><th>Submitted</th><th>Actions</th></tr></thead>
         <tbody>{items.map((item) => <Fragment key={item.id}>
           <tr>
@@ -1489,7 +1493,7 @@ function Sellers() {
           </tr>
 
         </Fragment>)}</tbody>
-      </table></div>}
+      </table><Pagination page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(size) => { setPageSize(size); setPage(0) }}/></div>}
     {detailsTarget && <div className="admin-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailsTarget(null) }}>
       <section className="admin-modal admin-seller-details-modal" role="dialog" aria-modal="true" aria-labelledby="seller-details-title">
         <div className="admin-panel-heading"><div><p className="admin-kicker">Seller application details</p><h3 id="seller-details-title">{detailsTarget.shop_name}</h3><p className="admin-copy">{detailsTarget.slug}</p></div><button type="button" className="admin-icon-button" aria-label="Close details" onClick={() => setDetailsTarget(null)}><X size={17} /></button></div>

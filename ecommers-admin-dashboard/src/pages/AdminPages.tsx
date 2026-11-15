@@ -2114,8 +2114,8 @@ function Audit() {
       <div className="admin-form-grid">
         <label className="admin-field"><span>Search</span><input value={search} onChange={event=>{setSearch(event.target.value);setPage(0)}} placeholder="Action, entity or record ID"/></label>
         <label className="admin-field"><span>Actor user ID</span><input value={actorId} onChange={event=>{setActorId(event.target.value);setPage(0)}} placeholder="Admin UUID"/></label>
-        <label className="admin-field"><span>Action</span><input value={action} onChange={event=>{setAction(event.target.value);setPage(0)}} placeholder="e.g. update, approve"/></label>
-        <label className="admin-field"><span>Entity</span><input value={entity} onChange={event=>{setEntity(event.target.value);setPage(0)}} placeholder="e.g. orders, products"/></label>
+        <label className="admin-field"><span>Action (exact)</span><input value={action} onChange={event=>{setAction(event.target.value);setPage(0)}} placeholder="e.g. update, approve"/></label>
+        <label className="admin-field"><span>Entity (exact)</span><input value={entity} onChange={event=>{setEntity(event.target.value);setPage(0)}} placeholder="e.g. orders, products"/></label>
         <label className="admin-field"><span>From date</span><input type="date" value={dateFrom} max={dateTo || undefined} onChange={event=>{setDateFrom(event.target.value);setPage(0)}}/></label>
         <label className="admin-field"><span>To date</span><input type="date" value={dateTo} min={dateFrom || undefined} onChange={event=>{setDateTo(event.target.value);setPage(0)}}/></label>
       </div>

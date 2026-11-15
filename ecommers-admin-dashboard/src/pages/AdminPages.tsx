@@ -1993,15 +1993,37 @@ function StoreSettings() {
 }
 
 function Audit() {
-  const [items, setItems] = useState<Array<{ id: string; action: string; entity: string; entity_id: string | null; created_at: string }>>([])
+  const [items, setItems] = useState<Array<{ id: string; actor_id: string | null; action: string; entity: string; entity_id: string | null; created_at: string }>>([])
   const [search, setSearch] = useState('')
+  const [actorId, setActorId] = useState('')
+  const [action, setAction] = useState('')
+  const [entity, setEntity] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(12)
   const [total, setTotal] = useState(0)
   const [error, setError] = useState<string | null>(null)
-  const load = () => void listAdminAuditLogsPage(search, page, pageSize).then((result) => { setItems(result.items); setTotal(result.count) }).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Audit log could not be loaded.'))
-  useEffect(load, [search, page, pageSize]); useAutoRefresh(load)
-  return <section className="admin-content"><div className="admin-page-heading"><div><p className="admin-kicker">Sensitive changes</p><h2>Audit log</h2></div></div>{error ? <ErrorState message={error} retry={load} /> : items.length === 0 ? <Empty title="No audit events" detail="Product, category, inventory, note, and order status changes will be recorded by database triggers." /> : <div className="admin-table-wrap"><div className="admin-table-tools"><div className="admin-table-tools__main"><label className="admin-search admin-table-tools__search"><Search size={16}/><input aria-label="Search audit events" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0) }} placeholder="Search action, entity or ID"/></label></div></div><table className="admin-table"><thead><tr><th>Action</th><th>Entity</th><th>Entity ID</th><th>When</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td><em className={statusClass(item.action.toLowerCase())}>{item.action}</em></td><td>{item.entity}</td><td className="admin-mono">{item.entity_id ?? '—'}</td><td>{formatDate(item.created_at)}</td></tr>)}</tbody></table><Pagination page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(size) => { setPageSize(size); setPage(0) }}/></div>}</section>
+  const load = () => void listAdminAuditLogsPage({ search, actorId, action, entity, dateFrom, dateTo }, page, pageSize)
+    .then((result) => { setItems(result.items); setTotal(result.count); setError(null) })
+    .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Audit log could not be loaded.'))
+  useEffect(load, [search, actorId, action, entity, dateFrom, dateTo, page, pageSize]); useAutoRefresh(load)
+  const resetFilters = () => { setSearch(''); setActorId(''); setAction(''); setEntity(''); setDateFrom(''); setDateTo(''); setPage(0) }
+  return <section className="admin-content">
+    <div className="admin-page-heading"><div><p className="admin-kicker">Sensitive changes</p><h2>Audit log</h2><p className="admin-copy">Search and filter the complete audit history. Filters are applied by the database before pagination.</p></div></div>
+    <div className="admin-panel" style={{display:'grid',gap:12,marginBottom:16}}>
+      <div className="admin-form-grid">
+        <label className="admin-field"><span>Search</span><input value={search} onChange={event=>{setSearch(event.target.value);setPage(0)}} placeholder="Action, entity or record ID"/></label>
+        <label className="admin-field"><span>Actor user ID</span><input value={actorId} onChange={event=>{setActorId(event.target.value);setPage(0)}} placeholder="Admin UUID"/></label>
+        <label className="admin-field"><span>Action</span><input value={action} onChange={event=>{setAction(event.target.value);setPage(0)}} placeholder="e.g. update, approve"/></label>
+        <label className="admin-field"><span>Entity</span><input value={entity} onChange={event=>{setEntity(event.target.value);setPage(0)}} placeholder="e.g. orders, products"/></label>
+        <label className="admin-field"><span>From date</span><input type="date" value={dateFrom} max={dateTo || undefined} onChange={event=>{setDateFrom(event.target.value);setPage(0)}}/></label>
+        <label className="admin-field"><span>To date</span><input type="date" value={dateTo} min={dateFrom || undefined} onChange={event=>{setDateTo(event.target.value);setPage(0)}}/></label>
+      </div>
+      <div><button type="button" className="admin-button admin-button--outline" onClick={resetFilters}>Clear filters</button></div>
+    </div>
+    {error ? <ErrorState message={error} retry={load} /> : items.length === 0 ? <Empty title="No audit events" detail="No records match the selected filters." /> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Action</th><th>Entity</th><th>Entity ID</th><th>Actor ID</th><th>When</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td><em className={statusClass(item.action.toLowerCase())}>{item.action}</em></td><td>{item.entity}</td><td className="admin-mono">{item.entity_id ?? '—'}</td><td className="admin-mono">{item.actor_id ?? '—'}</td><td>{formatDate(item.created_at)}</td></tr>)}</tbody></table><Pagination page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(size) => { setPageSize(size); setPage(0) }}/></div>}
+  </section>
 }
 
 function Promotions() {

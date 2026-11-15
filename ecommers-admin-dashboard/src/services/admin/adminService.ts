@@ -1242,9 +1242,16 @@ export async function listAdminPromotionsPage(search = '', page = 0, pageSize = 
   return { items: (data ?? []) as AdminPromotion[], count: count ?? 0 }
 }
 
-export async function listAdminAuditLogsPage(search = '', page = 0, pageSize = ADMIN_PAGE_SIZE) {
+export type AdminAuditFilters = { search?: string; actorId?: string; action?: string; entity?: string; dateFrom?: string; dateTo?: string }
+export async function listAdminAuditLogsPage(filters: AdminAuditFilters = {}, page = 0, pageSize = ADMIN_PAGE_SIZE) {
   let query = getSupabase().from('admin_audit_logs').select('id, actor_id, action, entity, entity_id, details, created_at', { count: 'exact' }).order('created_at', { ascending: false }).range(page * pageSize, page * pageSize + pageSize - 1)
-  if (search.trim()) query = query.or(`action.ilike.%${search.trim()}%,entity.ilike.%${search.trim()}%,entity_id.ilike.%${search.trim()}%`)
+  const search = filters.search?.trim()
+  if (search) query = query.or(`action.ilike.%${search}%,entity.ilike.%${search}%,entity_id.ilike.%${search}%`)
+  if (filters.actorId?.trim()) query = query.eq('actor_id', filters.actorId.trim())
+  if (filters.action?.trim()) query = query.ilike('action', `%${filters.action.trim()}%`)
+  if (filters.entity?.trim()) query = query.ilike('entity', `%${filters.entity.trim()}%`)
+  if (filters.dateFrom) query = query.gte('created_at', new Date(filters.dateFrom + 'T00:00:00').toISOString())
+  if (filters.dateTo) query = query.lt('created_at', new Date(filters.dateTo + 'T00:00:00').getTime() + 86400000).toISOString()
   const { data, error, count } = await query
   assertError(error)
   return { items: data ?? [], count: count ?? 0 }

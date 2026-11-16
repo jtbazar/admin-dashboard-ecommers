@@ -3027,6 +3027,7 @@ function PushNotifications() {
 
 
 const ADMIN_MODULE_GUIDES: Record<string, { title: string; intro: string; sections: Array<[string, string]> }> = {
+  '/admin/promotions': { title: 'Banners & Ads', intro: 'Yahan website aur app ke banners, promotional posters aur ads manage karein.', sections: [['Naya banner/ad', 'Add banner ya promotion se title, description aur image upload karein. Image clear, relevant aur required dimensions ke mutabiq honi chahiye.'], ['Display position', 'Website position aur app position sahi select karein. Sirf woh placement choose karein jahan banner waqai dikhana hai; homepage ke multiple sections mein duplicate placement se bachein.'], ['Platform aur visibility', 'Website, app ya both target platform select karein. Launch par show karna ho to option check karein aur status/publishing approval verify karein.'], ['Schedule aur priority', 'Start/end date-time aur priority set karein. Expired ya future campaign ko active na rakhein; overlapping banners ki priority check karein.'], ['Save ke baad verification', 'Save karne ke baad website aur app dono par selected positions check karein. Image crop, click destination, CTA aur visibility ko mobile/desktop par verify karein.']] },
   '/admin/product-videos': { title: 'Product Videos', intro: 'Yahan product reels/videos ko review aur manage karein.', sections: [['Video review', 'Har video ko play karke product, seller aur content check karein. Ghalat, duplicate ya ghair-mutaliqa video ko approve na karein.'], ['Product aur seller check', 'Confirm karein ke video sahi product/listing se linked hai aur seller ki details durust hain.'], ['Moderation', 'Available approve, reject, hide ya delete actions soch samajh kar use karein. Reject karte waqt wajah wazeh likhein taa-ke creator ko maloom ho.'], ['Updates', 'Search aur filters se video dhoondein; action ke baad status dobara check karein.']] },
   '/admin/hot-deals': { title: 'Campaign Manager', intro: 'Is module se flash sale, discounts aur product campaigns manage hoti hain.', sections: [['Campaign banana', 'Campaign type select karein, naam/title aur description likhein. Discount ya Buy X Get Y/bundle ki values sahi set karein.'], ['Products select karna', 'Search se relevant products choose karein. Campaign mein add karne se pehle stock, current price aur margin check karein.'], ['Schedule aur status', 'Start/end date-time aur campaign status set karein. Expired ya future campaign ko active na rakhein.'], ['Save ke baad', 'Storefront par campaign aur product prices verify karein. Discount calculation aur eligible products ko zaroor test karein.']] },
   '/admin/vendor-products': { title: 'Vendor Products', intro: 'Yahan sellers ke submitted products ki moderation queue manage hoti hai.', sections: [['Pending review', 'Pending tab khol kar product title, images, category, price, variants, stock aur seller details check karein.'], ['Approve ya reject', 'Sirf policy aur quality requirements poori hon to approve karein. Reject karte waqt clear reason dein taa-ke vendor correction kar sake.'], ['Approved/rejected listings', 'Tabs se pehle approve ya reject kiye gaye products dekhein. Zaroorat par details khol kar status aur listing dobara review karein.'], ['Deletion requests', 'Vendor ki deletion request ka reason aur product impact check karein. Approval ke baad permanent delete sirf jab waqai zaroori ho.']] },
@@ -3048,7 +3049,7 @@ function AdminModuleHelp({ path }: { path: string }) {
   const [open, setOpen] = useState(false)
   useEffect(() => { setOpen(false) }, [path])
   if (!guide) return null
-  return <>
+  return createPortal(<>
     <button type="button" className="admin-button admin-button--outline admin-module-help-trigger" onClick={() => setOpen(true)}><Info size={16} /> Madad</button>
     {open && <div className="admin-modal-backdrop admin-help-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false) }}>
       <section className="admin-modal admin-help-modal" role="dialog" aria-modal="true" aria-labelledby="admin-module-help-title">
@@ -3057,5 +3058,5 @@ function AdminModuleHelp({ path }: { path: string }) {
         <div className="admin-form-actions"><button type="button" className="admin-button" onClick={() => setOpen(false)}>Samajh gaya</button></div>
       </section>
     </div>}
-  </>
+  </>, document.body)
 }

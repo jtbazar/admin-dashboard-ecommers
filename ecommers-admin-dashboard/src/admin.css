@@ -872,3 +872,7 @@
 
 .admin-module-help-trigger{position:fixed;z-index:80;top:88px;right:24px;box-shadow:0 4px 16px rgba(15,23,42,.12)}
 @media(max-width:700px){.admin-module-help-trigger{top:auto;right:14px;bottom:18px}}
+
+/* Keep every Madad control in one fixed viewport position across modules. */
+.admin-help-trigger,.admin-module-help-trigger{position:fixed;z-index:80;top:88px;right:24px;box-shadow:0 4px 16px rgba(15,23,42,.12)}
+@media(max-width:700px){.admin-help-trigger,.admin-module-help-trigger{top:auto;right:14px;bottom:18px}}

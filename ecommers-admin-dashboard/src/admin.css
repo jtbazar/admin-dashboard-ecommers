@@ -870,9 +870,9 @@
 /* Products module Roman Urdu help guide */
 .admin-heading-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.admin-help-trigger{display:inline-flex;align-items:center;gap:7px}.admin-help-backdrop{z-index:120}.admin-help-modal{width:min(760px,calc(100vw - 28px));max-height:min(86vh,900px);display:flex;flex-direction:column;overflow:hidden}.admin-help-modal>.admin-panel-heading{flex:0 0 auto}.admin-help-content{overflow:auto;padding:4px 2px 14px;color:#475569;font-size:13px;line-height:1.7}.admin-help-content h4{margin:18px 0 5px;color:#20231f;font-size:14px}.admin-help-content p{margin:7px 0}.admin-help-content ol,.admin-help-content ul{padding-left:22px;margin:7px 0}.admin-help-content li{padding:2px 0}.admin-help-note{margin-top:16px;padding:12px 14px;border-left:3px solid #c2410c;border-radius:8px;background:#fff7ed;color:#7c2d12}.admin-help-modal>.admin-form-actions{flex:0 0 auto;padding-top:12px;border-top:1px solid #eee}
 
-.admin-module-help-trigger{position:fixed;z-index:80;top:88px;right:24px;box-shadow:0 4px 16px rgba(15,23,42,.12)}
+.admin-module-help-trigger{position:fixed;z-index:80;top:auto;right:24px;bottom:24px;box-shadow:0 4px 16px rgba(15,23,42,.12)}
 @media(max-width:700px){.admin-module-help-trigger{top:auto;right:14px;bottom:18px}}
 
 /* Keep every Madad control in one fixed viewport position across modules. */
-.admin-help-trigger,.admin-module-help-trigger{position:fixed;z-index:80;top:88px;right:24px;box-shadow:0 4px 16px rgba(15,23,42,.12)}
+.admin-help-trigger,.admin-module-help-trigger{position:fixed;z-index:80;top:auto;right:24px;bottom:24px;box-shadow:0 4px 16px rgba(15,23,42,.12)}
 @media(max-width:700px){.admin-help-trigger,.admin-module-help-trigger{top:auto;right:14px;bottom:18px}}

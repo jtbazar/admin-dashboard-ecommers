@@ -2034,6 +2034,7 @@ function Audit() {
 
 function Promotions() {
   const { push } = useToast()
+  const [helpOpen, setHelpOpen] = useState(false)
   const [items, setItems] = useState<AdminPromotion[]>([])
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
@@ -2111,16 +2112,19 @@ function Promotions() {
           <p className="admin-kicker">Campaign management</p>
           <h2>Banners & Ads Manager</h2>
         </div>
-        <button
-          className="admin-button"
-          onClick={() => {
-            setEditingPromo(null)
-            setPromoImages([])
-            setShowForm(true)
-          }}
-        >
-          <Plus size={16} /> New platform campaign
-        </button>
+        <div className="admin-heading-actions">
+          <button type="button" className="admin-button admin-button--outline admin-help-trigger" onClick={() => setHelpOpen(true)} aria-label="Banners and Ads guide" title="Banners and Ads guide"><Info size={16}/> Madad</button>
+          <button
+            className="admin-button"
+            onClick={() => {
+              setEditingPromo(null)
+              setPromoImages([])
+              setShowForm(true)
+            }}
+          >
+            <Plus size={16} /> New platform campaign
+          </button>
+        </div>
       </div>
 
       {(showForm || editingPromo) && (
@@ -2313,6 +2317,46 @@ function Promotions() {
             </tbody>
           </table>
           <Pagination page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(size) => { setPageSize(size); setPage(0) }}/>
+        </div>
+      )}
+      {helpOpen && (
+        <div className="admin-modal-backdrop admin-help-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setHelpOpen(false) }}>
+          <section className="admin-modal admin-help-modal" role="dialog" aria-modal="true" aria-labelledby="promotions-help-title">
+            <div className="admin-panel-heading">
+              <div><p className="admin-kicker">Roman Urdu guide</p><h3 id="promotions-help-title">Banners & Ads — Istemaal ka tareeqa</h3></div>
+              <button type="button" className="admin-icon-button" aria-label="Madad band karein" onClick={() => setHelpOpen(false)}><X size={18}/></button>
+            </div>
+            <div className="admin-help-content">
+              <p>Is module se aap JTBazar website aur Android app ke banners aur opening popup ads manage kar sakte hain.</p>
+              <h4>1. Nayi campaign banana</h4>
+              <ol>
+                <li><strong>New platform campaign</strong> par click karein.</li>
+                <li><strong>Title</strong> mein campaign ka naam likhein. Coupon ya discount ho to unki fields bhi fill karein.</li>
+                <li><strong>Display position</strong> se jagah select karein: Hero Banner, Top Promo Bar, Category Feature, Product sections ya doosri available placement.</li>
+                <li><strong>Campaign type</strong> mein Homepage banner ya Opening popup ad select karein.</li>
+                <li><strong>Show on</strong> mein Website + Android app, sirf Website, ya sirf Android app choose karein.</li>
+                <li>JPG, PNG, WebP ya AVIF images upload karein. Har image 8 MB tak ho sakti hai; upload complete hone dein.</li>
+                <li>CTA text aur link optional hain. Button dikhana ho to dono set karein, misal ke taur par “Shop now” aur “/shop”.</li>
+              </ol>
+              <h4>2. Popup kab dikhana hai?</h4>
+              <p><strong>Show popup on fresh app/website opening</strong> ko sirf popup campaign ke liye on karein. Is se fresh opening par popup dikhane ki setting hoti hai.</p>
+              <h4>3. Schedule aur priority</h4>
+              <ul>
+                <li><strong>Start date/time</strong> aur <strong>End date/time</strong> se campaign ka active period set karein.</li>
+                <li><strong>Priority</strong> se campaigns ki display priority set hoti hai; zaroorat ke mutabiq number dein.</li>
+                <li>Campaign ko chalane ke liye status <strong>Approved</strong> rakhein. Pending Review, Rejected, Hidden aur Archived alag states hain.</li>
+              </ul>
+              <h4>4. Edit, search aur delete</h4>
+              <ul>
+                <li>Search mein title ya coupon code likh kar campaign dhoondein.</li>
+                <li>Table mein Edit icon se campaign ki settings aur images update karein.</li>
+                <li>Delete icon campaign record delete karta hai; delete karne se pehle confirm karein.</li>
+                <li>Pagination se aglay records dekhein. Page size badalne par list dobara load hoti hai.</li>
+              </ul>
+              <div className="admin-help-note"><strong>Publish karne se pehle check:</strong> Sahi image, display position, platform, campaign type, date/time aur Approved status verify karein. Website aur app par selected placement ka actual display preview/deployment se confirm karein; sirf campaign save hona har placement ke render hone ki guarantee nahi hai.</div>
+            </div>
+            <div className="admin-form-actions"><button type="button" className="admin-button" onClick={() => setHelpOpen(false)}>Samajh gaya</button></div>
+          </section>
         </div>
       )}
     </section>

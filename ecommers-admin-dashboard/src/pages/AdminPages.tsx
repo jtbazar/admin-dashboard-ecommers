@@ -24,6 +24,7 @@ const nav = [
   { section: 'Product catalogue & merchandising', to: '/admin/reviews', label: 'Customer reviews', icon: Star },
   { section: 'Orders & fulfilment', to: '/admin/finance', label: 'Refunds & Settlements', icon: Wallet },
   { section: 'Orders & fulfilment', to: '/admin/orders', label: 'Orders', icon: ClipboardList },
+  { section: 'Orders & fulfilment', to: '/admin/vendor-pickups', label: 'Vendor Pickups', icon: Package },
   { section: 'Orders & fulfilment', to: '/admin/manual-orders', label: 'Manual Orders', icon: Plus },
   { section: 'Orders & fulfilment', to: '/admin/inventory', label: 'Inventory', icon: Boxes },
   { section: 'People & marketplace', to: '/admin/sellers', label: 'Sellers', icon: Store },
@@ -37,6 +38,7 @@ const nav = [
 ]
 function notificationSectionPath(item: AdminNotification): string | null {
   const title = `${item.title} ${item.body}`.toLowerCase()
+  if (title.includes('ready for pickup') || title.includes('vendor pickup')) return '/admin/vendor-pickups'
   if (item.kind === 'order' || title.includes('order')) return '/admin/orders'
 
   // Route vendor-submitted product approval alerts to the dedicated queue.
@@ -249,6 +251,7 @@ function AdminContent({ path }: { path: string }) {
   if (path === '/admin/hot-deals') return <HotDeals />
   if (path === '/admin/categories') return <Categories />
   if (path === '/admin/orders') return <Orders />
+  if (path === '/admin/vendor-pickups') return 
   if (path === '/admin/reviews') return <CustomerReviews />
   if (path === '/admin/manual-orders') return <ManualOrders />
   if (/^\/admin\/manual-orders\/[^/]+$/.test(path)) return <ManualOrderDetailPage orderId={path.split('/').pop()!} />
@@ -1230,7 +1233,17 @@ function VendorPickupQueue() {
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Pickup queue could not be loaded.') }
     finally { setLoading(false) }
   }
-  useEffect(() => { void load() }, [])
+  useEffect(() => {
+    void load()
+    // Keep the admin queue current when a vendor changes pickup status.
+    const client = getSupabase()
+    const channel = client.channel('admin-vendor-pickup-queue')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vendor_order_pickups' }, () => { void load() })
+      .subscribe()
+    // Polling is a fallback if realtime publication is not enabled for this table.
+    const refreshId = window.setInterval(() => { void load() }, 20000)
+    return () => { window.clearInterval(refreshId); void client.removeChannel(channel) }
+  }, [])
   async function markCollected(id: string) {
     setBusy(id)
     try { await markAdminVendorPickedUp(id); push('Vendor pickup marked as collected.', 'success'); await load() }

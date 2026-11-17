@@ -6,7 +6,9 @@ type DriverApplication = { id: string; user_id: string; full_name: string; phone
 type DeliveryOrder = { id: string; order_number: string; customer_name: string; customer_phone: string; order_status: string; created_at: string }
 type DriverOption = { user_id: string; full_name: string; phone: string; company_name: string | null }
 type DriverCustomer = { user_id: string; email: string; full_name: string; phone: string; driver_enabled: boolean }
-type DriverAssignment = { assignment_id: string; order_id: string; order_number: string; customer_name: string; driver_user_id: string; driver_name: string; driver_phone: string; assignment_status: string; assigned_at: string; picked_up_at: string | null; delivered_at: string | null; driver_company_name: string | null }
+type DriverAssignment = { assignment_id: string; order_id: string; order_number: string; customer_name: string; driver_user_id: string; driver_name: string; driver_phone: string; assignment_status: string; assigned_at: string; picked_up_at: string | null; delivered_at: string | null; driver_company_name: string | null; failed_reason: string | null; failed_note: string | null; delivery_batch_number: string | null; delivery_proof_path: string | null; cod_collected_amount: number | null; cash_reconciled_amount: number | null }
+type DriverBatch = { batch_id: string; batch_number: string; customer_id: string; customer_name: string; customer_phone: string; order_count: number; delivery_fee: number }
+type DriverCashRow = { assignment_id: string; order_id: string; order_number: string; customer_name: string; driver_user_id: string; driver_name: string; payment_method: string; order_total: number; collected_amount: number | null; reconciled_amount: number | null; reconciled_at: string | null; reconciliation_note: string | null; delivered_at: string | null }
 
 export function DriverManagement() {
   const db = getSupabase() as any
@@ -17,6 +19,10 @@ export function DriverManagement() {
   const [orders, setOrders] = useState<DeliveryOrder[]>([])
   const [drivers, setDrivers] = useState<DriverOption[]>([])
   const [assignments, setAssignments] = useState<DriverAssignment[]>([])
+  const [batches, setBatches] = useState<DriverBatch[]>([])
+  const [selectedBatchId, setSelectedBatchId] = useState('')
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
+  const [cashRows, setCashRows] = useState<DriverCashRow[]>([])
   const [orderId, setOrderId] = useState('')
   const [orderSearch, setOrderSearch] = useState('')
   const [driverId, setDriverId] = useState('')
@@ -29,20 +35,24 @@ export function DriverManagement() {
 
   async function load() {
     setError(null)
-    const [settings, apps, orderRows, approved, assignmentRows] = await Promise.all([
+    const [settings, apps, orderRows, approved, assignmentRows, batchRows, cashResults] = await Promise.all([
       db.rpc('admin_list_driver_customers'),
       db.rpc('admin_list_driver_applications'),
       db.rpc('admin_list_assignable_driver_orders'),
       db.rpc('admin_list_approved_drivers'),
-      db.rpc('admin_list_driver_assignments')
+      db.rpc('admin_list_driver_assignments_v2'),
+      db.rpc('admin_list_assignable_delivery_batches'),
+      db.rpc('admin_list_driver_cash_reconciliation')
     ])
-    const failure = settings.error || apps.error || orderRows.error || approved.error || assignmentRows.error
+    const failure = settings.error || apps.error || orderRows.error || approved.error || assignmentRows.error || batchRows.error || cashResults.error
     if (failure) throw new Error(failure.message)
     setCustomers(settings.data ?? [])
     setApplications(apps.data ?? [])
     setOrders(orderRows.data ?? [])
     setDrivers(approved.data ?? [])
     setAssignments(assignmentRows.data ?? [])
+    setBatches(batchRows.data ?? [])
+    setCashRows(cashResults.data ?? [])
     setNotes(Object.fromEntries((apps.data ?? []).map((a: DriverApplication) => [a.id, a.admin_note ?? ''])))
     setCompanyNames(Object.fromEntries((apps.data ?? []).map((a: DriverApplication) => [a.id, a.company_name ?? ''])))
   }
@@ -142,6 +152,66 @@ export function DriverManagement() {
     }
   }
 
+  async function createCombinedBatch() {
+    if (selectedOrderIds.length < 2) return
+    setBusy(true); setError(null); setSuccess(null)
+    try {
+      const { data, error: rpcError } = await db.rpc('admin_create_combined_driver_batch', { p_order_ids: selectedOrderIds })
+      if (rpcError) throw rpcError
+      setSuccess('Combined delivery batch created. Existing order delivery fees were preserved. Select a driver below to assign it.')
+      setSelectedOrderIds([])
+      await load()
+      if (data) setSelectedBatchId(String(data))
+    } catch (e: any) { setError(e?.message || 'Could not create the combined delivery batch.') }
+    finally { setBusy(false) }
+  }
+
+  async function assignBatch() {
+    if (!selectedBatchId || !driverId) return
+    setBusy(true); setError(null); setSuccess(null)
+    try {
+      const { data, error: rpcError } = await db.rpc('admin_assign_driver_to_delivery_batch', { p_batch_id: selectedBatchId, p_driver_user_id: driverId })
+      if (rpcError) throw rpcError
+      setSuccess(`${Number(data ?? 0)} orders assigned together to the selected driver.`)
+      setSelectedBatchId(''); setDriverId('')
+      await load()
+    } catch (e: any) { setError(e?.message || 'Could not assign this delivery batch.') }
+    finally { setBusy(false) }
+  }
+
+  async function reconcileCash(row: DriverCashRow) {
+    const rawAmount = window.prompt(`Cash received from ${row.driver_name} for ${row.order_number}. Driver recorded: PKR ${Number(row.collected_amount ?? 0).toLocaleString()}. Enter the cash amount received:`)
+    if (rawAmount === null) return
+    const amount = Number(rawAmount.replace(/,/g, '').trim())
+    if (!Number.isFinite(amount) || amount < 0) { setError('Enter a valid non-negative cash amount.'); return }
+    const note = amount !== Number(row.collected_amount ?? 0) ? window.prompt('Amount differs from driver record. Add a reconciliation note (required):') : window.prompt('Optional reconciliation note:')
+    if (note === null) return
+    if (amount !== Number(row.collected_amount ?? 0) && !note.trim()) { setError('A note is required when the cash amount differs.'); return }
+    setBusy(true); setError(null); setSuccess(null)
+    try {
+      const { error: rpcError } = await db.rpc('admin_reconcile_driver_cash', { p_assignment_id: row.assignment_id, p_amount: amount, p_note: note.trim() || null })
+      if (rpcError) throw rpcError
+      setSuccess(`Cash reconciliation saved for ${row.order_number}.`)
+      await load()
+    } catch (e: any) { setError(e?.message || 'Could not reconcile driver cash.') }
+    finally { setBusy(false) }
+  }
+
+  async function openDeliveryProof(row: DriverCashRow) {
+    const tab = window.open('about:blank', '_blank')
+    try {
+      const { data: path, error: rpcError } = await db.rpc('admin_get_driver_delivery_proof_path', { p_assignment_id: row.assignment_id })
+      if (rpcError) throw rpcError
+      if (!path) throw new Error('No delivery photo proof was uploaded for this order.')
+      const { data, error: storageError } = await db.storage.from('driver-documents').createSignedUrl(path, 300)
+      if (storageError) throw storageError
+      if (tab) tab.location.href = data.signedUrl
+    } catch (e: any) {
+      tab?.close()
+      setError(e?.message || 'Could not open delivery proof.')
+    }
+  }
+
   const filteredCustomers = customers.filter(c => {
     const q = customerSearch.trim().toLowerCase()
     return !q || [c.full_name, c.email, c.phone].some(v => (v ?? '').toLowerCase().includes(q))
@@ -229,11 +299,11 @@ export function DriverManagement() {
       <section className="admin-panel driver-panel">
         <div className="admin-section-heading"><div><h2>Driver assignment records</h2><p>Track assigned, picked-up, delivered and cancelled deliveries. Cancel an active assignment to return its order to the available list.</p></div><PackageCheck size={22}/></div>
         <div className="admin-table-wrap driver-table-wrap"><table className="admin-table driver-table">
-          <thead><tr><th>Order</th><th>Customer</th><th>Driver</th><th>Status</th><th>Assigned</th><th>Action</th></tr></thead>
+          <thead><tr><th>Order / Batch</th><th>Customer</th><th>Driver</th><th>Status / reason</th><th>Assigned</th><th>Action</th></tr></thead>
           <tbody>{assignments.map(a => <tr key={a.assignment_id}>
-            <td><strong>{a.order_number}</strong></td><td>{a.customer_name}</td>
+            <td><strong>{a.order_number}</strong>{a.delivery_batch_number ? <><br/><small>{a.delivery_batch_number}</small></> : null}</td><td>{a.customer_name}</td>
             <td><strong>{a.driver_name || 'Driver'}</strong>{a.driver_company_name ? <><br/><small>{a.driver_company_name}</small></> : null}<br/><small>{a.driver_phone}</small></td>
-            <td><span className="admin-status">{a.assignment_status.replace('_',' ')}</span></td>
+            <td><span className="admin-status">{a.assignment_status.replace('_',' ')}</span>{a.failed_reason ? <small><br/>{a.failed_reason.replaceAll('_',' ')}{a.failed_note ? ` — ${a.failed_note}` : ''}</small> : null}</td>
             <td>{new Date(a.assigned_at).toLocaleString()}</td>
             <td>{['assigned','picked_up'].includes(a.assignment_status)
               ? <button className="admin-button admin-button--danger" disabled={busy} onClick={() => void cancelAssignment(a)}><X size={14}/> Cancel assignment</button>
@@ -241,6 +311,54 @@ export function DriverManagement() {
           </tr>)}</tbody>
         </table></div>
         {assignments.length === 0 && <p className="driver-empty">No driver assignments recorded yet.</p>}
+      </section>
+
+      <section className="admin-panel driver-panel">
+        <div className="admin-section-heading"><div><h2>Create a combined delivery batch</h2><p>Select two or more confirmed orders. The database only accepts orders for the same customer and exact same saved delivery address.</p></div><PackageCheck size={22}/></div>
+        <div className="driver-access-fields">
+          {filteredOrders.map(o => <label key={o.id} className="driver-field" style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0'}}>
+            <input type="checkbox" checked={selectedOrderIds.includes(o.id)} onChange={e => setSelectedOrderIds(current => e.target.checked ? [...current,o.id] : current.filter(id => id !== o.id))} />
+            <span><strong>{o.order_number}</strong> · {o.customer_name} · {o.order_status}</span>
+          </label>)}
+        </div>
+        <button className="admin-button" disabled={busy || selectedOrderIds.length < 2} onClick={() => void createCombinedBatch()}><PackageCheck size={16}/> Create batch from {selectedOrderIds.length} selected orders</button>
+        {filteredOrders.length === 0 && <p className="driver-empty">No confirmed unassigned orders are available to combine.</p>}
+      </section>
+
+      <section className="admin-panel driver-panel">
+        <div className="admin-section-heading"><div><h2>Combined delivery batches</h2><p>Only same-customer batches with one matching delivery address and confirmed orders can be assigned together.</p></div><PackageCheck size={22}/></div>
+        <div className="admin-form-grid driver-assignment-grid">
+          <label className="driver-field">Ready batch
+            <select className="driver-control" value={selectedBatchId} onChange={e => setSelectedBatchId(e.target.value)}>
+              <option value="">Select a same-customer batch</option>
+              {batches.map(b => <option key={b.batch_id} value={b.batch_id}>{b.batch_number} · {b.customer_name} · {b.order_count} orders</option>)}
+            </select>
+          </label>
+          <label className="driver-field">Approved driver
+            <select className="driver-control" value={driverId} onChange={e => setDriverId(e.target.value)}>
+              <option value="">Select a driver</option>
+              {drivers.map(d => <option key={d.user_id} value={d.user_id}>{d.full_name}{d.company_name ? ' · ' + d.company_name : ''} — {d.phone}</option>)}
+            </select>
+          </label>
+        </div>
+        <button className="admin-button" disabled={busy || !selectedBatchId || !driverId} onClick={() => void assignBatch()}><Truck size={16}/> Assign all orders in batch</button>
+        {batches.length === 0 && <p className="driver-empty">No eligible combined batches are available. Existing orders are not automatically merged.</p>}
+      </section>
+
+      <section className="admin-panel driver-panel">
+        <div className="admin-section-heading"><div><h2>Driver COD cash reconciliation</h2><p>Compare the cash recorded by the driver with the amount physically received by JTBazar.</p></div><ShieldCheck size={22}/></div>
+        <div className="admin-table-wrap driver-table-wrap"><table className="admin-table driver-table">
+          <thead><tr><th>Order</th><th>Customer</th><th>Driver</th><th>Order total</th><th>Driver collected</th><th>Admin received</th><th>Reconciliation</th><th>Proof</th><th>Action</th></tr></thead>
+          <tbody>{cashRows.map(row => <tr key={row.assignment_id}>
+            <td><strong>{row.order_number}</strong></td><td>{row.customer_name}</td><td>{row.driver_name}</td>
+            <td>PKR {Number(row.order_total).toLocaleString()}</td><td>{row.collected_amount == null ? 'Not recorded' : `PKR ${Number(row.collected_amount).toLocaleString()}`}</td>
+            <td>{row.reconciled_amount == null ? 'Not received' : `PKR ${Number(row.reconciled_amount).toLocaleString()}`}</td>
+            <td><span className="admin-status">{row.reconciled_at ? 'Reconciled' : row.collected_amount == null ? 'Driver cash pending' : 'Pending'}</span>{row.reconciliation_note ? <small><br/>{row.reconciliation_note}</small> : null}</td>
+            <td><button className="admin-button admin-button--outline" onClick={() => void openDeliveryProof(row)}>View proof</button></td>
+            <td>{row.collected_amount != null && !row.reconciled_at ? <button className="admin-button" disabled={busy} onClick={() => void reconcileCash(row)}><Save size={14}/> Reconcile</button> : <span className="driver-muted">—</span>}</td>
+          </tr>)}</tbody>
+        </table></div>
+        {cashRows.length === 0 && <p className="driver-empty">No COD cash collections have been recorded yet.</p>}
       </section>
 
       {loading && <p>Loading driver operations…</p>}

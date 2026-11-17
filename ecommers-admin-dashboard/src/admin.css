@@ -876,3 +876,23 @@
 /* Keep every Madad control in one fixed viewport position across modules. */
 .admin-help-trigger,.admin-module-help-trigger{position:fixed;z-index:80;top:auto;right:24px;bottom:24px;box-shadow:0 4px 16px rgba(15,23,42,.12)}
 @media(max-width:700px){.admin-help-trigger,.admin-module-help-trigger{top:auto;right:14px;bottom:18px}}
+
+
+/* Delivery Control Center — compact admin workflow */
+.driver-simple-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 20px;border-bottom:1px solid var(--admin-border,#e5e7eb);padding-bottom:10px}
+.driver-simple-tabs button{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--admin-border,#e5e7eb);background:var(--admin-card,#fff);color:inherit;border-radius:10px;padding:10px 15px;font:inherit;font-weight:600;cursor:pointer}
+.driver-simple-tabs button.is-active{background:var(--admin-primary,#172554);border-color:var(--admin-primary,#172554);color:#fff}
+.driver-simple-tabs button span{font-size:12px;opacity:.8;border-radius:20px;padding:1px 7px;background:rgba(127,127,127,.14)}
+.driver-simple-tabs button.is-active span{background:rgba(255,255,255,.2)}
+.driver-simple-panel{margin-bottom:16px}
+.driver-advanced{padding:0;overflow:hidden}
+.driver-advanced>summary{display:flex;align-items:center;justify-content:space-between;gap:16px;list-style:none;cursor:pointer;padding:17px 20px}
+.driver-advanced>summary::-webkit-details-marker{display:none}
+.driver-advanced>summary span{display:grid;gap:4px}
+.driver-advanced>summary small{font-size:12px;opacity:.72;font-weight:400}
+.driver-advanced-content{padding:0 20px 20px}
+.driver-batch-order-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:4px 16px;margin:12px 0}
+.driver-batch-order-list label{display:flex;align-items:center;gap:9px;padding:8px 0}
+.driver-review-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.driver-review-actions .admin-button{white-space:nowrap}
+@media(max-width:700px){.driver-simple-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.driver-simple-tabs button{justify-content:center;padding:9px 5px;font-size:12px;gap:5px}.driver-simple-tabs button svg{display:none}.driver-advanced>summary{padding:14px}.driver-advanced-content{padding:0 14px 16px}}

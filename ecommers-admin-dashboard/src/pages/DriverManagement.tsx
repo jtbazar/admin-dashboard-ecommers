@@ -32,6 +32,7 @@ export function DriverManagement() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'deliveries' | 'drivers' | 'cash'>('deliveries')
 
   async function load() {
     setError(null)
@@ -225,143 +226,125 @@ export function DriverManagement() {
   return (
     <main className="admin-content driver-management">
       <div className="admin-page-heading driver-page-heading">
-        <div className="driver-heading-copy"><p className="admin-kicker">Delivery operations</p><h2>Driver management</h2><p>Control access, review applications and assign deliveries from one place.</p></div>
+        <div className="driver-heading-copy">
+          <p className="admin-kicker">Delivery operations</p>
+          <h2>Delivery control center</h2>
+          <p>Manage drivers, send orders for delivery and check COD cash — all from one simple screen.</p>
+        </div>
         <button className="admin-button admin-button--outline" onClick={() => { setLoading(true); void load().catch(e => setError(e.message)).finally(() => setLoading(false)) }} disabled={busy || loading}><RefreshCw size={16}/> Refresh</button>
       </div>
 
       {error && <div className="driver-alert driver-alert--error">{error}</div>}
       {success && <div className="driver-alert driver-alert--success">{success}</div>}
 
-      <section className="admin-panel driver-panel">
-        <div className="admin-panel-heading driver-panel-heading"><div><h2>Customer driver access</h2><p>Search for a customer, select their account, then enable or disable the driver option for that customer only.</p></div><Users size={22}/></div>
-        <div className="driver-access-fields"><label htmlFor="driver-customer-search">Find customer</label>
-        <input id="driver-customer-search" className="driver-control" value={customerSearch} onChange={e => setCustomerSearch(e.target.value)} placeholder="Search name, email or phone..." />
-        <label htmlFor="driver-customer-select">Select customer</label>
-        <select id="driver-customer-select" className="driver-control" value={selectedCustomer} onChange={e => setSelectedCustomer(e.target.value)}>
-          <option value="">Choose a customer</option>
-          {filteredCustomers.map(c => <option key={c.user_id} value={c.user_id}>{c.full_name || 'Customer'} — {c.email}{c.driver_enabled ? ' (Enabled)' : ''}</option>)}
-        </select>
-        {selected && <div className="driver-customer-access">
-          <div><strong>{selected.full_name || 'Customer'}</strong><p>{selected.email} {selected.phone ? `· ${selected.phone}` : ''}</p><span className={selected.driver_enabled ? 'admin-status admin-status--success' : 'admin-status'}>{selected.driver_enabled ? 'Driver access enabled' : 'Driver access disabled'}</span></div>
-          <button className={selected.driver_enabled ? 'admin-button admin-button--danger' : 'admin-button'} disabled={busy} onClick={() => void setCustomerAccess(selected)}>{selected.driver_enabled ? 'Disable for this customer' : 'Enable for this customer'}</button>
-        </div>}
-        {!loading && customers.length === 0 && <p className="driver-empty">No customer accounts were returned.</p>}
-        </div>
-      </section>
+      <div className="driver-simple-tabs" role="tablist" aria-label="Delivery sections">
+        <button type="button" className={activeTab === 'deliveries' ? 'is-active' : ''} onClick={() => setActiveTab('deliveries')}><Truck size={16}/> Deliveries <span>{orders.length}</span></button>
+        <button type="button" className={activeTab === 'drivers' ? 'is-active' : ''} onClick={() => setActiveTab('drivers')}><Users size={16}/> Drivers <span>{applications.length}</span></button>
+        <button type="button" className={activeTab === 'cash' ? 'is-active' : ''} onClick={() => setActiveTab('cash')}><ShieldCheck size={16}/> COD cash <span>{cashRows.filter(r => !r.reconciled_at && r.collected_amount != null).length}</span></button>
+      </div>
 
-      <section className="admin-panel driver-panel">
-        <div className="admin-panel-heading driver-panel-heading"><div><h2>Driver applications</h2><p>Review applications submitted by customers who were given access.</p></div><ShieldCheck size={22}/></div>
-        <div className="admin-table-wrap driver-table-wrap"><table className="admin-table driver-table"><thead><tr><th>Applicant</th><th>Address</th><th>Documents</th><th>Vehicle</th><th>Company name (optional)</th><th>Status</th><th>Admin note</th><th>Actions</th></tr></thead>
-          <tbody>{applications.map(app => <tr key={app.id}>
-            <td><strong>{app.full_name}</strong><br/><small>{app.phone}</small></td>
-            <td>{app.current_address || '—'}</td>
-            <td className="driver-actions">
-              <button className="admin-button admin-button--outline" disabled={!app.cnic_front_path} onClick={() => void openDriverDocument(app.cnic_front_path)}><FileImage size={14}/> CNIC front</button>
-              <button className="admin-button admin-button--outline" disabled={!app.cnic_back_path} onClick={() => void openDriverDocument(app.cnic_back_path)}><FileImage size={14}/> CNIC back</button>
-              <button className="admin-button admin-button--outline" disabled={!app.vehicle_plate_image_path} onClick={() => void openDriverDocument(app.vehicle_plate_image_path)}><FileImage size={14}/> Number plate</button>
-            </td>
-            <td>{app.vehicle_type}</td>
-            <td><div className="driver-company-field"><input className="driver-control" value={companyNames[app.id] ?? ''} onChange={e => setCompanyNames(v => ({...v,[app.id]:e.target.value}))} placeholder="Optional company name" maxLength={160}/><button className="admin-button admin-button--outline" disabled={busy} onClick={() => void saveCompanyName(app)}><Save size={14}/> Save</button></div></td>
-            <td><span className="admin-status">{app.status}</span></td>
-            <td><input className="driver-control" value={notes[app.id] ?? ''} onChange={e => setNotes(v => ({...v,[app.id]:e.target.value}))} placeholder="Optional note"/></td>
-            <td className="driver-actions">
-            <button className="admin-button" disabled={busy || app.status === 'approved'} onClick={() => void reviewApplication(app,'approve')}><Check size={14}/> Approve</button>
-            <button className="admin-button admin-button--outline" disabled={busy} onClick={() => void reviewApplication(app,'reject')}><X size={14}/> Reject</button>
-            <button className="admin-button admin-button--danger" disabled={busy} onClick={() => void reviewApplication(app,'suspend')}>Suspend</button>
-          </td></tr>)}</tbody></table></div>
-        {applications.length === 0 && <p className="driver-empty">No driver applications yet.</p>}
-      </section>
+      {activeTab === 'deliveries' && <>
+        <section className="admin-panel driver-panel driver-simple-panel">
+          <div className="admin-panel-heading driver-panel-heading"><div><h2>Assign a delivery</h2><p>Choose an order and an approved driver. Only eligible confirmed orders appear here.</p></div><PackageCheck size={22}/></div>
+          <div className="admin-form-grid driver-assignment-grid">
+            <label className="driver-field">Find order
+              <input className="driver-control" value={orderSearch} onChange={e => setOrderSearch(e.target.value)} placeholder="Order number or ID"/>
+            </label>
+            <label className="driver-field">Order
+              <select className="driver-control" value={orderId} onChange={e => setOrderId(e.target.value)}>
+                <option value="">Select an order ({filteredOrders.length} available)</option>
+                {filteredOrders.map(o => <option key={o.id} value={o.id}>{o.order_number} — {o.customer_name}</option>)}
+              </select>
+            </label>
+            <label className="driver-field">Driver
+              <select className="driver-control" value={driverId} onChange={e => setDriverId(e.target.value)}>
+                <option value="">Select approved driver</option>
+                {drivers.map(d => <option key={d.user_id} value={d.user_id}>{d.full_name} — {d.phone}</option>)}
+              </select>
+            </label>
+          </div>
+          <button className="admin-button" disabled={busy || !orderId || !driverId} onClick={() => void assignDriver()}><Truck size={16}/> Assign delivery</button>
+          {orders.length === 0 && <p className="driver-empty">No confirmed orders are ready for driver assignment.</p>}
+          {orders.length > 0 && filteredOrders.length === 0 && <p className="driver-empty">No orders match your search.</p>}
+        </section>
 
-      <section className="admin-panel driver-panel">
-        <div className="admin-section-heading"><div><h2>Assign an order</h2><p>Choose an active customer order and an approved driver.</p></div><PackageCheck size={22}/></div>
-        <div className="admin-form-grid driver-assignment-grid">
-          <label className="driver-field">Search confirmed order
-            <input className="driver-control" value={orderSearch} onChange={e => setOrderSearch(e.target.value)} placeholder="Search by order number or order ID..." />
-          </label>
-          <label className="driver-field">Select confirmed order
-            <select className="driver-control" value={orderId} onChange={e => setOrderId(e.target.value)}>
-              <option value="">Select a confirmed order</option>
-              {filteredOrders.map(o => <option key={o.id} value={o.id}>{o.order_number} — {o.customer_name} · {o.order_status}</option>)}
+        <section className="admin-panel driver-panel driver-simple-panel">
+          <div className="admin-section-heading"><div><h2>Delivery tracking</h2><p>See which driver has each order and its latest status.</p></div><PackageCheck size={22}/></div>
+          <div className="admin-table-wrap driver-table-wrap"><table className="admin-table driver-table">
+            <thead><tr><th>Order</th><th>Customer</th><th>Driver</th><th>Status</th><th>Assigned</th><th>Action</th></tr></thead>
+            <tbody>{assignments.map(a => <tr key={a.assignment_id}>
+              <td><strong>{a.order_number}</strong>{a.delivery_batch_number ? <><br/><small>{a.delivery_batch_number}</small></> : null}</td>
+              <td>{a.customer_name}</td>
+              <td><strong>{a.driver_name || 'Driver'}</strong><br/><small>{a.driver_phone}</small></td>
+              <td><span className="admin-status">{a.assignment_status.replaceAll('_',' ')}</span>{a.failed_reason ? <small><br/>{a.failed_reason.replaceAll('_',' ')}{a.failed_note ? ' — ' + a.failed_note : ''}</small> : null}</td>
+              <td>{new Date(a.assigned_at).toLocaleDateString()}</td>
+              <td>{['assigned','picked_up'].includes(a.assignment_status) ? <button className="admin-button admin-button--danger" disabled={busy} onClick={() => void cancelAssignment(a)}><X size={14}/> Cancel</button> : <span className="driver-muted">—</span>}</td>
+            </tr>)}</tbody>
+          </table></div>
+          {assignments.length === 0 && <p className="driver-empty">No deliveries assigned yet.</p>}
+        </section>
+
+        <details className="admin-panel driver-panel driver-advanced">
+          <summary><span><strong>Advanced: combine multiple orders</strong><small>Use only when the same customer has orders going to the exact same address.</small></span><PackageCheck size={18}/></summary>
+          <div className="driver-advanced-content">
+            <p className="driver-muted">Select two or more orders for one customer. The system checks the saved address before creating a batch.</p>
+            <div className="driver-batch-order-list">
+              {filteredOrders.map(o => <label key={o.id}><input type="checkbox" checked={selectedOrderIds.includes(o.id)} onChange={e => setSelectedOrderIds(current => e.target.checked ? [...current,o.id] : current.filter(id => id !== o.id))}/><span><strong>{o.order_number}</strong> · {o.customer_name}</span></label>)}
+            </div>
+            <button className="admin-button" disabled={busy || selectedOrderIds.length < 2} onClick={() => void createCombinedBatch()}><PackageCheck size={16}/> Create batch ({selectedOrderIds.length} selected)</button>
+            <div className="admin-form-grid driver-assignment-grid" style={{marginTop:16}}>
+              <label className="driver-field">Ready batch<select className="driver-control" value={selectedBatchId} onChange={e => setSelectedBatchId(e.target.value)}><option value="">Select a batch</option>{batches.map(b => <option key={b.batch_id} value={b.batch_id}>{b.batch_number} · {b.customer_name} · {b.order_count} orders</option>)}</select></label>
+              <label className="driver-field">Approved driver<select className="driver-control" value={driverId} onChange={e => setDriverId(e.target.value)}><option value="">Select a driver</option>{drivers.map(d => <option key={d.user_id} value={d.user_id}>{d.full_name} — {d.phone}</option>)}</select></label>
+            </div>
+            <button className="admin-button" disabled={busy || !selectedBatchId || !driverId} onClick={() => void assignBatch()}><Truck size={16}/> Assign batch</button>
+            {batches.length === 0 && <p className="driver-empty">No ready combined batches.</p>}
+          </div>
+        </details>
+      </>}
+
+      {activeTab === 'drivers' && <>
+        <section className="admin-panel driver-panel driver-simple-panel">
+          <div className="admin-panel-heading driver-panel-heading"><div><h2>Give a customer driver access</h2><p>Search a customer and enable or disable driver applications for that account.</p></div><Users size={22}/></div>
+          <div className="driver-access-fields">
+            <label htmlFor="driver-customer-search">Search customer</label>
+            <input id="driver-customer-search" className="driver-control" value={customerSearch} onChange={e => setCustomerSearch(e.target.value)} placeholder="Name, email or phone"/>
+            <label htmlFor="driver-customer-select">Choose customer</label>
+            <select id="driver-customer-select" className="driver-control" value={selectedCustomer} onChange={e => setSelectedCustomer(e.target.value)}>
+              <option value="">Select customer</option>{filteredCustomers.map(c => <option key={c.user_id} value={c.user_id}>{c.full_name || 'Customer'} — {c.email}{c.driver_enabled ? ' (Enabled)' : ''}</option>)}
             </select>
-            <small className="driver-muted">{filteredOrders.length} confirmed order{filteredOrders.length === 1 ? '' : 's'} available</small>
-          </label>
-          <label className="driver-field">Approved driver
-            <select className="driver-control" value={driverId} onChange={e => setDriverId(e.target.value)}>
-              <option value="">Select a driver</option>
-              {drivers.map(d => <option key={d.user_id} value={d.user_id}>{d.full_name}{d.company_name ? ' · ' + d.company_name : ''} — {d.phone}</option>)}
-            </select>
-          </label>
-        </div>
-        {orders.length === 0 && <p className="driver-empty">No confirmed, unassigned orders are available for driver assignment.</p>}
-        {orders.length > 0 && filteredOrders.length === 0 && <p className="driver-empty">No confirmed orders match that order number or ID.</p>}
-        <button className="admin-button" disabled={busy || !orderId || !driverId} onClick={() => void assignDriver()}><Truck size={16}/> Assign driver</button>
-      </section>
-      <section className="admin-panel driver-panel">
-        <div className="admin-section-heading"><div><h2>Driver assignment records</h2><p>Track assigned, picked-up, delivered and cancelled deliveries. Cancel an active assignment to return its order to the available list.</p></div><PackageCheck size={22}/></div>
+            {selected && <div className="driver-customer-access"><div><strong>{selected.full_name || 'Customer'}</strong><p>{selected.email}{selected.phone ? ' · ' + selected.phone : ''}</p><span className={selected.driver_enabled ? 'admin-status admin-status--success' : 'admin-status'}>{selected.driver_enabled ? 'Driver access enabled' : 'Driver access disabled'}</span></div><button className={selected.driver_enabled ? 'admin-button admin-button--danger' : 'admin-button'} disabled={busy} onClick={() => void setCustomerAccess(selected)}>{selected.driver_enabled ? 'Disable access' : 'Enable access'}</button></div>}
+          </div>
+        </section>
+        <section className="admin-panel driver-panel driver-simple-panel">
+          <div className="admin-panel-heading driver-panel-heading"><div><h2>Driver applications</h2><p>Review documents and approve, reject or suspend applicants.</p></div><ShieldCheck size={22}/></div>
+          <div className="admin-table-wrap driver-table-wrap"><table className="admin-table driver-table"><thead><tr><th>Applicant</th><th>Address</th><th>Documents</th><th>Vehicle</th><th>Company</th><th>Status & review</th></tr></thead>
+            <tbody>{applications.map(app => <tr key={app.id}>
+              <td><strong>{app.full_name}</strong><br/><small>{app.phone}</small></td>
+              <td>{app.current_address || '—'}</td>
+              <td className="driver-actions"><button className="admin-button admin-button--outline" disabled={!app.cnic_front_path} onClick={() => void openDriverDocument(app.cnic_front_path)}>CNIC front</button><button className="admin-button admin-button--outline" disabled={!app.cnic_back_path} onClick={() => void openDriverDocument(app.cnic_back_path)}>CNIC back</button><button className="admin-button admin-button--outline" disabled={!app.vehicle_plate_image_path} onClick={() => void openDriverDocument(app.vehicle_plate_image_path)}>Number plate</button></td>
+              <td>{app.vehicle_type}</td>
+              <td><div className="driver-company-field"><input className="driver-control" value={companyNames[app.id] ?? ''} onChange={e => setCompanyNames(v => ({...v,[app.id]:e.target.value}))} placeholder="Optional" maxLength={160}/><button className="admin-button admin-button--outline" disabled={busy} onClick={() => void saveCompanyName(app)}><Save size={14}/> Save</button></div></td>
+              <td><span className="admin-status">{app.status}</span><input className="driver-control" style={{marginTop:8}} value={notes[app.id] ?? ''} onChange={e => setNotes(v => ({...v,[app.id]:e.target.value}))} placeholder="Admin note (optional)"/><div className="driver-review-actions"><button className="admin-button" disabled={busy || app.status === 'approved'} onClick={() => void reviewApplication(app,'approve')}><Check size={14}/> Approve</button><button className="admin-button admin-button--outline" disabled={busy} onClick={() => void reviewApplication(app,'reject')}><X size={14}/> Reject</button><button className="admin-button admin-button--danger" disabled={busy} onClick={() => void reviewApplication(app,'suspend')}>Suspend</button></div></td>
+            </tr>)}</tbody></table></div>
+          {applications.length === 0 && <p className="driver-empty">No driver applications yet.</p>}
+        </section>
+      </>}
+
+      {activeTab === 'cash' && <section className="admin-panel driver-panel driver-simple-panel">
+        <div className="admin-section-heading"><div><h2>COD cash reconciliation</h2><p>Compare cash the driver collected with cash physically received by JTBazar.</p></div><ShieldCheck size={22}/></div>
         <div className="admin-table-wrap driver-table-wrap"><table className="admin-table driver-table">
-          <thead><tr><th>Order / Batch</th><th>Customer</th><th>Driver</th><th>Status / reason</th><th>Assigned</th><th>Action</th></tr></thead>
-          <tbody>{assignments.map(a => <tr key={a.assignment_id}>
-            <td><strong>{a.order_number}</strong>{a.delivery_batch_number ? <><br/><small>{a.delivery_batch_number}</small></> : null}</td><td>{a.customer_name}</td>
-            <td><strong>{a.driver_name || 'Driver'}</strong>{a.driver_company_name ? <><br/><small>{a.driver_company_name}</small></> : null}<br/><small>{a.driver_phone}</small></td>
-            <td><span className="admin-status">{a.assignment_status.replace('_',' ')}</span>{a.failed_reason ? <small><br/>{a.failed_reason.replaceAll('_',' ')}{a.failed_note ? ` — ${a.failed_note}` : ''}</small> : null}</td>
-            <td>{new Date(a.assigned_at).toLocaleString()}</td>
-            <td>{['assigned','picked_up'].includes(a.assignment_status)
-              ? <button className="admin-button admin-button--danger" disabled={busy} onClick={() => void cancelAssignment(a)}><X size={14}/> Cancel assignment</button>
-              : <span className="driver-muted">—</span>}</td>
-          </tr>)}</tbody>
-        </table></div>
-        {assignments.length === 0 && <p className="driver-empty">No driver assignments recorded yet.</p>}
-      </section>
-
-      <section className="admin-panel driver-panel">
-        <div className="admin-section-heading"><div><h2>Create a combined delivery batch</h2><p>Select two or more confirmed orders. The database only accepts orders for the same customer and exact same saved delivery address.</p></div><PackageCheck size={22}/></div>
-        <div className="driver-access-fields">
-          {filteredOrders.map(o => <label key={o.id} className="driver-field" style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0'}}>
-            <input type="checkbox" checked={selectedOrderIds.includes(o.id)} onChange={e => setSelectedOrderIds(current => e.target.checked ? [...current,o.id] : current.filter(id => id !== o.id))} />
-            <span><strong>{o.order_number}</strong> · {o.customer_name} · {o.order_status}</span>
-          </label>)}
-        </div>
-        <button className="admin-button" disabled={busy || selectedOrderIds.length < 2} onClick={() => void createCombinedBatch()}><PackageCheck size={16}/> Create batch from {selectedOrderIds.length} selected orders</button>
-        {filteredOrders.length === 0 && <p className="driver-empty">No confirmed unassigned orders are available to combine.</p>}
-      </section>
-
-      <section className="admin-panel driver-panel">
-        <div className="admin-section-heading"><div><h2>Combined delivery batches</h2><p>Only same-customer batches with one matching delivery address and confirmed orders can be assigned together.</p></div><PackageCheck size={22}/></div>
-        <div className="admin-form-grid driver-assignment-grid">
-          <label className="driver-field">Ready batch
-            <select className="driver-control" value={selectedBatchId} onChange={e => setSelectedBatchId(e.target.value)}>
-              <option value="">Select a same-customer batch</option>
-              {batches.map(b => <option key={b.batch_id} value={b.batch_id}>{b.batch_number} · {b.customer_name} · {b.order_count} orders</option>)}
-            </select>
-          </label>
-          <label className="driver-field">Approved driver
-            <select className="driver-control" value={driverId} onChange={e => setDriverId(e.target.value)}>
-              <option value="">Select a driver</option>
-              {drivers.map(d => <option key={d.user_id} value={d.user_id}>{d.full_name}{d.company_name ? ' · ' + d.company_name : ''} — {d.phone}</option>)}
-            </select>
-          </label>
-        </div>
-        <button className="admin-button" disabled={busy || !selectedBatchId || !driverId} onClick={() => void assignBatch()}><Truck size={16}/> Assign all orders in batch</button>
-        {batches.length === 0 && <p className="driver-empty">No eligible combined batches are available. Existing orders are not automatically merged.</p>}
-      </section>
-
-      <section className="admin-panel driver-panel">
-        <div className="admin-section-heading"><div><h2>Driver COD cash reconciliation</h2><p>Compare the cash recorded by the driver with the amount physically received by JTBazar.</p></div><ShieldCheck size={22}/></div>
-        <div className="admin-table-wrap driver-table-wrap"><table className="admin-table driver-table">
-          <thead><tr><th>Order</th><th>Customer</th><th>Driver</th><th>Order total</th><th>Driver collected</th><th>Admin received</th><th>Reconciliation</th><th>Proof</th><th>Action</th></tr></thead>
+          <thead><tr><th>Order</th><th>Customer / driver</th><th>Order total</th><th>Driver collected</th><th>Received by admin</th><th>Status</th><th>Proof / action</th></tr></thead>
           <tbody>{cashRows.map(row => <tr key={row.assignment_id}>
-            <td><strong>{row.order_number}</strong></td><td>{row.customer_name}</td><td>{row.driver_name}</td>
-            <td>PKR {Number(row.order_total).toLocaleString()}</td><td>{row.collected_amount == null ? 'Not recorded' : `PKR ${Number(row.collected_amount).toLocaleString()}`}</td>
-            <td>{row.reconciled_amount == null ? 'Not received' : `PKR ${Number(row.reconciled_amount).toLocaleString()}`}</td>
-            <td><span className="admin-status">{row.reconciled_at ? 'Reconciled' : row.collected_amount == null ? 'Driver cash pending' : 'Pending'}</span>{row.reconciliation_note ? <small><br/>{row.reconciliation_note}</small> : null}</td>
-            <td><button className="admin-button admin-button--outline" onClick={() => void openDeliveryProof(row)}>View proof</button></td>
-            <td>{row.collected_amount != null && !row.reconciled_at ? <button className="admin-button" disabled={busy} onClick={() => void reconcileCash(row)}><Save size={14}/> Reconcile</button> : <span className="driver-muted">—</span>}</td>
-          </tr>)}</tbody>
-        </table></div>
-        {cashRows.length === 0 && <p className="driver-empty">No COD cash collections have been recorded yet.</p>}
-      </section>
+            <td><strong>{row.order_number}</strong></td><td>{row.customer_name}<br/><small>{row.driver_name}</small></td>
+            <td>PKR {Number(row.order_total).toLocaleString()}</td><td>{row.collected_amount == null ? 'Not recorded' : 'PKR ' + Number(row.collected_amount).toLocaleString()}</td>
+            <td>{row.reconciled_amount == null ? 'Not received' : 'PKR ' + Number(row.reconciled_amount).toLocaleString()}</td>
+            <td><span className="admin-status">{row.reconciled_at ? 'Reconciled' : row.collected_amount == null ? 'Awaiting driver' : 'Cash pending'}</span>{row.reconciliation_note ? <small><br/>{row.reconciliation_note}</small> : null}</td>
+            <td><div className="driver-review-actions"><button className="admin-button admin-button--outline" onClick={() => void openDeliveryProof(row)}><FileImage size={14}/> Proof</button>{row.collected_amount != null && !row.reconciled_at ? <button className="admin-button" disabled={busy} onClick={() => void reconcileCash(row)}><Save size={14}/> Reconcile</button> : null}</div></td>
+          </tr>)}</tbody></table></div>
+        {cashRows.length === 0 && <p className="driver-empty">No COD cash collections yet.</p>}
+      </section>}
 
-      {loading && <p>Loading driver operations…</p>}
+      {loading && <p>Loading delivery information…</p>}
     </main>
   )
 }

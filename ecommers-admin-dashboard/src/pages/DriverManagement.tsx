@@ -6,7 +6,7 @@ type DriverApplication = { id: string; user_id: string; full_name: string; phone
 type DeliveryOrder = { id: string; order_number: string; customer_name: string; customer_phone: string; order_status: string; created_at: string }
 type DriverOption = { user_id: string; full_name: string; phone: string; company_name: string | null }
 type DriverCustomer = { user_id: string; email: string; full_name: string; phone: string; driver_enabled: boolean }
-type DriverAssignment = { assignment_id: string; order_id: string; order_number: string; customer_name: string; driver_user_id: string; driver_name: string; driver_phone: string; assignment_status: string; assigned_at: string; picked_up_at: string | null; delivered_at: string | null; driver_company_name: string | null }
+type DriverAssignment = { assignment_id: string; order_id: string; order_number: string; customer_name: string; driver_user_id: string; driver_name: string; driver_phone: string; assignment_status: string; assigned_at: string; picked_up_at: string | null; delivered_at: string | null; driver_company_name: string | null; failed_reason: string | null; failed_note: string | null; delivery_batch_number: string | null; delivery_proof_path: string | null; cod_collected_amount: number | null; cash_reconciled_amount: number | null }
 type DriverBatch = { batch_id: string; batch_number: string; customer_id: string; customer_name: string; customer_phone: string; order_count: number; delivery_fee: number }
 type DriverCashRow = { assignment_id: string; order_id: string; order_number: string; customer_name: string; driver_user_id: string; driver_name: string; payment_method: string; order_total: number; collected_amount: number | null; reconciled_amount: number | null; reconciled_at: string | null; reconciliation_note: string | null; delivered_at: string | null }
 
@@ -21,6 +21,7 @@ export function DriverManagement() {
   const [assignments, setAssignments] = useState<DriverAssignment[]>([])
   const [batches, setBatches] = useState<DriverBatch[]>([])
   const [selectedBatchId, setSelectedBatchId] = useState('')
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
   const [cashRows, setCashRows] = useState<DriverCashRow[]>([])
   const [orderId, setOrderId] = useState('')
   const [orderSearch, setOrderSearch] = useState('')
@@ -39,7 +40,7 @@ export function DriverManagement() {
       db.rpc('admin_list_driver_applications'),
       db.rpc('admin_list_assignable_driver_orders'),
       db.rpc('admin_list_approved_drivers'),
-      db.rpc('admin_list_driver_assignments'),
+      db.rpc('admin_list_driver_assignments_v2'),
       db.rpc('admin_list_assignable_delivery_batches'),
       db.rpc('admin_list_driver_cash_reconciliation')
     ])
@@ -149,6 +150,20 @@ export function DriverManagement() {
     } finally {
       setBusy(false)
     }
+  }
+
+  async function createCombinedBatch() {
+    if (selectedOrderIds.length < 2) return
+    setBusy(true); setError(null); setSuccess(null)
+    try {
+      const { data, error: rpcError } = await db.rpc('admin_create_combined_driver_batch', { p_order_ids: selectedOrderIds })
+      if (rpcError) throw rpcError
+      setSuccess('Combined delivery batch created. Existing order delivery fees were preserved. Select a driver below to assign it.')
+      setSelectedOrderIds([])
+      await load()
+      if (data) setSelectedBatchId(String(data))
+    } catch (e: any) { setError(e?.message || 'Could not create the combined delivery batch.') }
+    finally { setBusy(false) }
   }
 
   async function assignBatch() {
@@ -284,11 +299,11 @@ export function DriverManagement() {
       <section className="admin-panel driver-panel">
         <div className="admin-section-heading"><div><h2>Driver assignment records</h2><p>Track assigned, picked-up, delivered and cancelled deliveries. Cancel an active assignment to return its order to the available list.</p></div><PackageCheck size={22}/></div>
         <div className="admin-table-wrap driver-table-wrap"><table className="admin-table driver-table">
-          <thead><tr><th>Order</th><th>Customer</th><th>Driver</th><th>Status</th><th>Assigned</th><th>Action</th></tr></thead>
+          <thead><tr><th>Order / Batch</th><th>Customer</th><th>Driver</th><th>Status / reason</th><th>Assigned</th><th>Action</th></tr></thead>
           <tbody>{assignments.map(a => <tr key={a.assignment_id}>
-            <td><strong>{a.order_number}</strong></td><td>{a.customer_name}</td>
+            <td><strong>{a.order_number}</strong>{a.delivery_batch_number ? <><br/><small>{a.delivery_batch_number}</small></> : null}</td><td>{a.customer_name}</td>
             <td><strong>{a.driver_name || 'Driver'}</strong>{a.driver_company_name ? <><br/><small>{a.driver_company_name}</small></> : null}<br/><small>{a.driver_phone}</small></td>
-            <td><span className="admin-status">{a.assignment_status.replace('_',' ')}</span></td>
+            <td><span className="admin-status">{a.assignment_status.replace('_',' ')}</span>{a.failed_reason ? <small><br/>{a.failed_reason.replaceAll('_',' ')}{a.failed_note ? ` — ${a.failed_note}` : ''}</small> : null}</td>
             <td>{new Date(a.assigned_at).toLocaleString()}</td>
             <td>{['assigned','picked_up'].includes(a.assignment_status)
               ? <button className="admin-button admin-button--danger" disabled={busy} onClick={() => void cancelAssignment(a)}><X size={14}/> Cancel assignment</button>
@@ -296,6 +311,18 @@ export function DriverManagement() {
           </tr>)}</tbody>
         </table></div>
         {assignments.length === 0 && <p className="driver-empty">No driver assignments recorded yet.</p>}
+      </section>
+
+      <section className="admin-panel driver-panel">
+        <div className="admin-section-heading"><div><h2>Create a combined delivery batch</h2><p>Select two or more confirmed orders. The database only accepts orders for the same customer and exact same saved delivery address.</p></div><PackageCheck size={22}/></div>
+        <div className="driver-access-fields">
+          {filteredOrders.map(o => <label key={o.id} className="driver-field" style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0'}}>
+            <input type="checkbox" checked={selectedOrderIds.includes(o.id)} onChange={e => setSelectedOrderIds(current => e.target.checked ? [...current,o.id] : current.filter(id => id !== o.id))} />
+            <span><strong>{o.order_number}</strong> · {o.customer_name} · {o.order_status}</span>
+          </label>)}
+        </div>
+        <button className="admin-button" disabled={busy || selectedOrderIds.length < 2} onClick={() => void createCombinedBatch()}><PackageCheck size={16}/> Create batch from {selectedOrderIds.length} selected orders</button>
+        {filteredOrders.length === 0 && <p className="driver-empty">No confirmed unassigned orders are available to combine.</p>}
       </section>
 
       <section className="admin-panel driver-panel">

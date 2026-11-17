@@ -60,6 +60,33 @@ export function DriverManagement() {
 
   useEffect(() => { void load().catch(e => setError(e.message || 'Could not load driver operations.')).finally(() => setLoading(false)) }, [])
 
+  // Keep the delivery control center in sync with driver/customer/order changes
+  // without requiring an admin to press Refresh after every status update.
+  useEffect(() => {
+    const channel = db.channel('admin-driver-operations-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        void load().catch(e => setError(e.message || 'Could not refresh delivery orders.'))
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, () => {
+        void load().catch(e => setError(e.message || 'Could not refresh delivery items.'))
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_assignments' }, () => {
+        void load().catch(e => setError(e.message || 'Could not refresh driver assignments.'))
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_batches' }, () => {
+        void load().catch(e => setError(e.message || 'Could not refresh delivery batches.'))
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_applications' }, () => {
+        void load().catch(e => setError(e.message || 'Could not refresh driver applications.'))
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'customer_driver_access' }, () => {
+        void load().catch(e => setError(e.message || 'Could not refresh driver access.'))
+      })
+      .subscribe()
+
+    return () => { void db.removeChannel(channel) }
+  }, [])
+
   async function setCustomerAccess(customer: DriverCustomer) {
     setBusy(true); setError(null); setSuccess(null)
     try {
@@ -268,6 +295,24 @@ export function DriverManagement() {
           {orders.length > 0 && filteredOrders.length === 0 && <p className="driver-empty">No orders match your search.</p>}
         </section>
 
+        {batches.length > 0 && <section className="admin-panel driver-panel driver-simple-panel">
+          <div className="admin-panel-heading driver-panel-heading"><div><h2>Ready delivery batches</h2><p>Assign confirmed orders that are already grouped for the same customer and address.</p></div><PackageCheck size={22}/></div>
+          <div className="admin-form-grid driver-assignment-grid">
+            <label className="driver-field">Delivery batch
+              <select className="driver-control" value={selectedBatchId} onChange={e => setSelectedBatchId(e.target.value)}>
+                <option value="">Select a ready batch</option>
+                {batches.map(b => <option key={b.batch_id} value={b.batch_id}>{b.batch_number} — {b.customer_name} ({b.order_count} order{b.order_count === 1 ? '' : 's'})</option>)}
+              </select>
+            </label>
+            <label className="driver-field">Approved driver
+              <select className="driver-control" value={driverId} onChange={e => setDriverId(e.target.value)}>
+                <option value="">Select approved driver</option>
+                {drivers.map(d => <option key={d.user_id} value={d.user_id}>{d.full_name} — {d.phone}</option>)}
+              </select>
+            </label>
+          </div>
+          <button className="admin-button" disabled={busy || !selectedBatchId || !driverId} onClick={() => void assignBatch()}><Truck size={16}/> Assign batch</button>
+        </section>}
         <section className="admin-panel driver-panel driver-simple-panel">
           <div className="admin-section-heading"><div><h2>Delivery tracking</h2><p>See which driver has each order and its latest status.</p></div><PackageCheck size={22}/></div>
           <div className="admin-table-wrap driver-table-wrap"><table className="admin-table driver-table">
@@ -292,12 +337,6 @@ export function DriverManagement() {
               {filteredOrders.map(o => <label key={o.id}><input type="checkbox" checked={selectedOrderIds.includes(o.id)} onChange={e => setSelectedOrderIds(current => e.target.checked ? [...current,o.id] : current.filter(id => id !== o.id))}/><span><strong>{o.order_number}</strong> · {o.customer_name}</span></label>)}
             </div>
             <button className="admin-button" disabled={busy || selectedOrderIds.length < 2} onClick={() => void createCombinedBatch()}><PackageCheck size={16}/> Create batch ({selectedOrderIds.length} selected)</button>
-            <div className="admin-form-grid driver-assignment-grid" style={{marginTop:16}}>
-              <label className="driver-field">Ready batch<select className="driver-control" value={selectedBatchId} onChange={e => setSelectedBatchId(e.target.value)}><option value="">Select a batch</option>{batches.map(b => <option key={b.batch_id} value={b.batch_id}>{b.batch_number} · {b.customer_name} · {b.order_count} orders</option>)}</select></label>
-              <label className="driver-field">Approved driver<select className="driver-control" value={driverId} onChange={e => setDriverId(e.target.value)}><option value="">Select a driver</option>{drivers.map(d => <option key={d.user_id} value={d.user_id}>{d.full_name} — {d.phone}</option>)}</select></label>
-            </div>
-            <button className="admin-button" disabled={busy || !selectedBatchId || !driverId} onClick={() => void assignBatch()}><Truck size={16}/> Assign batch</button>
-            {batches.length === 0 && <p className="driver-empty">No ready combined batches.</p>}
           </div>
         </details>
       </>}

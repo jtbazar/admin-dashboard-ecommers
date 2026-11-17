@@ -38,6 +38,7 @@ const nav = [
 ]
 function notificationSectionPath(item: AdminNotification): string | null {
   const title = `${item.title} ${item.body}`.toLowerCase()
+  if (title.includes('ready for pickup') || title.includes('vendor pickup')) return '/admin/vendor-pickups'
   if (item.kind === 'order' || title.includes('order')) return '/admin/orders'
 
   // Route vendor-submitted product approval alerts to the dedicated queue.

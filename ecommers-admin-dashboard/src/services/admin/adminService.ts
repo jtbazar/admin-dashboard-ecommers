@@ -587,7 +587,7 @@ export async function getAdminOrderDetail(id: string) {
     (client as any).from('vendor_order_pickups').select('order_id, seller_id, status').eq('order_id', id),
   ])
   assertError(order.error); assertError(items.error); assertError(pickups.error)
-  const pickupStatusBySeller = new Map((pickups.data ?? []).map((pickup) => [pickup.seller_id, pickup.status]))
+  const pickupStatusBySeller = new Map(((pickups.data ?? []) as { seller_id: string; status: string }[]).map((pickup) => [pickup.seller_id, pickup.status]))
   const productIds = [...new Set((items.data ?? []).map((item) => item.product_id).filter((value): value is string => Boolean(value)))]
   const productRows = productIds.length ? await (client as any).from('products').select('id, food_product_type, categories(name)').in('id', productIds) : { data: [], error: null }
   assertError(productRows.error)

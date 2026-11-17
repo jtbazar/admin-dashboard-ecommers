@@ -1239,7 +1239,7 @@ function Orders() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12, margin: '14px 0' }}>
             <div><small className="admin-copy">CUSTOMER</small><strong style={{ display: 'block' }}>{order.customer_name}</strong><small>{order.customer_phone}</small></div>
-            <div><small className="admin-copy">VENDOR</small><strong style={{ display: 'block' }}>{order.vendor_names.length ? order.vendor_names.join(', ') : 'JTBazar'}</strong></div>
+            <div><small className="admin-copy">VENDOR</small><strong style={{ display: 'block' }}>{order.vendor_names.length ? order.vendor_names.join(', ') : 'Platform / no vendor'}</strong></div>
             <div><small className="admin-copy">ORDER TOTAL</small><strong style={{ display: 'block' }}>{formatMoney(order.total)}</strong><small>Payment: {order.payment_status}</small></div>
             <div><small className="admin-copy">RIDER</small><strong style={{ display: 'block' }}>{driverAssignments[order.id]?.driver_name ?? 'Not assigned'}</strong>{driverAssignments[order.id]?.driver_phone && <small>{driverAssignments[order.id].driver_phone}</small>}</div>
           </div>

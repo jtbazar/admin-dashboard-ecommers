@@ -1268,34 +1268,72 @@ function VendorPickupQueue() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [view, setView] = useState<'ready' | 'waiting' | 'collected' | 'all'>('ready')
   const { push } = useToast()
-  async function load() {
-    setLoading(true); setError(null)
+  async function load(quiet = false) {
+    if (!quiet) setLoading(true)
+    setError(null)
     try { setRows(await listAdminVendorPickups()) }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Pickup queue could not be loaded.') }
-    finally { setLoading(false) }
+    finally { if (!quiet) setLoading(false) }
   }
   useEffect(() => {
     void load()
-    // Keep the admin queue current when a vendor changes pickup status.
     const client = getSupabase()
     const channel = client.channel('admin-vendor-pickup-queue')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'vendor_order_pickups' }, () => { void load() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vendor_order_pickups' }, () => { void load(true) })
       .subscribe()
-    // Polling is a fallback if realtime publication is not enabled for this table.
-    const refreshId = window.setInterval(() => { void load() }, 20000)
+    const refreshId = window.setInterval(() => { if (document.visibilityState === 'visible') void load(true) }, 20000)
     return () => { window.clearInterval(refreshId); void client.removeChannel(channel) }
   }, [])
   async function markCollected(id: string) {
     setBusy(id)
-    try { await markAdminVendorPickedUp(id); push('Vendor pickup marked as collected.', 'success'); await load() }
+    try { await markAdminVendorPickedUp(id); push('Pickup confirmed as collected.', 'success'); await load(true) }
     catch (cause) { push(cause instanceof Error ? cause.message : 'Pickup could not be updated.', 'error') }
     finally { setBusy(null) }
   }
-  return <section className="admin-panel" style={{ marginTop: 24 }}>
-    <div className="admin-panel-heading"><div><p className="admin-kicker">Vendor collection</p><h3>Pickup queue</h3><p className="admin-copy">Customer details are visible to admins only. Vendors receive product-only slips.</p></div><button className="admin-button admin-button--outline" onClick={() => void load()}><RefreshCw size={15} /> Refresh</button></div>
-    {error && <p className="admin-error">{error}</p>}
-    {loading ? <Loading /> : rows.length === 0 ? <p className="admin-copy">No vendor pickups have been created yet.</p> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Order / Vendor</th><th>Customer & delivery</th><th>Items</th><th>Pickup status</th><th>Action</th></tr></thead><tbody>{rows.map((row) => <tr key={row.pickup_id}><td><strong>{row.order_number}</strong><small>{row.shop_name}</small></td><td>{row.customer_name}<small>{row.customer_phone}</small><small>{typeof row.shipping_address === 'object' && row.shipping_address ? Object.values(row.shipping_address).filter(Boolean).join(', ') : ''}</small>{row.delivery_lat != null && row.delivery_lng != null && <a href={'https://www.google.com/maps?q=' + row.delivery_lat + ',' + row.delivery_lng} target="_blank" rel="noreferrer">Delivery pin</a>}</td><td>{(Array.isArray(row.items) ? row.items : []).map((item: any, index: number) => <div key={index}><strong>{item.product_name}</strong><small>{item.sku || 'No SKU'} · Qty {item.quantity}</small></div>)}</td><td><em className={statusClass(row.pickup_status)}>{row.pickup_status.replace(/_/g, ' ')}</em></td><td>{row.pickup_status === 'ready_for_pickup' ? <button className="admin-small-button" disabled={busy === row.pickup_id} onClick={() => void markCollected(row.pickup_id)}>{busy === row.pickup_id ? 'Saving…' : 'Mark collected'}</button> : row.pickup_status === 'picked_up' ? 'Collected' : 'Waiting for vendor'}</td></tr>)}</tbody></table></div>}
+  const readyRows = rows.filter((row) => row.pickup_status === 'ready_for_pickup')
+  const collectedRows = rows.filter((row) => row.pickup_status === 'picked_up')
+  const waitingRows = rows.filter((row) => !['ready_for_pickup', 'picked_up'].includes(row.pickup_status))
+  const visibleRows = view === 'ready' ? readyRows : view === 'waiting' ? waitingRows : view === 'collected' ? collectedRows : rows
+  const tabs = [
+    { id: 'ready' as const, label: 'Ready for pickup', count: readyRows.length },
+    { id: 'waiting' as const, label: 'Waiting for vendor', count: waitingRows.length },
+    { id: 'collected' as const, label: 'Collected', count: collectedRows.length },
+    { id: 'all' as const, label: 'All', count: rows.length },
+  ]
+  return <section className="admin-content">
+    <div className="admin-page-heading"><div><p className="admin-kicker">Order fulfilment</p><h2>Vendor pickups</h2><p className="admin-copy">When a vendor marks an order ready, it appears here. Check the items and confirm collection.</p></div><button className="admin-button admin-button--outline" onClick={() => void load()} disabled={loading}><RefreshCw size={15} /> Refresh</button></div>
+    {error && <ErrorState message={error} retry={() => void load()} />}
+    {!error && <div className="admin-panel" style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {tabs.map((tab) => <button key={tab.id} type="button" className={view === tab.id ? 'admin-button' : 'admin-button admin-button--outline'} onClick={() => setView(tab.id)}>{tab.label} <strong style={{ marginLeft: 4 }}>{tab.count}</strong></button>)}
+      </div>
+    </div>}
+    {loading ? <Loading /> : !error && visibleRows.length === 0 ? <div className="admin-panel" style={{ textAlign: 'center', padding: 28 }}>
+      <Package size={28} />
+      <h3 style={{ margin: '10px 0 4px' }}>{view === 'ready' ? 'No pickups need your action' : view === 'waiting' ? 'No vendors are currently preparing pickups' : view === 'collected' ? 'No pickups collected yet' : 'No vendor pickup records yet'}</h3>
+      <p className="admin-copy" style={{ margin: 0 }}>{view === 'ready' ? 'As soon as a vendor marks an order “Ready for Pickup”, it will appear in this list.' : view === 'waiting' ? 'Vendor pickup records that are not ready yet will appear here.' : 'Choose another tab to see a different pickup status.'}</p>
+    </div> : !error && <div style={{ display: 'grid', gap: 12 }}>
+      {visibleRows.map((row) => <article key={row.pickup_id} className="admin-panel" style={{ padding: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <div><p className="admin-kicker" style={{ marginBottom: 4 }}>ORDER</p><strong style={{ fontSize: 18 }}>{row.order_number || 'Order'}</strong><p style={{ margin: '3px 0 0' }}><strong>{row.shop_name || 'Vendor shop'}</strong></p></div>
+          <em className={statusClass(row.pickup_status)}>{row.pickup_status === 'ready_for_pickup' ? 'Ready for pickup' : row.pickup_status === 'picked_up' ? 'Collected' : 'Waiting for vendor'}</em>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 14, margin: '14px 0' }}>
+          <div><small className="admin-copy">CUSTOMER</small><strong style={{ display: 'block' }}>{row.customer_name || 'Customer details unavailable'}</strong><small>{row.customer_phone || 'No phone provided'}</small></div>
+          <div><small className="admin-copy">DELIVERY ADDRESS</small><span style={{ display: 'block' }}>{typeof row.shipping_address === 'object' && row.shipping_address ? Object.values(row.shipping_address).filter(Boolean).join(', ') : row.shipping_address || 'Address not available'}</span>{row.delivery_lat != null && row.delivery_lng != null && <a href={'https://www.google.com/maps?q=' + row.delivery_lat + ',' + row.delivery_lng} target="_blank" rel="noreferrer">Open map location</a>}</div>
+        </div>
+        <div style={{ borderTop: '1px solid var(--admin-border, #e5e7eb)', paddingTop: 12 }}>
+          <strong style={{ display: 'block', marginBottom: 8 }}>Items in this vendor pickup</strong>
+          {(Array.isArray(row.items) ? row.items : []).map((item: any, index: number) => <div key={index} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '5px 0' }}><span>{item.product_name || 'Product'}<small style={{ display: 'block' }}>{item.sku || 'No SKU'}</small></span><strong>Qty {item.quantity}</strong></div>)}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+          {row.pickup_status === 'ready_for_pickup' ? <button className="admin-button" disabled={busy === row.pickup_id} onClick={() => void markCollected(row.pickup_id)}>{busy === row.pickup_id ? 'Saving…' : 'Confirm pickup collected'}</button> : row.pickup_status === 'picked_up' ? <span className="admin-copy">Pickup completed</span> : <span className="admin-copy">Waiting for vendor to mark this pickup ready</span>}
+        </div>
+      </article>)}
+    </div>}
+    <p className="admin-copy" style={{ marginTop: 14 }}>Customer information is admin-only. Vendors see product-only pickup slips.</p>
   </section>
 }
 

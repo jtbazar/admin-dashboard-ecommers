@@ -182,6 +182,21 @@ export function DriverManagement() {
     finally { setBusy(false) }
   }
 
+  async function openDeliveryProof(row: DriverCashRow) {
+    const tab = window.open('about:blank', '_blank')
+    try {
+      const { data: path, error: rpcError } = await db.rpc('admin_get_driver_delivery_proof_path', { p_assignment_id: row.assignment_id })
+      if (rpcError) throw rpcError
+      if (!path) throw new Error('No delivery photo proof was uploaded for this order.')
+      const { data, error: storageError } = await db.storage.from('driver-documents').createSignedUrl(path, 300)
+      if (storageError) throw storageError
+      if (tab) tab.location.href = data.signedUrl
+    } catch (e: any) {
+      tab?.close()
+      setError(e?.message || 'Could not open delivery proof.')
+    }
+  }
+
   const filteredCustomers = customers.filter(c => {
     const q = customerSearch.trim().toLowerCase()
     return !q || [c.full_name, c.email, c.phone].some(v => (v ?? '').toLowerCase().includes(q))
@@ -306,12 +321,13 @@ export function DriverManagement() {
       <section className="admin-panel driver-panel">
         <div className="admin-section-heading"><div><h2>Driver COD cash reconciliation</h2><p>Compare the cash recorded by the driver with the amount physically received by JTBazar.</p></div><ShieldCheck size={22}/></div>
         <div className="admin-table-wrap driver-table-wrap"><table className="admin-table driver-table">
-          <thead><tr><th>Order</th><th>Customer</th><th>Driver</th><th>Order total</th><th>Driver collected</th><th>Admin received</th><th>Reconciliation</th><th>Action</th></tr></thead>
+          <thead><tr><th>Order</th><th>Customer</th><th>Driver</th><th>Order total</th><th>Driver collected</th><th>Admin received</th><th>Reconciliation</th><th>Proof</th><th>Action</th></tr></thead>
           <tbody>{cashRows.map(row => <tr key={row.assignment_id}>
             <td><strong>{row.order_number}</strong></td><td>{row.customer_name}</td><td>{row.driver_name}</td>
             <td>PKR {Number(row.order_total).toLocaleString()}</td><td>{row.collected_amount == null ? 'Not recorded' : `PKR ${Number(row.collected_amount).toLocaleString()}`}</td>
             <td>{row.reconciled_amount == null ? 'Not received' : `PKR ${Number(row.reconciled_amount).toLocaleString()}`}</td>
-            <td><span className="admin-status">{row.reconciled_at ? 'Reconciled' : 'Pending'}</span>{row.reconciliation_note ? <small><br/>{row.reconciliation_note}</small> : null}</td>
+            <td><span className="admin-status">{row.reconciled_at ? 'Reconciled' : row.collected_amount == null ? 'Driver cash pending' : 'Pending'}</span>{row.reconciliation_note ? <small><br/>{row.reconciliation_note}</small> : null}</td>
+            <td><button className="admin-button admin-button--outline" onClick={() => void openDeliveryProof(row)}>View proof</button></td>
             <td>{row.collected_amount != null && !row.reconciled_at ? <button className="admin-button" disabled={busy} onClick={() => void reconcileCash(row)}><Save size={14}/> Reconcile</button> : <span className="driver-muted">—</span>}</td>
           </tr>)}</tbody>
         </table></div>

@@ -584,7 +584,7 @@ export async function getAdminOrderDetail(id: string) {
     client.from('order_items').select('id, order_id, product_id, variant_id, seller_id, seller_name_snapshot, product_name_snapshot, sku_snapshot, variant_snapshot, product_snapshot, quantity, unit_price, line_total, vendor_fulfillment_status, delivery_status, tracking_number, tracking_url, vendor_note, vendor_updated_at, created_at').eq('order_id', id).order('created_at').limit(100),
     client.from('admin_order_notes').select('id, order_id, created_by, note, created_at').eq('order_id', id).order('created_at', { ascending: false }).limit(100),
     client.from('admin_audit_logs').select('id, action, entity, entity_id, details, created_at').eq('entity', 'orders').eq('entity_id', id).order('created_at', { ascending: false }).limit(100),
-    client.from('vendor_order_pickups').select('order_id, seller_id, status').eq('order_id', id),
+    (client as any).from('vendor_order_pickups').select('order_id, seller_id, status').eq('order_id', id),
   ])
   assertError(order.error); assertError(items.error); assertError(pickups.error)
   const pickupStatusBySeller = new Map((pickups.data ?? []).map((pickup) => [pickup.seller_id, pickup.status]))

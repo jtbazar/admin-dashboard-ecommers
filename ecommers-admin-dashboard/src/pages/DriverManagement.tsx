@@ -231,7 +231,8 @@ export function DriverManagement() {
       const { data: path, error: rpcError } = await db.rpc('admin_get_driver_delivery_proof_path', { p_assignment_id: row.assignment_id })
       if (rpcError) throw rpcError
       if (!path) throw new Error('No delivery photo proof was uploaded for this order.')
-      const { data, error: storageError } = await db.storage.from('driver-documents').createSignedUrl(path, 300)
+      const proofBucket = String(path).includes('/delivery_proofs/') ? 'delivery-proofs' : 'driver-documents'
+      const { data, error: storageError } = await db.storage.from(proofBucket).createSignedUrl(path, 300)
       if (storageError) throw storageError
       if (tab) tab.location.href = data.signedUrl
     } catch (e: any) {

@@ -7,6 +7,8 @@ type DeliveryOrder = { id: string; order_number: string; customer_name: string; 
 type DriverOption = { user_id: string; full_name: string; phone: string; company_name: string | null }
 type DriverCustomer = { user_id: string; email: string; full_name: string; phone: string; driver_enabled: boolean }
 type DriverAssignment = { assignment_id: string; order_id: string; order_number: string; customer_name: string; driver_user_id: string; driver_name: string; driver_phone: string; assignment_status: string; assigned_at: string; picked_up_at: string | null; delivered_at: string | null; driver_company_name: string | null }
+type DriverBatch = { batch_id: string; batch_number: string; customer_id: string; customer_name: string; customer_phone: string; order_count: number; delivery_fee: number }
+type DriverCashRow = { assignment_id: string; order_id: string; order_number: string; customer_name: string; driver_user_id: string; driver_name: string; payment_method: string; order_total: number; collected_amount: number | null; reconciled_amount: number | null; reconciled_at: string | null; reconciliation_note: string | null; delivered_at: string | null }
 
 export function DriverManagement() {
   const db = getSupabase() as any
@@ -17,6 +19,9 @@ export function DriverManagement() {
   const [orders, setOrders] = useState<DeliveryOrder[]>([])
   const [drivers, setDrivers] = useState<DriverOption[]>([])
   const [assignments, setAssignments] = useState<DriverAssignment[]>([])
+  const [batches, setBatches] = useState<DriverBatch[]>([])
+  const [selectedBatchId, setSelectedBatchId] = useState('')
+  const [cashRows, setCashRows] = useState<DriverCashRow[]>([])
   const [orderId, setOrderId] = useState('')
   const [orderSearch, setOrderSearch] = useState('')
   const [driverId, setDriverId] = useState('')
@@ -29,20 +34,24 @@ export function DriverManagement() {
 
   async function load() {
     setError(null)
-    const [settings, apps, orderRows, approved, assignmentRows] = await Promise.all([
+    const [settings, apps, orderRows, approved, assignmentRows, batchRows, cashResults] = await Promise.all([
       db.rpc('admin_list_driver_customers'),
       db.rpc('admin_list_driver_applications'),
       db.rpc('admin_list_assignable_driver_orders'),
       db.rpc('admin_list_approved_drivers'),
-      db.rpc('admin_list_driver_assignments')
+      db.rpc('admin_list_driver_assignments'),
+      db.rpc('admin_list_assignable_delivery_batches'),
+      db.rpc('admin_list_driver_cash_reconciliation')
     ])
-    const failure = settings.error || apps.error || orderRows.error || approved.error || assignmentRows.error
+    const failure = settings.error || apps.error || orderRows.error || approved.error || assignmentRows.error || batchRows.error || cashResults.error
     if (failure) throw new Error(failure.message)
     setCustomers(settings.data ?? [])
     setApplications(apps.data ?? [])
     setOrders(orderRows.data ?? [])
     setDrivers(approved.data ?? [])
     setAssignments(assignmentRows.data ?? [])
+    setBatches(batchRows.data ?? [])
+    setCashRows(cashResults.data ?? [])
     setNotes(Object.fromEntries((apps.data ?? []).map((a: DriverApplication) => [a.id, a.admin_note ?? ''])))
     setCompanyNames(Object.fromEntries((apps.data ?? []).map((a: DriverApplication) => [a.id, a.company_name ?? ''])))
   }
@@ -140,6 +149,37 @@ export function DriverManagement() {
     } finally {
       setBusy(false)
     }
+  }
+
+  async function assignBatch() {
+    if (!selectedBatchId || !driverId) return
+    setBusy(true); setError(null); setSuccess(null)
+    try {
+      const { data, error: rpcError } = await db.rpc('admin_assign_driver_to_delivery_batch', { p_batch_id: selectedBatchId, p_driver_user_id: driverId })
+      if (rpcError) throw rpcError
+      setSuccess(`${Number(data ?? 0)} orders assigned together to the selected driver.`)
+      setSelectedBatchId(''); setDriverId('')
+      await load()
+    } catch (e: any) { setError(e?.message || 'Could not assign this delivery batch.') }
+    finally { setBusy(false) }
+  }
+
+  async function reconcileCash(row: DriverCashRow) {
+    const rawAmount = window.prompt(`Cash received from ${row.driver_name} for ${row.order_number}. Driver recorded: PKR ${Number(row.collected_amount ?? 0).toLocaleString()}. Enter the cash amount received:`)
+    if (rawAmount === null) return
+    const amount = Number(rawAmount.replace(/,/g, '').trim())
+    if (!Number.isFinite(amount) || amount < 0) { setError('Enter a valid non-negative cash amount.'); return }
+    const note = amount !== Number(row.collected_amount ?? 0) ? window.prompt('Amount differs from driver record. Add a reconciliation note (required):') : window.prompt('Optional reconciliation note:')
+    if (note === null) return
+    if (amount !== Number(row.collected_amount ?? 0) && !note.trim()) { setError('A note is required when the cash amount differs.'); return }
+    setBusy(true); setError(null); setSuccess(null)
+    try {
+      const { error: rpcError } = await db.rpc('admin_reconcile_driver_cash', { p_assignment_id: row.assignment_id, p_amount: amount, p_note: note.trim() || null })
+      if (rpcError) throw rpcError
+      setSuccess(`Cash reconciliation saved for ${row.order_number}.`)
+      await load()
+    } catch (e: any) { setError(e?.message || 'Could not reconcile driver cash.') }
+    finally { setBusy(false) }
   }
 
   const filteredCustomers = customers.filter(c => {
@@ -241,6 +281,41 @@ export function DriverManagement() {
           </tr>)}</tbody>
         </table></div>
         {assignments.length === 0 && <p className="driver-empty">No driver assignments recorded yet.</p>}
+      </section>
+
+      <section className="admin-panel driver-panel">
+        <div className="admin-section-heading"><div><h2>Combined delivery batches</h2><p>Only same-customer batches with one matching delivery address and confirmed orders can be assigned together.</p></div><PackageCheck size={22}/></div>
+        <div className="admin-form-grid driver-assignment-grid">
+          <label className="driver-field">Ready batch
+            <select className="driver-control" value={selectedBatchId} onChange={e => setSelectedBatchId(e.target.value)}>
+              <option value="">Select a same-customer batch</option>
+              {batches.map(b => <option key={b.batch_id} value={b.batch_id}>{b.batch_number} · {b.customer_name} · {b.order_count} orders</option>)}
+            </select>
+          </label>
+          <label className="driver-field">Approved driver
+            <select className="driver-control" value={driverId} onChange={e => setDriverId(e.target.value)}>
+              <option value="">Select a driver</option>
+              {drivers.map(d => <option key={d.user_id} value={d.user_id}>{d.full_name}{d.company_name ? ' · ' + d.company_name : ''} — {d.phone}</option>)}
+            </select>
+          </label>
+        </div>
+        <button className="admin-button" disabled={busy || !selectedBatchId || !driverId} onClick={() => void assignBatch()}><Truck size={16}/> Assign all orders in batch</button>
+        {batches.length === 0 && <p className="driver-empty">No eligible combined batches are available. Existing orders are not automatically merged.</p>}
+      </section>
+
+      <section className="admin-panel driver-panel">
+        <div className="admin-section-heading"><div><h2>Driver COD cash reconciliation</h2><p>Compare the cash recorded by the driver with the amount physically received by JTBazar.</p></div><ShieldCheck size={22}/></div>
+        <div className="admin-table-wrap driver-table-wrap"><table className="admin-table driver-table">
+          <thead><tr><th>Order</th><th>Customer</th><th>Driver</th><th>Order total</th><th>Driver collected</th><th>Admin received</th><th>Reconciliation</th><th>Action</th></tr></thead>
+          <tbody>{cashRows.map(row => <tr key={row.assignment_id}>
+            <td><strong>{row.order_number}</strong></td><td>{row.customer_name}</td><td>{row.driver_name}</td>
+            <td>PKR {Number(row.order_total).toLocaleString()}</td><td>{row.collected_amount == null ? 'Not recorded' : `PKR ${Number(row.collected_amount).toLocaleString()}`}</td>
+            <td>{row.reconciled_amount == null ? 'Not received' : `PKR ${Number(row.reconciled_amount).toLocaleString()}`}</td>
+            <td><span className="admin-status">{row.reconciled_at ? 'Reconciled' : 'Pending'}</span>{row.reconciliation_note ? <small><br/>{row.reconciliation_note}</small> : null}</td>
+            <td>{row.collected_amount != null && !row.reconciled_at ? <button className="admin-button" disabled={busy} onClick={() => void reconcileCash(row)}><Save size={14}/> Reconcile</button> : <span className="driver-muted">—</span>}</td>
+          </tr>)}</tbody>
+        </table></div>
+        {cashRows.length === 0 && <p className="driver-empty">No COD cash collections have been recorded yet.</p>}
       </section>
 
       {loading && <p>Loading driver operations…</p>}

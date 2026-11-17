@@ -251,7 +251,7 @@ function AdminContent({ path }: { path: string }) {
   if (path === '/admin/hot-deals') return <HotDeals />
   if (path === '/admin/categories') return <Categories />
   if (path === '/admin/orders') return <Orders />
-  if (path === '/admin/vendor-pickups') return 
+  if (path === '/admin/vendor-pickups') return <VendorPickupQueue />
   if (path === '/admin/reviews') return <CustomerReviews />
   if (path === '/admin/manual-orders') return <ManualOrders />
   if (/^\/admin\/manual-orders\/[^/]+$/.test(path)) return <ManualOrderDetailPage orderId={path.split('/').pop()!} />

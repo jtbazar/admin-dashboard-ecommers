@@ -1018,6 +1018,9 @@ function Orders() {
   const [approvedOrderDrivers, setApprovedOrderDrivers] = useState<any[]>([])
   const [orderDriverChoice, setOrderDriverChoice] = useState<Record<string, string>>({})
   const [fulfilmentBusy, setFulfilmentBusy] = useState<string | null>(null)
+  const [combinedCandidates, setCombinedCandidates] = useState<Record<string, any[]>>({})
+  const [combinedSelections, setCombinedSelections] = useState<Record<string, string[]>>({})
+  const [combinedBatches, setCombinedBatches] = useState<Record<string, string>>({})
   const load = (quiet = false) => {
     if (!quiet) setLoading(true)
     setError(null)
@@ -1225,6 +1228,11 @@ function Orders() {
       if (driversResult.error) throw new Error(driversResult.error.message)
       setOrderPickupRows(current => ({ ...current, [orderId]: pickups }))
       setApprovedOrderDrivers(driversResult.data ?? [])
+      if (!combinedCandidates[orderId]) {
+        const candidates = await findCustomerDeliveryOrders(orderId)
+        setCombinedCandidates(current => ({ ...current, [orderId]: candidates.filter((candidate: any) => candidate.order_status === 'confirmed' && candidate.id !== orderId) }))
+        setCombinedSelections(current => ({ ...current, [orderId]: [orderId] }))
+      }
     } catch (cause) {
       push(cause instanceof Error ? cause.message : 'Order fulfilment could not be loaded.', 'error')
     }
@@ -1253,6 +1261,43 @@ function Orders() {
       load(true)
     } catch (cause) {
       push(cause instanceof Error ? cause.message : 'Rider could not be assigned. Check product and vendor readiness.', 'error')
+    } finally { setFulfilmentBusy(null) }
+  }
+  function toggleCombinedOrder(orderId: string, candidateId: string, checked: boolean) {
+    setCombinedSelections(current => {
+      const selected = current[orderId] ?? [orderId]
+      return { ...current, [orderId]: checked ? [...new Set([...selected, candidateId])] : selected.filter(id => id !== candidateId) }
+    })
+  }
+  async function createCombinedDelivery(orderId: string) {
+    const selected = combinedSelections[orderId] ?? [orderId]
+    if (selected.length < 2) { push('Ek rider delivery ke liye kam az kam 2 confirmed orders select karein.', 'error'); return }
+    setFulfilmentBusy('combine-' + orderId)
+    try {
+      const { data, error: rpcError } = await (getSupabase() as any).rpc('admin_create_combined_driver_batch', { p_order_ids: selected })
+      if (rpcError) throw new Error(rpcError.message)
+      const batchId = String(data)
+      setCombinedBatches(current => ({ ...current, [orderId]: batchId }))
+      push('Combined delivery batch ban gaya. Ab isi panel se ek rider assign karein.', 'success')
+      load(true)
+    } catch (cause) {
+      push(cause instanceof Error ? cause.message : 'Orders combine nahi ho sakay. Same customer, same address aur tamam pickups collected hona zaroori hai.', 'error')
+    } finally { setFulfilmentBusy(null) }
+  }
+  async function assignCombinedDelivery(orderId: string) {
+    const batchId = combinedBatches[orderId]
+    const driverId = orderDriverChoice[orderId]
+    if (!batchId || !driverId) return
+    setFulfilmentBusy('batch-' + orderId)
+    try {
+      const { data, error: rpcError } = await (getSupabase() as any).rpc('admin_assign_driver_to_delivery_batch', { p_batch_id: batchId, p_driver_user_id: driverId })
+      if (rpcError) throw new Error(rpcError.message)
+      push(`Combined delivery assigned to one rider. ${Number(data) || 0} order(s) included.`, 'success')
+      setCombinedBatches(current => { const next = { ...current }; delete next[orderId]; return next })
+      setOrderDriverChoice(current => ({ ...current, [orderId]: '' }))
+      load(true)
+    } catch (cause) {
+      push(cause instanceof Error ? cause.message : 'Combined delivery rider assign nahi ho saka. Batch bana hua hai; dobara assign try karein.', 'error')
     } finally { setFulfilmentBusy(null) }
   }
   const deliveryCollectionTotal = deliveryCollectionItems.reduce((sum,item)=>sum+(Number(item.amount)||0),0)
@@ -1308,6 +1353,19 @@ function Orders() {
                       <div><strong>{pickup.shop_name || 'Vendor'}</strong><small style={{ display: 'block' }}>{(pickup.items ?? []).map((item: any) => `${item.product_name} × ${item.quantity}`).join(', ')}</small></div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}><em className={statusClass(pickup.pickup_status)}>{String(pickup.pickup_status || 'awaiting_vendor').replace(/_/g, ' ')}</em><button type="button" className="admin-button admin-button--outline" disabled={fulfilmentBusy === pickup.pickup_id || pickup.pickup_status !== 'ready_for_pickup'} onClick={() => void collectOrderVendorPickup(order.id, pickup.pickup_id)}>{fulfilmentBusy === pickup.pickup_id ? 'Saving…' : 'Confirm collected'}</button></div>
                     </div>)}
+                  </div>
+                  <div style={{ borderTop: '1px solid var(--admin-border, #e5e7eb)', paddingTop: 12 }}>
+                    <strong>Combine this customer's orders</strong>
+                    <p className="admin-copy" style={{ margin: '4px 0 8px' }}>Sirf same customer ke confirmed orders select karein. Database same delivery address, vendor collection aur product readiness verify karega. Ek batch par ek rider assign hoga.</p>
+                    {order.order_status !== 'confirmed' ? <small className="admin-copy">Combined rider delivery ke liye pehle order confirm karein.</small> : <>
+                      {(combinedCandidates[order.id] ?? []).length === 0 ? <small className="admin-copy">Is customer ke doosre confirmed orders nahi mile.</small> : (combinedCandidates[order.id] ?? []).map((candidate: any) => <label key={candidate.id} className="admin-check" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
+                        <input type="checkbox" checked={(combinedSelections[order.id] ?? [order.id]).includes(candidate.id)} onChange={event => toggleCombinedOrder(order.id, candidate.id, event.target.checked)} disabled={Boolean(combinedBatches[order.id])}/>
+                        <span><strong>{candidate.order_number}</strong> · {formatMoney(candidate.total)}<small>{candidate.order_status} · {formatDate(candidate.created_at)}</small></span>
+                      </label>)}
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                        {!combinedBatches[order.id] ? <button type="button" className="admin-button admin-button--outline" disabled={fulfilmentBusy === 'combine-' + order.id || (combinedSelections[order.id] ?? [order.id]).length < 2} onClick={() => void createCombinedDelivery(order.id)}>{fulfilmentBusy === 'combine-' + order.id ? 'Combining…' : 'Create one combined delivery'}</button> : <><strong className="admin-copy">Batch ready · {combinedBatches[order.id].slice(0, 8)}</strong><button type="button" className="admin-button" disabled={fulfilmentBusy === 'batch-' + order.id || !orderDriverChoice[order.id]} onClick={() => void assignCombinedDelivery(order.id)}>{fulfilmentBusy === 'batch-' + order.id ? 'Assigning…' : 'Assign one rider to all orders'}</button></>}
+                      </div>
+                    </>}
                   </div>
                   <div style={{ borderTop: '1px solid var(--admin-border, #e5e7eb)', paddingTop: 12 }}>
                     <strong>Assign rider</strong><p className="admin-copy" style={{ margin: '4px 0 10px' }}>System check karega ke order confirmed hai, platform products ready hain aur vendor products JTBazar collect kar chuka hai.</p>

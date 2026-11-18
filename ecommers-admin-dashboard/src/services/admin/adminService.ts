@@ -540,7 +540,20 @@ export async function listAdminOrders(search = '', status = 'all', page = 0, pag
   const from = Math.max(0, page) * Math.max(1, pageSize)
   const client = getSupabase()
   let vendorOrderIds: string[] | null = null
-  if (vendorId !== 'all') {
+  if (status === 'waiting_vendor') {
+    // This is an item-level marketplace filter, not the generic "confirmed"
+    // order status. Platform/JTBazar stock has seller_id = NULL and must never
+    // appear in the vendor-waiting queue.
+    const { data: matchingItems, error: itemError } = await client.from('order_items')
+      .select('order_id')
+      .not('seller_id', 'is', null)
+      .in('vendor_fulfillment_status', ['pending', 'accepted', 'processing'])
+      .in('delivery_status', ['pending', 'ready'])
+      .limit(10000)
+    assertError(itemError)
+    vendorOrderIds = [...new Set((matchingItems ?? []).map((item) => item.order_id).filter((id): id is string => Boolean(id)))]
+    if (vendorOrderIds.length === 0) return { items: [], count: 0 }
+  } else if (vendorId !== 'all') {
     const { data: matchingItems, error: itemError } = await client.from('order_items').select('order_id').eq('seller_id', vendorId).limit(10000)
     assertError(itemError)
     vendorOrderIds = [...new Set((matchingItems ?? []).map((item) => item.order_id).filter((id): id is string => Boolean(id)))]
@@ -550,7 +563,8 @@ export async function listAdminOrders(search = '', status = 'all', page = 0, pag
   if (vendorOrderIds) query = query.in('id', vendorOrderIds)
   const term = search.trim().replace(/[%,()]/g, ' ')
   if (term) query = query.or(`order_number.ilike.%${term}%,customer_name.ilike.%${term}%,customer_phone.ilike.%${term}%`)
-  if (status !== 'all') query = query.eq('order_status', status as Database['public']['Tables']['orders']['Row']['order_status'])
+  if (status === 'waiting_vendor') query = query.in('order_status', ['confirmed', 'partially_delivered'])
+  else if (status !== 'all') query = query.eq('order_status', status as Database['public']['Tables']['orders']['Row']['order_status'])
   const { data, error, count } = await query
   assertError(error)
   const rows = (data ?? []) as AdminOrder[]

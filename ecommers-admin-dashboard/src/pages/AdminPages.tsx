@@ -1214,12 +1214,12 @@ function Orders() {
   return <section className="admin-content">
     <div className="admin-page-heading"><div><p className="admin-kicker">One place to manage orders and deliveries</p><h2>Order &amp; Delivery Center</h2><p className="admin-copy">Confirm orders, check vendor collection, then assign a driver only when the delivery items are ready.</p></div></div>
     <div className="admin-action-row" role="group" aria-label="Quick order filters" style={{ marginBottom: 12, flexWrap: 'wrap' }}>
-      {[{ label: 'All orders', value: 'all' }, { label: 'Needs confirmation', value: 'pending' }, { label: 'Confirmed', value: 'confirmed' }, { label: 'Delivered', value: 'delivered' }, { label: 'Cancelled', value: 'cancelled' }].map((filter) => <button key={filter.value} type="button" className={status === filter.value ? 'admin-button' : 'admin-button admin-button--outline'} onClick={() => { setStatus(filter.value); setPage(0) }}>{filter.label}</button>)}
+      {[{ label: 'All orders', value: 'all' }, { label: 'Needs confirmation', value: 'pending' }, { label: 'Confirmed', value: 'confirmed' }, { label: 'Processing', value: 'processing' }, { label: 'Shipped', value: 'shipped' }, { label: 'Delivered', value: 'delivered' }, { label: 'Cancelled', value: 'cancelled' }].map((filter) => <button key={filter.value} type="button" className={status === filter.value ? 'admin-button' : 'admin-button admin-button--outline'} onClick={() => { setStatus(filter.value); setPage(0) }}>{filter.label}</button>)}
     </div>
     <div className="admin-panel" style={{ marginBottom: 16 }}>
       <div className="admin-toolbar" style={{ marginBottom: 0 }}>
         <label className="admin-search" style={{ flex: '1 1 280px' }}><Search size={16} /><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(0) }} placeholder="Search order number, customer or phone" /></label>
-        <select aria-label="Filter order status" value={status} onChange={(event) => { setStatus(event.target.value); setPage(0) }}><option value="all">Every status</option>{['pending','confirmed','processing','shipped','delivered','cancelled'].map((value) => <option key={value}>{value}</option>)}</select>
+        
         <button className="admin-button admin-button--outline" onClick={() => load()}><RefreshCw size={15} /> Refresh</button>
       </div>
       <details style={{ marginTop: 12 }}><summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>More filters and sorting</summary>

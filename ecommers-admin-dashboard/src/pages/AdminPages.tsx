@@ -1017,6 +1017,8 @@ function Orders() {
   const [driverAssignmentError, setDriverAssignmentError] = useState<string | null>(null)
   const [expandedFulfilmentOrderId, setExpandedFulfilmentOrderId] = useState<string | null>(null)
   const [orderPickupRows, setOrderPickupRows] = useState<Record<string, any[]>>({})
+  const [orderPickupErrors, setOrderPickupErrors] = useState<Record<string, string>>({})
+  const [fulfilmentLoading, setFulfilmentLoading] = useState<Record<string, boolean>>({})
   const [approvedOrderDrivers, setApprovedOrderDrivers] = useState<any[]>([])
   const [orderDriverChoice, setOrderDriverChoice] = useState<Record<string, string>>({})
   const [fulfilmentBusy, setFulfilmentBusy] = useState<string | null>(null)
@@ -1249,23 +1251,44 @@ function Orders() {
   async function toggleOrderFulfilment(orderId: string) {
     if (expandedFulfilmentOrderId === orderId) { setExpandedFulfilmentOrderId(null); return }
     setExpandedFulfilmentOrderId(orderId)
+    setFulfilmentLoading(current => ({ ...current, [orderId]: true }))
+    setOrderPickupErrors(current => { const next = { ...current }; delete next[orderId]; return next })
     try {
-      const [pickups, driversResult] = await Promise.all([
-        listAdminVendorPickups(orderId),
-        approvedOrderDrivers.length ? Promise.resolve({ data: approvedOrderDrivers, error: null }) : (getSupabase() as any).rpc('admin_list_approved_drivers')
+      const [detail, driversResult] = await Promise.all([
+        getAdminOrderDetail(orderId),
+        (getSupabase() as any).rpc('admin_list_approved_drivers')
       ])
-      if (driversResult.error) throw new Error(driversResult.error.message)
-      setOrderPickupRows(current => ({ ...current, [orderId]: pickups }))
-      const detail = await getAdminOrderDetail(orderId)
+      if (driversResult.error) throw new Error('Approved drivers could not be loaded: ' + driversResult.error.message)
       setOrderDetailRows(current => ({ ...current, [orderId]: detail.items }))
       setApprovedOrderDrivers(driversResult.data ?? [])
+      const hasVendorItems = detail.items.some((item: any) => Boolean(item.seller_id) && item.vendor_fulfillment_status !== 'cancelled')
+      if (hasVendorItems) {
+        try {
+          const pickups = await listAdminVendorPickups(orderId)
+          setOrderPickupRows(current => ({ ...current, [orderId]: pickups }))
+          setOrderPickupErrors(current => { const next = { ...current }; delete next[orderId]; return next })
+        } catch (cause) {
+          setOrderPickupRows(current => ({ ...current, [orderId]: [] }))
+          setOrderPickupErrors(current => ({ ...current, [orderId]: cause instanceof Error ? cause.message : 'Vendor pickup information could not be loaded.' }))
+        }
+      } else {
+        setOrderPickupRows(current => ({ ...current, [orderId]: [] }))
+        setOrderPickupErrors(current => { const next = { ...current }; delete next[orderId]; return next })
+      }
       if (!combinedCandidates[orderId]) {
-        const candidates = await findCustomerDeliveryOrders(orderId)
-        setCombinedCandidates(current => ({ ...current, [orderId]: candidates.filter((candidate: any) => ['confirmed', 'partially_delivered'].includes(candidate.order_status) && candidate.id !== orderId) }))
-        setCombinedSelections(current => ({ ...current, [orderId]: [orderId] }))
+        try {
+          const candidates = await findCustomerDeliveryOrders(orderId)
+          setCombinedCandidates(current => ({ ...current, [orderId]: candidates.filter((candidate: any) => ['confirmed', 'partially_delivered'].includes(candidate.order_status) && candidate.id !== orderId) }))
+          setCombinedSelections(current => ({ ...current, [orderId]: [orderId] }))
+        } catch (cause) {
+          push(cause instanceof Error ? 'Other customer orders could not be loaded: ' + cause.message : 'Other customer orders could not be loaded.', 'error')
+          setCombinedCandidates(current => ({ ...current, [orderId]: [] }))
+        }
       }
     } catch (cause) {
       push(cause instanceof Error ? cause.message : 'Order fulfilment could not be loaded.', 'error')
+    } finally {
+      setFulfilmentLoading(current => ({ ...current, [orderId]: false }))
     }
   }
   async function collectOrderVendorPickup(orderId: string, pickupId: string) {
@@ -1437,6 +1460,8 @@ function Orders() {
                   <div><strong>Order items & status</strong>{(orderDetailRows[order.id] ?? []).map((item: any) => <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '9px 0', borderTop: '1px solid var(--admin-border, #e5e7eb)' }}><div style={{ minWidth: 240 }}><strong>{item.product_name_snapshot}</strong><small style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}><em className={statusClass(item.vendor_fulfillment_status || 'pending')}>Vendor: {item.vendor_fulfillment_status || 'pending'}</em><em className={statusClass(item.delivery_status || 'pending')}>Delivery: {item.delivery_status || 'pending'}</em><em className={statusClass(item.vendor_pickup_status || 'not-applicable')}>Pickup: {item.vendor_pickup_status || 'not applicable'}</em></small>{order.order_status !== 'delivered' && item.delivery_status === 'ready' && item.vendor_fulfillment_status !== 'cancelled' && !item.stock_unavailable_at && (!item.seller_id || item.vendor_pickup_status === 'picked_up') && <label className="admin-check" style={{ display: 'inline-flex', gap: 6, marginTop: 7 }}><input type="checkbox" checked={(followupItemSelections[order.id] ?? []).includes(item.id)} onChange={event => setFollowupItemSelections(current => ({ ...current, [order.id]: event.target.checked ? [...new Set([...(current[order.id] ?? []), item.id])] : (current[order.id] ?? []).filter(id => id !== item.id) }))}/><span>Add to delivery batch</span></label>}{item.stock_unavailable_at && <small style={{ display: 'block', marginTop: 6, color: '#b45309' }}>Out of stock · Arrange by {item.stock_arranged_deadline_at ? new Date(item.stock_arranged_deadline_at).toLocaleString() : 'deadline unavailable'}</small>}</div><div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>{item.delivery_status !== 'delivered' && item.delivery_status !== 'cancelled' && item.vendor_fulfillment_status !== 'cancelled' && (!item.stock_unavailable_at ? <button type="button" className="admin-small-button" disabled={fulfilmentBusy === 'stock-' + item.id} onClick={() => void updateOrderItemStockHold(order.id, item, true)}>{fulfilmentBusy === 'stock-' + item.id ? 'Saving…' : 'Mark out of stock'}</button> : <button type="button" className="admin-small-button" disabled={fulfilmentBusy === 'stock-' + item.id} onClick={() => void updateOrderItemStockHold(order.id, item, false)}>Mark stock arranged</button>)}<button type="button" className="admin-small-button admin-small-button--danger" disabled={!item.stock_arranged_deadline_at || Date.parse(item.stock_arranged_deadline_at) > Date.now() || item.delivery_status === 'delivered' || item.delivery_status === 'cancelled' || item.vendor_fulfillment_status === 'cancelled'} onClick={() => void openCancelItem(order.id, item)}>Cancel after 7 days</button></div></div>)}</div>
                   {['confirmed','partially_delivered'].includes(order.order_status) && (orderDetailRows[order.id] ?? []).some((item: any) => (followupItemSelections[order.id] ?? []).includes(item.id) && (/food|grocery/i.test(item.product_category_name ?? '') || Boolean(item.food_product_type))) && <div className="food-timing-fields"><label className="food-timing-field food-timing-field--date"><span>Food delivery date</span><input type="date" min={new Date().toLocaleDateString('en-CA')} value={followupDeliveryDates[order.id] ?? ''} onChange={event => setFollowupDeliveryDates(current => ({ ...current, [order.id]: event.target.value }))}/></label><div className="food-timing-field"><span>Delivery window</span><div className="food-timing-time-range"><label><small>From</small><input type="time" value={followupDeliveryStarts[order.id] ?? ''} onChange={event => setFollowupDeliveryStarts(current => ({ ...current, [order.id]: event.target.value }))}/></label><span className="food-timing-to">to</span><label><small>Until</small><input type="time" min={followupDeliveryStarts[order.id] ?? ''} value={followupDeliveryEnds[order.id] ?? ''} onChange={event => setFollowupDeliveryEnds(current => ({ ...current, [order.id]: event.target.value }))}/></label></div></div></div>}
                   {['confirmed','partially_delivered'].includes(order.order_status) && (followupItemSelections[order.id] ?? []).length > 0 && <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}><button type="button" className="admin-button admin-button--outline" disabled={fulfilmentBusy === 'schedule-' + order.id} onClick={() => void scheduleReadyOrderItems(order)}>{fulfilmentBusy === 'schedule-' + order.id ? 'Adding…' : 'Add selected products to delivery batch'}</button><small className="admin-copy">Only products already marked Ready can be added. Stock-hold items are excluded.</small></div>}
+                   {fulfilmentLoading[order.id] && <p className="admin-copy" role="status">Order details aur approved drivers load ho rahe hain…</p>}
+                   {orderPickupErrors[order.id] && <p className="admin-copy" role="alert">Vendor pickup details load nahi huin: {orderPickupErrors[order.id]}. MFA verify karke dobara kholein. Driver list aur JTBazar products phir bhi available rahenge.</p>}
                   <div><strong>Vendor pickups</strong><p className="admin-copy" style={{ margin: '4px 0 10px' }}>Vendor ke ready karne ke baad yahin se parcel collection confirm karein.</p>
                     {(orderPickupRows[order.id] ?? []).length === 0 ? <p className="admin-copy">Is order mein vendor pickup nahi hai. Platform products ki readiness assign karte waqt automatically check hogi.</p> : (orderPickupRows[order.id] ?? []).map((pickup: any) => <div key={pickup.pickup_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '10px 0', borderTop: '1px solid var(--admin-border, #e5e7eb)' }}>
                       <div><strong>{pickup.shop_name || 'Vendor'}</strong><small style={{ display: 'block' }}>{(pickup.items ?? []).map((item: any) => `${item.product_name} × ${item.quantity}`).join(', ')}</small></div>
@@ -1460,9 +1485,9 @@ function Orders() {
                     <strong>Assign driver to ready batch</strong><p className="admin-copy" style={{ margin: '4px 0 10px' }}>Driver sirf us batch ko assign hoga jisme ready products pehle se maujood hon.</p>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <select aria-label={`Select rider for ${order.order_number}`} value={orderDriverChoice[order.id] ?? ''} onChange={event => setOrderDriverChoice(current => ({ ...current, [order.id]: event.target.value }))} style={{ minWidth: 240 }}><option value="">Select approved rider</option>{approvedOrderDrivers.map((driver: any) => <option key={driver.user_id} value={driver.user_id}>{driver.full_name} · {driver.phone}</option>)}</select>
-                      <button type="button" className="admin-button" disabled={fulfilmentBusy === order.id || !orderDriverChoice[order.id] || order.order_status !== 'confirmed'} onClick={() => void assignOrderDriver(order.id)}><Truck size={15}/> {fulfilmentBusy === order.id ? 'Assigning…' : 'Assign to ready batch'}</button>
+                      <button type="button" className="admin-button" disabled={fulfilmentLoading[order.id] || fulfilmentBusy === order.id || !orderDriverChoice[order.id] || !['confirmed', 'partially_delivered'].includes(order.order_status)} onClick={() => void assignOrderDriver(order.id)}><Truck size={15}/> {fulfilmentBusy === order.id ? 'Assigning…' : 'Assign to ready batch'}</button>
                     </div>
-                    {order.order_status !== 'confirmed' && <small className="admin-copy">Rider assignment ke liye order pehle confirmed hona chahiye.</small>}
+                    {!fulfilmentLoading[order.id] && approvedOrderDrivers.length === 0 && <small className="admin-copy" role="status">Koi approved aur enabled driver available nahi. Pehle Drivers page par driver approve aur enable karein.</small>}{order.order_status !== 'confirmed' && order.order_status !== 'partially_delivered' && <small className="admin-copy">Rider assignment ke liye order confirmed hona chahiye.</small>}
                   </div>
                 </div>
               </td></tr>}

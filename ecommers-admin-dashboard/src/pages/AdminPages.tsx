@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { adjustInventory, decideMarketplaceCase, deleteAdminHero, deleteAdminPromotion, deleteProductVariant, getAdminOrderDetail, getAdminProductEditor, getAdminStoreSettings, getAdminFoodDeliverySettings, getAdminCommissionSettings, getAdminSummary, getVendorDocumentSignedUrl, listAdminCategories, listAdminAuditLogsPage, listAdminPromotionsPage, listAdminHeroesPage, listSellerApplicationsPage, listAdminCategoriesPage, listAdminAccountSuspensions, listAdminCustomers, listAdminInventory, listAdminNotifications, listAdminOrders, listAdminOrderVendors, listAdminVendorPickups, markAdminVendorPickedUp, listAdminProducts, listAdminProductsPage, listAdminVendorDirectoryPage, listAdminCustomerReviews, setAdminCustomerReviewStatus, listAdminSupportTickets, listAdminSellerSupportMessages, sendAdminSellerSupportMessage, listAdminCustomerSupportMessages, sendAdminCustomerSupportMessage, listMarketplaceCases, listAdminRefundRecordsPage, listAdminVendorSettlementBalances, listAdminVendorSettlementCandidates, listAdminVendorSettlementBatchesPage, listAdminVendorSettlementItemsPage, recordAdminCaseRefund, updateAdminRefundStatus, createAdminVendorSettlement, markAdminNotificationRead, markAllAdminNotificationsRead, sendAdminPushTest, sendAdminManualNotification, moderateProduct, deleteAdminProductImage, deleteAdminProductPermanently, listAdminProductDeletionRequests, reviewAdminProductDeletion, reviewSellerApplication, setAdminVendorLock, setAdminSupportTicketStatus, saveAdminHero, saveAdminPromotion, saveCategory, saveProduct, saveProductVariant, saveAdminProductInventory, setAdminAccountSuspension, updateAdminStoreSettings, updateAdminFoodDeliverySettings, updateAdminCommissionSettings, updateAdminSupportTicket, saveDeliveryCollection, addOrderNote, rejectAdminOrder, findCustomerDeliveryOrders, confirmOrdersWithDeliveryBatch, createFollowupDeliveryBatch, listOrderDeliveryBatches, setAdminRefundMethod, updateProductStatus, updateProductsHotDeal, setAdminProductFeatured, uploadAdditionalProductImage, uploadPublicMedia, type AdminCaseDetail, type AdminCategory, type AdminCustomerReview, type AdminAccountSuspension, type AdminCustomer, type AdminHero, type AdminInventory, type AdminNotification, type AdminOrder, type AdminOrderVendor, type AdminProduct, type AdminProductDeletionRequest, type AdminPromotion, type AdminSeller, type AdminStoreSettings, type AdminFoodDeliverySettings, type AdminCommissionSettings, type AdminSummary, type AdminSupportInboxTicket, type AdminSupportChatMessage, type AdminVariant, type AdminRefundRecord, type AdminSettlementBalance, type AdminSettlementCandidate, type AdminSettlementBatch, type AdminSettlementLedgerItem } from '../services/admin/adminService'
 import type { Database } from '../types/database'
+import { countAdminOrdersByWorkflow } from '../services/admin/adminService'
 import { getSupabase } from '../lib/supabase'
 import { isValidEmail, isValidPakistaniMobile, normalizePakistaniMobile } from '../utils/contactValidation'
 import { DriverManagement } from './DriverManagement'
@@ -1015,6 +1016,9 @@ function Orders() {
   const { push } = useToast(); const navigate = useNavigate(); const [items, setItems] = useState<(AdminOrder & { vendor_names: string[]; has_food_items: boolean })[]>([]); const [confirmationTarget, setConfirmationTarget] = useState<(AdminOrder & { vendor_names: string[]; has_food_items: boolean }) | null>(null); const [deliveryDate, setDeliveryDate] = useState(new Date().toLocaleDateString('en-CA')); const [deliveryStart, setDeliveryStart] = useState(''); const [deliveryEnd, setDeliveryEnd] = useState(''); const [deliveryNote, setDeliveryNote] = useState(''); const [confirmationDetails, setConfirmationDetails] = useState<Awaited<ReturnType<typeof getAdminOrderDetail>>[]>([]); const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]); const [readyItemIds, setReadyItemIds] = useState<string[]>([]); const [defaultDeliveryFee, setDefaultDeliveryFee] = useState(0); const [existingDeliveryBatchOrderIds, setExistingDeliveryBatchOrderIds] = useState<string[]>([]); const [deliveryFeeOverride, setDeliveryFeeOverride] = useState(''); const [feeAdjustmentReason, setFeeAdjustmentReason] = useState(''); const [confirmationLoading, setConfirmationLoading] = useState(false); const [search, setSearch] = useState(''); const [status, setStatus] = useState('all'); const [vendorId, setVendorId] = useState('all'); const [vendors, setVendors] = useState<AdminOrderVendor[]>([]); const [sort, setSort] = useState('created_at.desc'); const [page, setPage] = useState(0); const [pageSize, setPageSize] = useState(12); const [total, setTotal] = useState(0); const [error, setError] = useState<string | null>(null); const [loading, setLoading] = useState(true); const [updatingIds, setUpdatingIds] = useState<string[]>([]); const [deliveryCollectionTarget, setDeliveryCollectionTarget] = useState<(AdminOrder & { vendor_names: string[]; has_food_items: boolean }) | null>(null); const [deliveryCollectionItems, setDeliveryCollectionItems] = useState<{ id: string; name: string; quantity: number; amount: string }[]>([]); const [deliveryCollectionUnpaid, setDeliveryCollectionUnpaid] = useState(false); const [deliveryCollectionReason, setDeliveryCollectionReason] = useState('')
   const [driverAssignments, setDriverAssignments] = useState<Record<string, { driver_name: string; driver_phone: string; assignment_status: string; delivery_batch_number: string | null; products: { name: string; quantity: number }[] }[]>>({})
   const [driverAssignmentError, setDriverAssignmentError] = useState<string | null>(null)
+  const [workflowCounts, setWorkflowCounts] = useState<Record<string, number | null>>({ all: null, pending: null, waiting_vendor: null, ready_for_delivery: null, shipped: null, partially_delivered: null })
+  const [workflowCountsLoading, setWorkflowCountsLoading] = useState(true)
+  const [workflowCountRevision, setWorkflowCountRevision] = useState(0)
   const [expandedFulfilmentOrderId, setExpandedFulfilmentOrderId] = useState<string | null>(null)
   const [orderPickupRows, setOrderPickupRows] = useState<Record<string, any[]>>({})
   const [orderPickupErrors, setOrderPickupErrors] = useState<Record<string, string>>({})
@@ -1085,7 +1089,17 @@ function Orders() {
       }
     })().catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Orders could not be loaded.')).finally(() => { if (!quiet) setLoading(false) })
   }
+  const refreshOrders = (quiet = false) => { load(quiet); setWorkflowCountRevision((revision) => revision + 1) }
   useEffect(load, [search, status, vendorId, sort, page, pageSize]); useAutoRefresh(load)
+  useEffect(() => {
+    let current = true
+    setWorkflowCountsLoading(true)
+    const stages = ['all', 'pending', 'waiting_vendor', 'ready_for_delivery', 'shipped', 'partially_delivered']
+    void Promise.all(stages.map(async (stage) => [stage, await countAdminOrdersByWorkflow(stage, vendorId)] as const))
+      .then((entries) => { if (current) { setWorkflowCounts(Object.fromEntries(entries)); setWorkflowCountsLoading(false) } })
+      .catch(() => { if (current) { setWorkflowCounts({}); setWorkflowCountsLoading(false) } })
+    return () => { current = false }
+  }, [vendorId, workflowCountRevision])
   useEffect(() => { void listAdminOrderVendors().then(setVendors).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Vendors could not be loaded.')) }, [])
   async function loadOverdueVendors() {
     try { const { data, error } = await (getSupabase() as any).rpc('admin_list_overdue_vendor_pickups'); if (error) throw new Error(error.message); setOverdueVendorRows(data ?? []); setOverdueVendorError(null) }
@@ -1104,7 +1118,7 @@ function Orders() {
       setCancelItemResult(data ?? {})
       const detail = await getAdminOrderDetail(cancelItemTarget.orderId)
       setOrderDetailRows(current => ({ ...current, [cancelItemTarget.orderId]: detail.items }))
-      load(true)
+      refreshOrders(true)
       push('Product cancelled. Order total has been refreshed.', 'success')
     } catch (cause) { push(cause instanceof Error ? cause.message : 'Product could not be cancelled.', 'error') }
     finally { setCancelItemBusy(false) }
@@ -1172,7 +1186,7 @@ function Orders() {
       setConfirmationTarget(null)
       setConfirmationDetails([])
       push(result.emailSent ? `Delivery batch ${result.batchId.slice(0, 8)} created. Selected orders remain separate; customer emails sent.` : `Delivery batch ${result.batchId.slice(0, 8)} created. Some customer emails could not be sent.`, result.emailSent ? 'success' : 'error')
-      load(true)
+      refreshOrders(true)
     } catch (cause) {
       push(cause instanceof Error ? cause.message : 'Orders could not be confirmed into a delivery batch.', 'error')
     } finally {
@@ -1293,14 +1307,23 @@ function Orders() {
   }
   async function collectOrderVendorPickup(orderId: string, pickupId: string) {
     setFulfilmentBusy(pickupId)
+    let collectionSaved = false
     try {
       await markAdminVendorPickedUp(pickupId)
-      const pickups = await listAdminVendorPickups(orderId)
+      collectionSaved = true
+      const selectedPickup = (orderPickupRows[orderId] ?? []).find((pickup: any) => pickup.pickup_id === pickupId)
+      const pickedSellerId = selectedPickup?.seller_id ? String(selectedPickup.seller_id) : null
+      setOrderPickupRows(current => ({ ...current, [orderId]: (current[orderId] ?? []).map((pickup: any) => pickup.pickup_id === pickupId ? { ...pickup, pickup_status: 'picked_up' } : pickup) }))
+      if (pickedSellerId) setOrderDetailRows(current => ({ ...current, [orderId]: (current[orderId] ?? []).map((item: any) => String(item.seller_id ?? '') === pickedSellerId ? { ...item, vendor_pickup_status: 'picked_up' } : item) }))
+      const [pickups, detail] = await Promise.all([listAdminVendorPickups(orderId), getAdminOrderDetail(orderId)])
       setOrderPickupRows(current => ({ ...current, [orderId]: pickups }))
+      const pickedSellerIds = new Set((pickups as any[]).filter((pickup: any) => pickup.pickup_status === 'picked_up').map((pickup: any) => String(pickup.seller_id)))
+      setOrderDetailRows(current => ({ ...current, [orderId]: detail.items.map((item: any) => item.seller_id && pickedSellerIds.has(String(item.seller_id)) ? { ...item, vendor_pickup_status: 'picked_up' } : item) }))
       push('Vendor parcel collection confirmed. You can now continue delivery planning.', 'success')
-      load(true)
+      refreshOrders(true)
     } catch (cause) {
-      push(cause instanceof Error ? cause.message : 'Vendor pickup could not be confirmed.', 'error')
+      push(collectionSaved ? 'Vendor pickup was saved, but order details could not refresh. Use Refresh or reopen this workspace.' : cause instanceof Error ? cause.message : 'Vendor pickup could not be confirmed.', 'error')
+      if (collectionSaved) refreshOrders(true)
     } finally { setFulfilmentBusy(null) }
   }
   async function assignOrderDriver(orderId: string) {
@@ -1315,7 +1338,7 @@ function Orders() {
       if (rpcError) throw new Error(rpcError.message)
       push('Driver assigned to the ready delivery batch.', 'success')
       setOrderDriverChoice(current => ({ ...current, [orderId]: '' }))
-      load(true)
+      refreshOrders(true)
     } catch (cause) {
       push(cause instanceof Error ? cause.message : 'Driver could not be assigned to this ready batch.', 'error')
     } finally { setFulfilmentBusy(null) }
@@ -1330,7 +1353,7 @@ function Orders() {
       const detail = await getAdminOrderDetail(orderId)
       setOrderDetailRows(current => ({ ...current, [orderId]: detail.items }))
       push(unavailable ? 'Stock hold set. Admin can arrange this product for 7 days.' : 'Stock hold cleared. Product can be scheduled when ready.', 'success')
-      load(true)
+      refreshOrders(true)
     } catch (cause) {
       push(cause instanceof Error ? cause.message : 'Stock availability could not be updated.', 'error')
     } finally { setFulfilmentBusy(null) }
@@ -1366,7 +1389,7 @@ function Orders() {
       const detail = await getAdminOrderDetail(order.id)
       setOrderDetailRows(current => ({ ...current, [order.id]: detail.items }))
       push('Ready products added to delivery batch ' + batchId.slice(0, 8) + '.', 'success')
-      load(true)
+      refreshOrders(true)
     } catch (cause) {
       push(cause instanceof Error ? cause.message : 'Ready products could not be added to a delivery batch.', 'error')
     } finally { setFulfilmentBusy(null) }
@@ -1387,7 +1410,7 @@ function Orders() {
       const batchId = String(data)
       setCombinedBatches(current => ({ ...current, [orderId]: batchId }))
       push('Combined delivery batch ban gaya. Ab isi panel se ek rider assign karein.', 'success')
-      load(true)
+      refreshOrders(true)
     } catch (cause) {
       push(cause instanceof Error ? cause.message : 'Orders combine nahi ho sakay. Same customer, same address aur tamam pickups collected hona zaroori hai.', 'error')
     } finally { setFulfilmentBusy(null) }
@@ -1403,35 +1426,56 @@ function Orders() {
       push(`Combined delivery assigned to one rider. ${Number(data) || 0} order(s) included.`, 'success')
       setCombinedBatches(current => { const next = { ...current }; delete next[orderId]; return next })
       setOrderDriverChoice(current => ({ ...current, [orderId]: '' }))
-      load(true)
+      refreshOrders(true)
     } catch (cause) {
       push(cause instanceof Error ? cause.message : 'Combined delivery rider assign nahi ho saka. Batch bana hua hai; dobara assign try karein.', 'error')
     } finally { setFulfilmentBusy(null) }
   }
   const deliveryCollectionTotal = deliveryCollectionItems.reduce((sum,item)=>sum+(Number(item.amount)||0),0)
   const deliveryCollectionPartial = !!deliveryCollectionTarget && deliveryCollectionTotal < Number(deliveryCollectionTarget.total) - 0.01
+  const orderWorkflowTabs = [
+    { value: 'all', label: 'All orders', detail: 'Complete queue' },
+    { value: 'pending', label: 'Pending', detail: 'Needs confirmation' },
+    { value: 'waiting_vendor', label: 'Vendor pickup', detail: 'Vendor prep & collection' },
+    { value: 'ready_for_delivery', label: 'Batch & assign', detail: 'Confirmed / scheduled batch' },
+    { value: 'shipped', label: 'In delivery', detail: 'Assigned / on route' },
+    { value: 'partially_delivered', label: 'Partial / follow-up', detail: 'Remaining items' },
+  ] as const
   return <section className="admin-content orders-page">
     <div className="admin-page-heading orders-heading"><div><p className="admin-kicker">ONE PLACE TO MANAGE ORDERS AND DELIVERIES</p><h2>Order &amp; Delivery Center</h2><p className="admin-copy">Confirm orders, check vendor collection, then assign a driver only when the delivery items are ready.</p></div></div>
     <div className="admin-panel" style={{ marginBottom: 14, borderColor: '#ef4444' }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}><strong>Late vendors <span className="admin-nav-badge" style={{ background: '#dc2626', color: '#fff' }}>{overdueVendorRows.length}</span></strong><button type="button" className="admin-button admin-button--outline" onClick={() => void loadOverdueVendors()}>Refresh</button></div>{overdueVendorError && <p role="alert" className="admin-copy">{overdueVendorError}</p>}{overdueVendorRows.length === 0 ? <p className="admin-copy">No overdue vendor pickups.</p> : overdueVendorRows.filter((row: any, index: number) => !waitedOverdueRows.includes(String(row.pickup_id ?? row.order_id ?? `${row.order_number ?? ''}-${row.shop_name ?? ''}-${index}`))).map((row: any, index: number) => <div key={row.pickup_id ?? row.order_id ?? index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, padding: '10px 0', borderTop: '1px solid var(--admin-border, #e5e7eb)' }}><div><strong>{row.order_number} · {row.shop_name}</strong><small style={{ display: 'block' }}>{row.item_count} item(s) · {row.minutes_overdue} minutes overdue · {row.shop_phone || 'No phone'}</small>{row.shop_phone && <small><a href={'tel:' + row.shop_phone}>Call vendor</a> · <a href={'https://wa.me/' + String(row.shop_phone).replace(/\\D/g, '')} target="_blank" rel="noreferrer">WhatsApp</a></small>}</div><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><button type="button" className="admin-button admin-button--outline" onClick={() => setWaitedOverdueRows(current => [...new Set([...current, String(row.pickup_id ?? row.order_id ?? `${row.order_number ?? ''}-${row.shop_name ?? ''}-${index}`)])])}>Wait</button><button type="button" className="admin-button admin-button--outline" onClick={() => void sendOverdueReadyItems(row)}>Send ready items now</button><button type="button" className="admin-small-button admin-small-button--danger" onClick={() => { void resolveOverdueOrderId(row).then(orderId => getAdminOrderDetail(orderId).then(detail => { setOrderDetailRows(current => ({ ...current, [orderId]: detail.items })); const vendorItems = detail.items.filter((entry: any) => entry.vendor_fulfillment_status !== 'cancelled' && entry.delivery_status !== 'delivered' && String(entry.seller_name_snapshot ?? '').trim().toLowerCase() === String(row.shop_name ?? '').trim().toLowerCase()); const item = vendorItems.length === 1 ? vendorItems[0] : null; if (item) void openCancelItem(orderId, item); else { setExpandedFulfilmentOrderId(orderId); push('This vendor pickup has multiple or unmatched products. Choose the exact product in the expanded order below.', 'error') } })).catch(cause => push(cause.message, 'error')) }}>Cancel item</button></div></div>)}</div>
-    <div className="admin-action-row orders-status-tabs" role="group" aria-label="Quick order filters" style={{ marginBottom: 12, flexWrap: 'wrap' }}>
-      {[{ label: 'All orders', value: 'all' }, { label: 'New', value: 'pending' }, { label: 'Waiting vendor', value: 'waiting_vendor' }, { label: 'Partially delivered', value: 'partially_delivered' }, { label: 'Ready for delivery', value: 'processing' }, { label: 'On the way', value: 'shipped' }].map((filter) => <button key={filter.value} type="button" className={status === filter.value ? 'admin-button' : 'admin-button admin-button--outline'} onClick={() => { setStatus(filter.value); setPage(0) }}>{filter.label}</button>)}
+    <div className="orders-workflow-panel">
+      <div className="orders-workflow-heading">
+        <div><p className="admin-kicker">ORDER WORKFLOW</p><p className="admin-copy">Vendor collection, delivery batches and driver assignment are managed from each order workspace below.</p></div>
+      </div>
+      <div className="orders-workflow-tabs" role="tablist" aria-label="Order workflow stages">
+        {orderWorkflowTabs.map((tab) => {
+          const active = status === tab.value
+          const count = workflowCounts[tab.value]
+          return <button key={tab.value} type="button" role="tab" aria-selected={active} aria-controls="orders-results" className={`orders-workflow-tab${active ? ' is-active' : ''}`} onClick={() => { setStatus(tab.value); setPage(0) }}>
+            <span className="orders-workflow-tab__label">{tab.label}</span>
+            <span className="orders-workflow-tab__count">{count ?? (workflowCountsLoading ? '…' : '—')}</span>
+            <small>{tab.detail}</small>
+          </button>
+        })}
+      </div>
     </div>
     <div className="admin-panel orders-filters" style={{ marginBottom: 16 }}>
       <div className="admin-toolbar" style={{ marginBottom: 0 }}>
         <label className="admin-search" style={{ flex: '1 1 280px' }}><Search size={16} /><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(0) }} placeholder="Search order number, customer or phone" /></label>
         
-        <button className="admin-button admin-button--outline" onClick={() => load()}><RefreshCw size={15} /> Refresh</button>
+        <button className="admin-button admin-button--outline" onClick={() => refreshOrders()}><RefreshCw size={15} /> Refresh</button>
         <button type="button" className="admin-button admin-button--outline" disabled={!search.trim() && status === 'all' && vendorId === 'all' && sort === 'created_at.desc' && page === 0 && pageSize === 12} onClick={() => { setSearch(''); setStatus('all'); setVendorId('all'); setSort('created_at.desc'); setPage(0); setPageSize(12) }}>Clear filters</button>
       </div>
       <div className="orders-filter-controls" style={{ marginTop: 12 }}>
-          <select aria-label="Filter orders by status" value={status} onChange={(event) => { setStatus(event.target.value); setPage(0) }}><option value="all">All order statuses</option><option value="pending">New / pending</option><option value="confirmed">Confirmed</option><option value="waiting_vendor">Waiting vendor</option><option value="partially_delivered">Partially delivered</option><option value="processing">Ready for delivery</option><option value="shipped">On the way</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select>
+          <select aria-label="Filter orders by status" value={status} onChange={(event) => { setStatus(event.target.value); setPage(0) }}><option value="all">All order statuses</option><option value="pending">Pending confirmation</option><option value="ready_for_delivery">Ready / confirmed or processing</option><option value="confirmed">Confirmed (exact status)</option><option value="waiting_vendor">Waiting vendor</option><option value="partially_delivered">Partially delivered</option><option value="processing">Ready for delivery</option><option value="shipped">On the way</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select>
           <select aria-label="Filter orders by vendor" value={vendorId} onChange={(event) => { setVendorId(event.target.value); setPage(0) }}><option value="all">All vendors / platform</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.shop_name}</option>)}</select>
           <select aria-label="Sort orders" value={sort} onChange={(event) => { setSort(event.target.value); setPage(0) }}><option value="created_at.desc">Newest first</option><option value="created_at.asc">Oldest first</option><option value="total.desc">Highest total</option><option value="total.asc">Lowest total</option></select>
         </div>
     </div>
     {error ? <ErrorState message={error} retry={load} /> : loading ? <Loading /> : items.length === 0 ? <Empty title="No matching orders" detail="Try clearing the search or choosing a different status." /> : <>
       {driverAssignmentError && <p className="admin-copy">Rider details unavailable: {driverAssignmentError}</p>}
-      <div className="admin-table-wrap orders-table-wrap" style={{ overflowX: 'auto' }}>
+      <div id="orders-results" className="admin-table-wrap orders-table-wrap" style={{ overflowX: 'auto' }}>
         <table className="admin-table orders-table" style={{ minWidth: 1120 }}>
           <thead><tr><th>#</th><th>Order / Date</th><th>Customer</th><th>Vendor</th><th>Rider</th><th>Total</th><th>Payment</th><th>Order status</th><th>Actions</th></tr></thead>
           <tbody>
@@ -1447,7 +1491,7 @@ function Orders() {
                 <td><em className={statusClass(order.payment_status)}>{order.payment_status}</em></td>
                 <td><em className={statusClass(order.order_status)}>{order.order_status.replace(/_/g, ' ')}</em>{updatingIds.includes(order.id) && <small style={{ display: 'block' }}>Saving…</small>}</td>
                 <td><div className="orders-row-actions">
-                  <button type="button" className="admin-button admin-button--outline orders-manage-button" aria-expanded={expandedFulfilmentOrderId === order.id} onClick={() => void toggleOrderFulfilment(order.id)}>{expandedFulfilmentOrderId === order.id ? 'Close fulfilment' : 'Manage fulfilment'}</button>
+                  <button type="button" className="admin-button admin-button--outline orders-manage-button" aria-expanded={expandedFulfilmentOrderId === order.id} onClick={() => void toggleOrderFulfilment(order.id)}>{expandedFulfilmentOrderId === order.id ? 'Close workspace' : 'Manage order flow'}</button>
                   <Link className="admin-link-button" to={`/admin/orders/${order.id}`}>View details</Link>
                   {order.order_status === 'pending' && <button type="button" className="admin-button admin-button--outline" disabled={updatingIds.includes(order.id)} onClick={() => void openOrderConfirmation(order)}>Confirm &amp; plan delivery</button>}
                   {order.order_status === 'delivered' && order.payment_method === 'cod' && order.payment_status !== 'paid' && <button type="button" className="admin-button admin-button--outline" disabled={updatingIds.includes(order.id)} onClick={() => void openDeliveryCollection(order)}>Record COD collection</button>}
@@ -1484,9 +1528,9 @@ function Orders() {
                     <strong>Assign driver to ready batch</strong><p className="admin-copy" style={{ margin: '4px 0 10px' }}>Driver sirf us batch ko assign hoga jisme ready products pehle se maujood hon.</p>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <select aria-label={`Select rider for ${order.order_number}`} value={orderDriverChoice[order.id] ?? ''} onChange={event => setOrderDriverChoice(current => ({ ...current, [order.id]: event.target.value }))} style={{ minWidth: 240 }}><option value="">Select approved rider</option>{approvedOrderDrivers.map((driver: any) => <option key={driver.user_id} value={driver.user_id}>{driver.full_name} · {driver.phone}</option>)}</select>
-                      <button type="button" className="admin-button" disabled={fulfilmentLoading[order.id] || fulfilmentBusy === order.id || !orderDriverChoice[order.id] || !['confirmed', 'partially_delivered'].includes(order.order_status)} onClick={() => void assignOrderDriver(order.id)}><Truck size={15}/> {fulfilmentBusy === order.id ? 'Assigning…' : 'Assign to ready batch'}</button>
+                      <button type="button" className="admin-button" disabled={fulfilmentLoading[order.id] || fulfilmentBusy === order.id || !orderDriverChoice[order.id] || !['confirmed', 'partially_delivered', 'processing'].includes(order.order_status)} onClick={() => void assignOrderDriver(order.id)}><Truck size={15}/> {fulfilmentBusy === order.id ? 'Assigning…' : 'Assign to ready batch'}</button>
                     </div>
-                    {!fulfilmentLoading[order.id] && approvedOrderDrivers.length === 0 && <small className="admin-copy" role="status">Koi approved aur enabled driver available nahi. Pehle Drivers page par driver approve aur enable karein.</small>}{order.order_status !== 'confirmed' && order.order_status !== 'partially_delivered' && <small className="admin-copy">Rider assignment ke liye order confirmed hona chahiye.</small>}
+                    {!fulfilmentLoading[order.id] && approvedOrderDrivers.length === 0 && <small className="admin-copy" role="status">Koi approved aur enabled driver available nahi. Pehle Drivers page par driver approve aur enable karein.</small>}{!['confirmed', 'partially_delivered', 'processing'].includes(order.order_status) && <small className="admin-copy">Pehle order confirm karke delivery batch tayyar karein.</small>}
                   </div>
                 </div>
               </td></tr>}

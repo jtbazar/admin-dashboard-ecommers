@@ -565,6 +565,7 @@ export async function listAdminOrders(search = '', status = 'all', page = 0, pag
   const term = search.trim().replace(/[%,()]/g, ' ')
   if (term) query = query.or(`order_number.ilike.%${term}%,customer_name.ilike.%${term}%,customer_phone.ilike.%${term}%`)
   if (status === 'waiting_vendor') query = query.in('order_status', ['confirmed', 'partially_delivered'])
+  else if (status === 'ready_for_delivery') query = query.in('order_status', ['confirmed', 'processing'])
   else if (status !== 'all') query = query.eq('order_status', status as Database['public']['Tables']['orders']['Row']['order_status'])
   const { data, error, count } = await query
   assertError(error)
@@ -590,6 +591,33 @@ export async function listAdminOrders(search = '', status = 'all', page = 0, pag
   const namesByOrder = new Map<string, Set<string>>()
   for (const item of orderItems ?? []) { if (!item.seller_id) continue; const name = sellerNames.get(item.seller_id); if (!name) continue; const names = namesByOrder.get(item.order_id) ?? new Set<string>(); names.add(name); namesByOrder.set(item.order_id, names) }
   return { items: rows.map((row) => ({ ...row, vendor_names: [...(namesByOrder.get(row.id) ?? [])], has_food_items: foodOrders.has(row.id) })), count: count ?? 0 }
+}
+
+export async function countAdminOrdersByWorkflow(status: string, vendorId = 'all'): Promise<number> {
+  const client = getSupabase()
+  let orderIds: string[] | null = null
+  if (status === 'waiting_vendor' || vendorId !== 'all') {
+    let itemQuery = client.from('order_items').select('order_id').limit(10000)
+    if (status === 'waiting_vendor') {
+      itemQuery = itemQuery.not('seller_id', 'is', null)
+        .in('vendor_fulfillment_status', ['pending', 'accepted', 'processing'])
+        .in('delivery_status', ['pending', 'ready'])
+    }
+    if (vendorId !== 'all') itemQuery = itemQuery.eq('seller_id', vendorId)
+    const { data, error } = await itemQuery
+    assertError(error)
+    orderIds = [...new Set((data ?? []).map((item) => item.order_id).filter((id): id is string => Boolean(id)))]
+    if (orderIds.length === 0) return 0
+  }
+
+  let query = client.from('orders').select('id', { count: 'exact', head: true })
+  if (orderIds) query = query.in('id', orderIds)
+  if (status === 'waiting_vendor') query = query.in('order_status', ['confirmed', 'partially_delivered'])
+  else if (status === 'ready_for_delivery') query = query.in('order_status', ['confirmed', 'processing'])
+  else if (status !== 'all') query = query.eq('order_status', status as Database['public']['Tables']['orders']['Row']['order_status'])
+  const { count, error } = await query
+  assertError(error)
+  return count ?? 0
 }
 
 export async function getAdminOrderDetail(id: string) {

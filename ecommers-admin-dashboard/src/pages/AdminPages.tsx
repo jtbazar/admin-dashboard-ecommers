@@ -1202,6 +1202,18 @@ function Orders() {
       setUpdatingIds((current) => current.filter((id) => id !== order.id))
     }
   }
+  async function openDeliveryCollection(order: AdminOrder & { vendor_names: string[]; has_food_items: boolean }) {
+    try {
+      const detail = await getAdminOrderDetail(order.id)
+      const activeItems = detail.items.filter((item: any) => item.vendor_fulfillment_status !== 'cancelled' && item.delivery_status !== 'cancelled')
+      setDeliveryCollectionItems(activeItems.map((item: any) => ({ id: item.id, name: item.product_name_snapshot, quantity: Number(item.quantity), amount: String(Number(item.line_total ?? Number(item.unit_price) * Number(item.quantity))) })))
+      setDeliveryCollectionUnpaid(false)
+      setDeliveryCollectionReason('')
+      setDeliveryCollectionTarget(order)
+    } catch (cause) {
+      push(cause instanceof Error ? cause.message : 'Order items could not be loaded for COD collection.', 'error')
+    }
+  }
   async function confirmDeliveryCollection() {
     if (!deliveryCollectionTarget || updatingIds.includes(deliveryCollectionTarget.id)) return
     const amounts = deliveryCollectionItems.map((item) => ({ id: item.id, amount: Number(item.amount) }))
@@ -1373,6 +1385,7 @@ function Orders() {
                   <button type="button" className="admin-link-button" onClick={() => void toggleOrderFulfilment(order.id)}>{expandedFulfilmentOrderId === order.id ? 'Close fulfilment' : 'Manage fulfilment'}</button>
                   <Link className="admin-link-button" to={`/admin/orders/${order.id}`}>View details</Link>
                   {order.order_status === 'pending' && <button type="button" className="admin-button admin-button--outline" disabled={updatingIds.includes(order.id)} onClick={() => void openOrderConfirmation(order)}>Confirm &amp; plan delivery</button>}
+                  {order.order_status === 'delivered' && order.payment_method === 'cod' && order.payment_status !== 'paid' && <button type="button" className="admin-button admin-button--outline" disabled={updatingIds.includes(order.id)} onClick={() => void openDeliveryCollection(order)}>Record COD collection</button>}
                   {order.order_status === 'pending' && <button type="button" className="admin-small-button admin-small-button--danger" disabled={updatingIds.includes(order.id)} onClick={() => void rejectPendingOrder(order)}>Reject order</button>}
                 </div></td>
               </tr>

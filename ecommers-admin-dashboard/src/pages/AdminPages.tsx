@@ -1286,12 +1286,23 @@ function Orders() {
     setFulfilmentLoading(current => ({ ...current, [orderId]: true }))
     setOrderPickupErrors(current => { const next = { ...current }; delete next[orderId]; return next })
     try {
-      const [detail, driversResult, deliveryBatches] = await Promise.all([
+      const [detail, driversResult, deliveryBatches, cashResult] = await Promise.all([
         getAdminOrderDetail(orderId),
         (getSupabase() as any).rpc('admin_list_approved_drivers'),
-        listOrderDeliveryBatches(orderId)
+        listOrderDeliveryBatches(orderId),
+        (getSupabase() as any).rpc('admin_list_driver_cash_reconciliation')
       ])
       if (driversResult.error) throw new Error('Approved drivers could not be loaded: ' + driversResult.error.message)
+      // Refresh driver COD at the moment the order workspace opens so cash
+      // recorded in the rider app is visible here without relying on stale page state.
+      if (cashResult.error) {
+        setDriverCashLoaded(false)
+      } else {
+        const cashByOrder: Record<string, any[]> = {}
+        for (const row of cashResult.data ?? []) cashByOrder[row.order_id] = [...(cashByOrder[row.order_id] ?? []), row]
+        setDriverCashByOrder(current => ({ ...current, [orderId]: cashByOrder[orderId] ?? [] }))
+        setDriverCashLoaded(true)
+      }
       setOrderDetailRows(current => ({ ...current, [orderId]: detail.items }))
       const remainingItemIds = new Set(detail.items.filter((item: any) => !['delivered', 'cancelled'].includes(String(item.delivery_status ?? '').toLowerCase()) && item.vendor_fulfillment_status !== 'cancelled').map((item: any) => String(item.id)))
       setOrderHasReadyBatch(current => ({ ...current, [orderId]: remainingItemIds.size > 0 && deliveryBatches.some((batch: any) => batch.status === 'scheduled' && (batch.delivery_batch_items ?? []).some((batchItem: any) => remainingItemIds.has(String(batchItem.order_item_id)))) }))

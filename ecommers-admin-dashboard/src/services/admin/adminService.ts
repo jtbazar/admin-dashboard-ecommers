@@ -846,11 +846,6 @@ export async function createFollowupDeliveryBatch(input: {
   return String(data)
 }
 
-export async function markDeliveryBatchDelivered(batchId: string): Promise<void> {
-  const { error } = await (getSupabase() as any).rpc('admin_mark_delivery_batch_delivered', { p_batch_id: batchId })
-  assertError(error)
-}
-
 export async function listOrderDeliveryBatches(orderId: string) {
   const { data, error } = await (getSupabase() as any)
     .from('delivery_batch_orders')

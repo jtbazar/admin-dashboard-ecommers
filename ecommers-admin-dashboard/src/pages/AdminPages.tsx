@@ -501,6 +501,7 @@ function VendorProductsOverview() {
   }, [])
   const load = (quiet = false) => {
     if (!quiet) setLoading(true)
+    setDriverCashLoaded(false)
     setError(null)
     void Promise.all([
       listAdminProductDeletionRequests(),
@@ -1406,6 +1407,7 @@ function Orders() {
       setFollowupItemSelections(current => ({ ...current, [order.id]: [] }))
       const detail = await getAdminOrderDetail(order.id)
       setOrderDetailRows(current => ({ ...current, [order.id]: detail.items }))
+      setOrderHasReadyBatch(current => ({ ...current, [order.id]: true }))
       push('Ready products added to delivery batch ' + batchId.slice(0, 8) + '.', 'success')
       refreshOrders(true)
     } catch (cause) {
@@ -1427,6 +1429,7 @@ function Orders() {
       if (rpcError) throw new Error(rpcError.message)
       const batchId = String(data)
       setCombinedBatches(current => ({ ...current, [orderId]: batchId }))
+      setOrderHasReadyBatch(current => ({ ...current, [orderId]: true }))
       push('Combined delivery batch ban gaya. Ab isi panel se ek rider assign karein.', 'success')
       refreshOrders(true)
     } catch (cause) {

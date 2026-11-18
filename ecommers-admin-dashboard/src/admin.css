@@ -910,13 +910,13 @@
 .orders-page .orders-filters .admin-search{min-width:220px;max-width:none;min-height:40px;border-radius:7px}
 .orders-page .orders-filters .admin-search input{height:40px}
 .orders-page .orders-filters .admin-button{min-height:40px;border-radius:7px}
-.orders-page .orders-filter-controls{display:grid;grid-template-columns:repeat(2,minmax(180px,260px));gap:8px}
+.orders-page .orders-filter-controls{display:grid;grid-template-columns:repeat(3,minmax(160px,1fr));gap:8px;max-width:900px}
 .orders-page .orders-filter-controls select{width:100%;height:39px;border:1px solid #dedbd2;border-radius:7px;padding:0 11px;background:#fff;color:#20231f;font-size:12px}
 .orders-page .orders-table-wrap{border:1px solid #e6e8e3;border-radius:10px;box-shadow:0 3px 14px rgba(24,30,22,.04)}
 .orders-page .orders-table{width:100%;min-width:1120px;border-collapse:separate;border-spacing:0;font-size:12px}
 .orders-page .orders-table thead th{position:sticky;top:0;z-index:2;padding:12px 13px;background:#f6f7f4;color:#687064;border-bottom:1px solid #e6e8e3;font-size:10px;letter-spacing:.07em}
 .orders-page .orders-table tbody td{padding:12px 13px;border-bottom:1px solid #edf0eb;vertical-align:middle}
-.orders-page .orders-table tbody tr:not(:has(.orders-fulfilment-cell)):hover>td{background:#fbfcfa}
+.orders-page .orders-table tbody tr:hover>td{background:#fbfcfa}
 .orders-page .orders-table tbody tr:last-child>td{border-bottom:0}
 .orders-page .orders-table .admin-status{border-radius:999px;padding:5px 8px;font-size:10px;white-space:nowrap}
 .orders-page .orders-row-actions{display:flex;flex-direction:column;align-items:stretch;gap:6px;min-width:158px}
@@ -946,7 +946,7 @@
  .orders-page .orders-filters .admin-toolbar{display:grid;grid-template-columns:1fr 1fr}
  .orders-page .orders-filters .admin-search{grid-column:1/-1;min-width:0;width:100%}
  .orders-page .orders-filters .admin-toolbar>.admin-button{width:100%;padding:0 8px;font-size:10px}
- .orders-page .orders-filter-controls{grid-template-columns:1fr}
+ .orders-page .orders-filter-controls{grid-template-columns:1fr;max-width:none}
  .orders-page .orders-fulfilment-cell{padding:8px!important}
  .orders-page .orders-fulfilment-panel{padding:12px}
 }

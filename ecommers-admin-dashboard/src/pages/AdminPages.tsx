@@ -1013,7 +1013,7 @@ function Pagination({ page, pageSize, total, onPage, onPageSize }: { page: numbe
 
 function Orders() {
   const { push } = useToast(); const navigate = useNavigate(); const [items, setItems] = useState<(AdminOrder & { vendor_names: string[]; has_food_items: boolean })[]>([]); const [confirmationTarget, setConfirmationTarget] = useState<(AdminOrder & { vendor_names: string[]; has_food_items: boolean }) | null>(null); const [deliveryDate, setDeliveryDate] = useState(new Date().toLocaleDateString('en-CA')); const [deliveryStart, setDeliveryStart] = useState(''); const [deliveryEnd, setDeliveryEnd] = useState(''); const [deliveryNote, setDeliveryNote] = useState(''); const [confirmationDetails, setConfirmationDetails] = useState<Awaited<ReturnType<typeof getAdminOrderDetail>>[]>([]); const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]); const [readyItemIds, setReadyItemIds] = useState<string[]>([]); const [defaultDeliveryFee, setDefaultDeliveryFee] = useState(0); const [existingDeliveryBatchOrderIds, setExistingDeliveryBatchOrderIds] = useState<string[]>([]); const [deliveryFeeOverride, setDeliveryFeeOverride] = useState(''); const [feeAdjustmentReason, setFeeAdjustmentReason] = useState(''); const [confirmationLoading, setConfirmationLoading] = useState(false); const [search, setSearch] = useState(''); const [status, setStatus] = useState('all'); const [vendorId, setVendorId] = useState('all'); const [vendors, setVendors] = useState<AdminOrderVendor[]>([]); const [sort, setSort] = useState('created_at.desc'); const [page, setPage] = useState(0); const [pageSize, setPageSize] = useState(12); const [total, setTotal] = useState(0); const [error, setError] = useState<string | null>(null); const [loading, setLoading] = useState(true); const [updatingIds, setUpdatingIds] = useState<string[]>([]); const [deliveryCollectionTarget, setDeliveryCollectionTarget] = useState<(AdminOrder & { vendor_names: string[]; has_food_items: boolean }) | null>(null); const [deliveryCollectionItems, setDeliveryCollectionItems] = useState<{ id: string; name: string; quantity: number; amount: string }[]>([]); const [deliveryCollectionUnpaid, setDeliveryCollectionUnpaid] = useState(false); const [deliveryCollectionReason, setDeliveryCollectionReason] = useState('')
-  const [driverAssignments, setDriverAssignments] = useState<Record<string, { driver_name: string; driver_phone: string; assignment_status: string; products: { name: string; quantity: number }[] }>>({})
+  const [driverAssignments, setDriverAssignments] = useState<Record<string, { driver_name: string; driver_phone: string; assignment_status: string; delivery_batch_number: string | null; products: { name: string; quantity: number }[] }>>({})
   const [driverAssignmentError, setDriverAssignmentError] = useState<string | null>(null)
   const [expandedFulfilmentOrderId, setExpandedFulfilmentOrderId] = useState<string | null>(null)
   const [orderPickupRows, setOrderPickupRows] = useState<Record<string, any[]>>({})
@@ -1051,7 +1051,7 @@ function Orders() {
       try {
         const client = getSupabase() as any
         const [assignmentResult, productResult] = await Promise.all([
-          client.rpc('admin_list_order_driver_assignments', { p_order_ids: orderIds }),
+          client.rpc('admin_list_order_driver_assignments_v2', { p_order_ids: orderIds }),
           client.from('order_items').select('order_id, product_name_snapshot, quantity').in('order_id', orderIds).limit(10000)
         ])
         if (assignmentResult.error) throw new Error(assignmentResult.error.message)
@@ -1062,13 +1062,14 @@ function Orders() {
           rows.push({ name: item.product_name_snapshot || 'Product', quantity: Number(item.quantity) || 0 })
           productsByOrder.set(item.order_id, rows)
         }
-        const nextAssignments: Record<string, { driver_name: string; driver_phone: string; assignment_status: string; products: { name: string; quantity: number }[] }> = {}
+        const nextAssignments: Record<string, { driver_name: string; driver_phone: string; assignment_status: string; delivery_batch_number: string | null; products: { name: string; quantity: number }[] }> = {}
         for (const assignment of assignmentResult.data ?? []) {
           if (assignment.assignment_status === 'cancelled') continue
           nextAssignments[assignment.order_id] = {
             driver_name: assignment.driver_name || 'Driver',
             driver_phone: assignment.driver_phone || '',
             assignment_status: assignment.assignment_status,
+            delivery_batch_number: assignment.delivery_batch_number ?? null,
             products: productsByOrder.get(assignment.order_id) ?? []
           }
         }
@@ -1411,7 +1412,7 @@ function Orders() {
                 <td><Link className="admin-link-button" to={`/admin/orders/${order.id}`}><strong>{order.order_number}</strong></Link><small style={{ display: 'block', whiteSpace: 'nowrap' }}>{formatDate(order.created_at)}</small></td>
                 <td><strong>{order.customer_name}</strong><small style={{ display: 'block', whiteSpace: 'nowrap' }}>{order.customer_phone}</small></td>
                 <td style={{ minWidth: 140, maxWidth: 220, whiteSpace: 'normal' }}>{order.vendor_names.length ? order.vendor_names.join(', ') : 'Platform / no vendor'}</td>
-                <td style={{ minWidth: 130 }}>{assignment ? <><strong>{assignment.driver_name}</strong>{assignment.driver_phone && <small style={{ display: 'block' }}>{assignment.driver_phone}</small>}<small style={{ display: 'block' }}>{assignment.assignment_status.replace(/_/g, ' ')}</small></> : 'Not assigned'}</td>
+                <td style={{ minWidth: 130 }}>{assignment ? <><strong>{assignment.driver_name}</strong>{assignment.driver_phone && <small style={{ display: 'block' }}>{assignment.driver_phone}</small>}<small style={{ display: 'block' }}>{assignment.assignment_status.replace(/_/g, ' ')}</small>{assignment.delivery_batch_number && <small style={{ display: 'block' }}>{assignment.delivery_batch_number}</small>}</> : 'Not assigned'}</td>
                 <td style={{ whiteSpace: 'nowrap' }}><strong>{formatMoney(order.total)}</strong></td>
                 <td><em className={statusClass(order.payment_status)}>{order.payment_status}</em></td>
                 <td><em className={statusClass(order.order_status)}>{order.order_status.replace(/_/g, ' ')}</em>{updatingIds.includes(order.id) && <small style={{ display: 'block' }}>Saving…</small>}</td>
@@ -1579,12 +1580,13 @@ function formatVariantSnapshot(snapshot: unknown): string {
 
 function OrderDetailPage({ orderId }: { orderId: string }) {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
-  const [detail, setDetail] = useState<Awaited<ReturnType<typeof getAdminOrderDetail>> | null>(null); const [error, setError] = useState<string | null>(null); const [loading, setLoading] = useState(true)
+  const [detail, setDetail] = useState<Awaited<ReturnType<typeof getAdminOrderDetail>> | null>(null); const [deliveries, setDeliveries] = useState<any[]>([]); const [error, setError] = useState<string | null>(null); const [loading, setLoading] = useState(true)
   const load = async () => {
     setLoading(true); setError(null)
     try {
-      const nextDetail = await getAdminOrderDetail(orderId)
+      const [nextDetail, nextDeliveries] = await Promise.all([getAdminOrderDetail(orderId), listOrderDeliveryBatches(orderId)])
       setDetail(nextDetail)
+      setDeliveries(nextDeliveries)
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Order details could not be loaded.') }
     finally { setLoading(false) }
   }
@@ -1605,7 +1607,7 @@ function OrderDetailPage({ orderId }: { orderId: string }) {
   return <section className="admin-content">
     <div className="admin-page-heading no-print"><div><p className="admin-kicker">Order management</p><h2>{order.order_number}</h2></div><div className="admin-action-row"><Link className="admin-button admin-button--outline" to="/admin/orders"><ArrowLeft size={15} /> All orders</Link><button className="admin-button" onClick={() => window.print()}><Printer size={15} /> Print order slip</button></div></div>
     <div className="admin-grid-2 no-print"><div className="admin-panel"><div className="admin-panel-heading"><div><p className="admin-kicker">Buyer & delivery</p><h3>{order.customer_name}</h3></div><em className={statusClass(order.order_status)}>{order.order_status}</em></div><p>{order.customer_email ?? 'No email'} · {order.customer_phone}</p><p className="admin-copy">{address}</p>{order.delivery_location_name && <div className="admin-callout"><MapPin size={15} /> Customer-selected map pin: <strong>{order.delivery_location_name}</strong></div>}{order.delivery_lat !== null && order.delivery_lng !== null && <small className="admin-copy">GPS coordinates: {Number(order.delivery_lat).toFixed(6)}, {Number(order.delivery_lng).toFixed(6)}{order.delivery_location_captured_at ? ` · Captured ${formatDate(order.delivery_location_captured_at)}` : ''}</small>}{order.delivery_lat !== null && order.delivery_lng !== null ? <><a className="admin-button admin-button--outline" href={`https://www.google.com/maps?q=${order.delivery_lat},${order.delivery_lng}`} target="_blank" rel="noreferrer">Open exact delivery pin in Maps</a><iframe title="Customer delivery location map" className="admin-order-location-map" loading="lazy" referrerPolicy="no-referrer-when-downgrade" src={`https://maps.google.com/maps?q=${order.delivery_lat},${order.delivery_lng}&z=15&output=embed`} /></> : address !== '—' ? <><a className="admin-button admin-button--outline" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`} target="_blank" rel="noreferrer">Find delivery address on Maps</a><iframe title="Customer delivery address map" className="admin-order-location-map" loading="lazy" referrerPolicy="no-referrer-when-downgrade" src={`https://maps.google.com/maps?q=${encodeURIComponent(address)}&z=14&output=embed`} /></> : <p className="admin-copy">No saved delivery coordinates or address were captured for this order.</p>}{order.expected_delivery_date && <div className="admin-callout"><span><strong>Expected delivery:</strong> {String(order.expected_delivery_date)}{order.delivery_window_start && order.delivery_window_end ? ` · ${String(order.delivery_window_start).slice(0,5)}–${String(order.delivery_window_end).slice(0,5)}` : ''}{order.delivery_note ? ` · ${order.delivery_note}` : ''}</span></div>}{order.customer_note && <p className="admin-callout">{order.customer_note}</p>}</div><div className="admin-panel"><p className="admin-kicker">Payment & totals</p><h3>{formatMoney(order.total)}</h3><p>{order.payment_method.toUpperCase()} · {order.payment_status}</p><p className="admin-copy">Subtotal {formatMoney(order.subtotal)} · Delivery {formatMoney(order.delivery_fee)} · Discount {formatMoney(order.discount_amount)}</p><small>Placed {formatDate(order.created_at)} · Updated {formatDate(order.updated_at)}</small></div></div>
-    <section className="admin-panel no-print" style={{ marginBottom: 22 }}><p className="admin-copy">Delivery operations are managed from the Orders screen. This page is for order details and printing only.</p></section>
+    <section className="admin-panel no-print" style={{ marginBottom: 22 }}><div className="admin-panel-heading"><div><p className="admin-kicker">Delivery history</p><h3>Delivery batches</h3><p className="admin-copy">Read-only history. All actions remain on the Orders screen.</p></div></div>{deliveries.length === 0 ? <p className="admin-copy">No delivery batches created yet.</p> : deliveries.map((batch: any) => <div key={batch.batch_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '10px 0', borderTop: '1px solid var(--admin-border, #e5e7eb)' }}><div><strong>{batch.batch_number || batch.batch_id}</strong><small style={{ display: 'block' }}>{(batch.delivery_batch_items ?? []).length} product(s) · Allocated fee {formatMoney(batch.fee_allocated ?? 0)} · Batch fee {formatMoney(batch.delivery_fee ?? 0)}</small>{batch.expected_delivery_date && <small style={{ display: 'block' }}>Expected {String(batch.expected_delivery_date)}{batch.delivery_window_start && batch.delivery_window_end ? ` · ${String(batch.delivery_window_start).slice(0,5)}–${String(batch.delivery_window_end).slice(0,5)}` : ''}</small>}</div><em className={statusClass(batch.status)}>{String(batch.status || 'scheduled').replace(/_/g,' ')}</em></div>)}</section>
     <article className="admin-order-slip">
       <header className="slip-brand"><div className="slip-brand__identity"><img className="slip-logo" src="/jtbazar-logo.webp" alt="JTBazar" /><small>ORDER PACKING SLIP</small></div><div className="slip-brand__order"><small>ORDER NUMBER</small><b>{order.order_number}</b></div></header>
       <div className="slip-columns"><section><h3>Ship to</h3><strong>{order.customer_name}</strong><p>{order.customer_phone}</p><p>{address}</p>{typeof shipping.delivery_instructions === 'string' && shipping.delivery_instructions && <small>Delivery note: {shipping.delivery_instructions}</small>}</section><section><h3>Order info</h3><p><b>Order date</b><span>{formatDate(order.created_at)}</span></p><p><b>Payment</b><span>{order.payment_method.toUpperCase()} · {order.payment_status}</span></p><p><b>Order status</b><span className="slip-status">{order.order_status}</span></p></section></div>

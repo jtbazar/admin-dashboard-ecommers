@@ -3,11 +3,8 @@ import { Check, RefreshCw, Truck, X, ShieldCheck, Users, PackageCheck, Save, Fil
 import { getSupabase } from '../lib/supabase'
 
 type DriverApplication = { id: string; user_id: string; full_name: string; phone: string; vehicle_type: string; status: string; admin_note: string | null; created_at: string; current_address: string | null; cnic_front_path: string | null; cnic_back_path: string | null; vehicle_plate_image_path: string | null; company_name: string | null }
-type DeliveryOrder = { id: string; order_number: string; customer_name: string; customer_phone: string; order_status: string; created_at: string }
-type DriverOption = { user_id: string; full_name: string; phone: string; company_name: string | null }
 type DriverCustomer = { user_id: string; email: string; full_name: string; phone: string; driver_enabled: boolean }
 type DriverAssignment = { assignment_id: string; order_id: string; order_number: string; customer_name: string; driver_user_id: string; driver_name: string; driver_phone: string; assignment_status: string; assigned_at: string; picked_up_at: string | null; delivered_at: string | null; driver_company_name: string | null; failed_reason: string | null; failed_note: string | null; delivery_batch_number: string | null; delivery_proof_path: string | null; cod_collected_amount: number | null; cash_reconciled_amount: number | null }
-type DriverBatch = { batch_id: string; batch_number: string; customer_id: string; customer_name: string; customer_phone: string; order_count: number; delivery_fee: number }
 type DriverCashRow = { assignment_id: string; order_id: string; order_number: string; customer_name: string; driver_user_id: string; driver_name: string; payment_method: string; order_total: number; collected_amount: number | null; reconciled_amount: number | null; reconciled_at: string | null; reconciliation_note: string | null; delivered_at: string | null }
 
 export function DriverManagement() {
@@ -16,19 +13,8 @@ export function DriverManagement() {
   const [customerSearch, setCustomerSearch] = useState('')
   const [selectedCustomer, setSelectedCustomer] = useState('')
   const [applications, setApplications] = useState<DriverApplication[]>([])
-  const [orders, setOrders] = useState<DeliveryOrder[]>([])
-  const [drivers, setDrivers] = useState<DriverOption[]>([])
   const [assignments, setAssignments] = useState<DriverAssignment[]>([])
-  const [batches, setBatches] = useState<DriverBatch[]>([])
-  const [selectedBatchId, setSelectedBatchId] = useState('')
-  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
   const [cashRows, setCashRows] = useState<DriverCashRow[]>([])
-  const [orderId, setOrderId] = useState('')
-  const [selectedOrderItems, setSelectedOrderItems] = useState<any[]>([])
-  const [orderItemsLoading, setOrderItemsLoading] = useState(false)
-  const [orderItemsError, setOrderItemsError] = useState<string | null>(null)
-  const [orderSearch, setOrderSearch] = useState('')
-  const [driverId, setDriverId] = useState('')
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [companyNames, setCompanyNames] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
@@ -39,57 +25,23 @@ export function DriverManagement() {
 
   async function load() {
     setError(null)
-    const [settings, apps, orderRows, approved, assignmentRows, batchRows, cashResults] = await Promise.all([
+    const [settings, apps, assignmentRows, cashResults] = await Promise.all([
       db.rpc('admin_list_driver_customers'),
       db.rpc('admin_list_driver_applications'),
-      db.rpc('admin_list_assignable_driver_orders'),
-      db.rpc('admin_list_approved_drivers'),
       db.rpc('admin_list_driver_assignments_v2'),
-      db.rpc('admin_list_assignable_delivery_batches'),
       db.rpc('admin_list_driver_cash_reconciliation')
     ])
-    const failure = settings.error || apps.error || orderRows.error || approved.error || assignmentRows.error || batchRows.error || cashResults.error
+    const failure = settings.error || apps.error || assignmentRows.error || cashResults.error
     if (failure) throw new Error(failure.message)
     setCustomers(settings.data ?? [])
     setApplications(apps.data ?? [])
-    setOrders(orderRows.data ?? [])
-    setDrivers(approved.data ?? [])
     setAssignments(assignmentRows.data ?? [])
-    setBatches(batchRows.data ?? [])
     setCashRows(cashResults.data ?? [])
     setNotes(Object.fromEntries((apps.data ?? []).map((a: DriverApplication) => [a.id, a.admin_note ?? ''])))
     setCompanyNames(Object.fromEntries((apps.data ?? []).map((a: DriverApplication) => [a.id, a.company_name ?? ''])))
   }
 
   useEffect(() => { void load().catch(e => setError(e.message || 'Could not load driver operations.')).finally(() => setLoading(false)) }, [])
-
-  useEffect(() => {
-    let active = true
-    if (!orderId) {
-      setSelectedOrderItems([])
-      setOrderItemsError(null)
-      setOrderItemsLoading(false)
-      return
-    }
-    setOrderItemsLoading(true)
-    setOrderItemsError(null)
-    void db.from('order_items')
-      .select('id,product_name_snapshot,quantity,delivery_status,vendor_fulfillment_status,seller_id,unit_price,line_total')
-      .eq('order_id', orderId)
-      .order('created_at', { ascending: true })
-      .then(({ data, error: queryError }: any) => {
-        if (!active) return
-        if (queryError) throw queryError
-        setSelectedOrderItems(data ?? [])
-      })
-      .catch((cause: any) => {
-        if (!active) return
-        setSelectedOrderItems([])
-        setOrderItemsError(cause?.message || 'Products for this order could not be loaded.')
-      })
-      .finally(() => { if (active) setOrderItemsLoading(false) })
-    return () => { active = false }
-  }, [orderId])
 
   // Keep the delivery control center in sync with driver/customer/order changes
   // without requiring an admin to press Refresh after every status update.
@@ -178,66 +130,6 @@ export function DriverManagement() {
     }
   }
 
-  async function assignDriver() {
-    if (!orderId || !driverId) return
-    setBusy(true); setError(null); setSuccess(null)
-    try {
-      const { error: rpcError } = await db.rpc('admin_assign_driver_to_order', {
-        p_order_id: orderId, p_driver_user_id: driverId
-      })
-      if (rpcError) throw rpcError
-      setSuccess('Driver assigned successfully.')
-      setOrderId(''); setDriverId('')
-      await load()
-    } catch (e: any) {
-      setError(e?.message || 'Could not assign this driver.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function cancelAssignment(assignment: DriverAssignment) {
-    if (!window.confirm('Cancel the driver assignment for order ' + assignment.order_number + '? The order will return to the assignable orders list.')) return
-    setBusy(true); setError(null); setSuccess(null)
-    try {
-      const { error: rpcError } = await db.rpc('admin_cancel_driver_assignment', { p_assignment_id: assignment.assignment_id })
-      if (rpcError) throw rpcError
-      setSuccess('Driver assignment cancelled. The order is available for reassignment.')
-      await load()
-    } catch (e: any) {
-      setError(e?.message || 'Could not cancel this driver assignment.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function createCombinedBatch() {
-    if (selectedOrderIds.length < 2) return
-    setBusy(true); setError(null); setSuccess(null)
-    try {
-      const { data, error: rpcError } = await db.rpc('admin_create_combined_driver_batch', { p_order_ids: selectedOrderIds })
-      if (rpcError) throw rpcError
-      setSuccess('Combined delivery batch created. Existing order delivery fees were preserved. Select a driver below to assign it.')
-      setSelectedOrderIds([])
-      await load()
-      if (data) setSelectedBatchId(String(data))
-    } catch (e: any) { setError(e?.message || 'Could not create the combined delivery batch.') }
-    finally { setBusy(false) }
-  }
-
-  async function assignBatch() {
-    if (!selectedBatchId || !driverId) return
-    setBusy(true); setError(null); setSuccess(null)
-    try {
-      const { data, error: rpcError } = await db.rpc('admin_assign_driver_to_delivery_batch', { p_batch_id: selectedBatchId, p_driver_user_id: driverId })
-      if (rpcError) throw rpcError
-      setSuccess(`${Number(data ?? 0)} orders assigned together to the selected driver.`)
-      setSelectedBatchId(''); setDriverId('')
-      await load()
-    } catch (e: any) { setError(e?.message || 'Could not assign this delivery batch.') }
-    finally { setBusy(false) }
-  }
-
   async function reconcileCash(row: DriverCashRow) {
     const rawAmount = window.prompt(`Cash received from ${row.driver_name} for ${row.order_number}. Driver recorded: PKR ${Number(row.collected_amount ?? 0).toLocaleString()}. Enter the cash amount received:`)
     if (rawAmount === null) return
@@ -277,18 +169,13 @@ export function DriverManagement() {
     return !q || [c.full_name, c.email, c.phone].some(v => (v ?? '').toLowerCase().includes(q))
   })
   const selected = customers.find(c => c.user_id === selectedCustomer)
-  const filteredOrders = orders.filter(o => {
-    const q = orderSearch.trim().toLowerCase()
-    return !q || o.order_number.toLowerCase().includes(q) || o.id.toLowerCase().includes(q)
-  })
-
   return (
     <main className="admin-content driver-management">
       <div className="admin-page-heading driver-page-heading">
         <div className="driver-heading-copy">
           <p className="admin-kicker">Delivery operations</p>
           <h2>Delivery control center</h2>
-          <p>Manage drivers, send orders for delivery and check COD cash — all from one simple screen.</p>
+          <p>Manage driver applications, access, delivery tracking and COD cash. Assignments are managed from Orders.</p>
         </div>
         <button className="admin-button admin-button--outline" onClick={() => { setLoading(true); void load().catch(e => setError(e.message)).finally(() => setLoading(false)) }} disabled={busy || loading}><RefreshCw size={16}/> Refresh</button>
       </div>
@@ -297,100 +184,25 @@ export function DriverManagement() {
       {success && <div className="driver-alert driver-alert--success">{success}</div>}
 
       <div className="driver-simple-tabs" role="tablist" aria-label="Delivery sections">
-        <button type="button" className={activeTab === 'deliveries' ? 'is-active' : ''} onClick={() => setActiveTab('deliveries')}><Truck size={16}/> Deliveries <span>{orders.length}</span></button>
+        <button type="button" className={activeTab === 'deliveries' ? 'is-active' : ''} onClick={() => setActiveTab('deliveries')}><Truck size={16}/> Tracking <span>{assignments.length}</span></button>
         <button type="button" className={activeTab === 'drivers' ? 'is-active' : ''} onClick={() => setActiveTab('drivers')}><Users size={16}/> Drivers <span>{applications.length}</span></button>
         <button type="button" className={activeTab === 'cash' ? 'is-active' : ''} onClick={() => setActiveTab('cash')}><ShieldCheck size={16}/> COD cash <span>{cashRows.filter(r => !r.reconciled_at && r.collected_amount != null).length}</span></button>
       </div>
 
-      {activeTab === 'deliveries' && <>
-        <section className="admin-panel driver-panel driver-simple-panel">
-          <div className="admin-panel-heading driver-panel-heading"><div><h2>Assign a delivery</h2><p>Choose an order and an approved driver. Only eligible confirmed orders appear here.</p></div><PackageCheck size={22}/></div>
-          <div className="admin-form-grid driver-assignment-grid">
-            <label className="driver-field">Find order
-              <input className="driver-control" value={orderSearch} onChange={e => setOrderSearch(e.target.value)} placeholder="Order number or ID"/>
-            </label>
-            <label className="driver-field">Order
-              <select className="driver-control" value={orderId} onChange={e => setOrderId(e.target.value)}>
-                <option value="">Select an order ({filteredOrders.length} available)</option>
-                {filteredOrders.map(o => <option key={o.id} value={o.id}>{o.order_number} — {o.customer_name}</option>)}
-              </select>
-            </label>
-            <label className="driver-field">Driver
-              <select className="driver-control" value={driverId} onChange={e => setDriverId(e.target.value)}>
-                <option value="">Select approved driver</option>
-                {drivers.map(d => <option key={d.user_id} value={d.user_id}>{d.full_name} — {d.phone}</option>)}
-              </select>
-            </label>
-          </div>
-          {orderId && <div className="admin-panel" style={{ margin: '12px 0', padding: 14, background: 'var(--admin-surface, #fff)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
-              <strong>Products in this order</strong>
-              <span className="admin-copy">{selectedOrderItems.length} product{selectedOrderItems.length === 1 ? '' : 's'}</span>
-            </div>
-            {orderItemsLoading ? <p className="driver-empty">Loading products…</p> : orderItemsError ? <p className="driver-empty" role="alert">{orderItemsError}</p> : selectedOrderItems.length === 0 ? <p className="driver-empty">No products were found for this order.</p> : <div style={{ display: 'grid', gap: 8 }}>
-              {selectedOrderItems.map((item: any) => {
-                const cancelled = item.vendor_fulfillment_status === 'cancelled' || item.delivery_status === 'cancelled'
-                const ready = item.delivery_status === 'ready' || item.delivery_status === 'delivered'
-                return <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '9px 10px', border: '1px solid var(--admin-border, #e5e7eb)', borderRadius: 8, opacity: cancelled ? 0.55 : 1 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <strong style={{ display: 'block', textDecoration: cancelled ? 'line-through' : 'none' }}>{item.product_name_snapshot || 'Product'}</strong>
-                    <small className="admin-copy">Qty {Number(item.quantity) || 0} · {item.seller_id ? 'Vendor product' : 'JTBazar product'}</small>
-                  </div>
-                  <span className="admin-copy" style={{ whiteSpace: 'nowrap', fontWeight: 600 }}>{cancelled ? 'Cancelled' : item.delivery_status === 'delivered' ? 'Delivered' : ready ? 'Ready' : item.vendor_fulfillment_status || item.delivery_status || 'Pending'}</span>
-                </div>
-              })}
-            </div>}
-          </div>}
-          <button className="admin-button" disabled={busy || !orderId || !driverId || orderItemsLoading || !!orderItemsError || selectedOrderItems.length === 0} onClick={() => void assignDriver()}><Truck size={16}/> Assign delivery</button>
-          {orders.length === 0 && <p className="driver-empty">No eligible confirmed orders are available. Confirm the order and make sure every active product is ready; JTBazar must also collect all vendor products before assigning a rider.</p>}
-          {orders.length > 0 && filteredOrders.length === 0 && <p className="driver-empty">No orders match your search.</p>}
-        </section>
-
-        {batches.length > 0 && <section className="admin-panel driver-panel driver-simple-panel">
-          <div className="admin-panel-heading driver-panel-heading"><div><h2>Ready delivery batches</h2><p>Assign confirmed orders that are already grouped for the same customer and address.</p></div><PackageCheck size={22}/></div>
-          <div className="admin-form-grid driver-assignment-grid">
-            <label className="driver-field">Delivery batch
-              <select className="driver-control" value={selectedBatchId} onChange={e => setSelectedBatchId(e.target.value)}>
-                <option value="">Select a ready batch</option>
-                {batches.map(b => <option key={b.batch_id} value={b.batch_id}>{b.batch_number} — {b.customer_name} ({b.order_count} order{b.order_count === 1 ? '' : 's'})</option>)}
-              </select>
-            </label>
-            <label className="driver-field">Approved driver
-              <select className="driver-control" value={driverId} onChange={e => setDriverId(e.target.value)}>
-                <option value="">Select approved driver</option>
-                {drivers.map(d => <option key={d.user_id} value={d.user_id}>{d.full_name} — {d.phone}</option>)}
-              </select>
-            </label>
-          </div>
-          <button className="admin-button" disabled={busy || !selectedBatchId || !driverId} onClick={() => void assignBatch()}><Truck size={16}/> Assign batch</button>
-        </section>}
-        <section className="admin-panel driver-panel driver-simple-panel">
-          <div className="admin-section-heading"><div><h2>Delivery tracking</h2><p>See which driver has each order and its latest status.</p></div><PackageCheck size={22}/></div>
-          <div className="admin-table-wrap driver-table-wrap"><table className="admin-table driver-table">
-            <thead><tr><th>Order</th><th>Customer</th><th>Driver</th><th>Status</th><th>Assigned</th><th>Action</th></tr></thead>
-            <tbody>{assignments.map(a => <tr key={a.assignment_id}>
-              <td><strong>{a.order_number}</strong>{a.delivery_batch_number ? <><br/><small>{a.delivery_batch_number}</small></> : null}</td>
-              <td>{a.customer_name}</td>
-              <td><strong>{a.driver_name || 'Driver'}</strong><br/><small>{a.driver_phone}</small></td>
-              <td><span className="admin-status">{a.assignment_status.replaceAll('_',' ')}</span>{a.failed_reason ? <small><br/>{a.failed_reason.replaceAll('_',' ')}{a.failed_note ? ' — ' + a.failed_note : ''}</small> : null}</td>
-              <td>{new Date(a.assigned_at).toLocaleDateString()}</td>
-              <td>{['assigned','picked_up'].includes(a.assignment_status) ? <button className="admin-button admin-button--danger" disabled={busy} onClick={() => void cancelAssignment(a)}><X size={14}/> Cancel</button> : <span className="driver-muted">—</span>}</td>
-            </tr>)}</tbody>
-          </table></div>
-          {assignments.length === 0 && <p className="driver-empty">No deliveries assigned yet.</p>}
-        </section>
-
-        <details className="admin-panel driver-panel driver-advanced">
-          <summary><span><strong>Advanced: combine multiple orders</strong><small>Use only when the same customer has orders going to the exact same address.</small></span><PackageCheck size={18}/></summary>
-          <div className="driver-advanced-content">
-            <p className="driver-muted">Select two or more orders for one customer. The system checks the saved address before creating a batch.</p>
-            <div className="driver-batch-order-list">
-              {filteredOrders.map(o => <label key={o.id}><input type="checkbox" checked={selectedOrderIds.includes(o.id)} onChange={e => setSelectedOrderIds(current => e.target.checked ? [...current,o.id] : current.filter(id => id !== o.id))}/><span><strong>{o.order_number}</strong> · {o.customer_name}</span></label>)}
-            </div>
-            <button className="admin-button" disabled={busy || selectedOrderIds.length < 2} onClick={() => void createCombinedBatch()}><PackageCheck size={16}/> Create batch ({selectedOrderIds.length} selected)</button>
-          </div>
-        </details>
-      </>}
+      {activeTab === 'deliveries' && <section className="admin-panel driver-panel driver-simple-panel">
+        <div className="admin-section-heading"><div><h2>Delivery tracking</h2><p>Read-only tracking. All batch creation, assignment and pickup actions are handled from Orders.</p></div><PackageCheck size={22}/></div>
+        <div className="admin-table-wrap driver-table-wrap"><table className="admin-table driver-table">
+          <thead><tr><th>Order</th><th>Customer</th><th>Driver</th><th>Status</th><th>Assigned</th></tr></thead>
+          <tbody>{assignments.map(a => <tr key={a.assignment_id}>
+            <td><strong>{a.order_number}</strong>{a.delivery_batch_number ? <><br/><small>{a.delivery_batch_number}</small></> : null}</td>
+            <td>{a.customer_name}</td>
+            <td><strong>{a.driver_name || 'Driver'}</strong><br/><small>{a.driver_phone}</small></td>
+            <td><span className="admin-status">{a.assignment_status.replaceAll('_',' ')}</span>{a.failed_reason ? <small><br/>{a.failed_reason.replaceAll('_',' ')}{a.failed_note ? ' — ' + a.failed_note : ''}</small> : null}</td>
+            <td>{new Date(a.assigned_at).toLocaleDateString()}</td>
+          </tr>)}</tbody>
+        </table></div>
+        {assignments.length === 0 && <p className="driver-empty">No deliveries assigned yet.</p>}
+      </section>}
 
       {activeTab === 'drivers' && <>
         <section className="admin-panel driver-panel driver-simple-panel">

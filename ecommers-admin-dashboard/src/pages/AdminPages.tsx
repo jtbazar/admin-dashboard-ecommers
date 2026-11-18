@@ -1013,7 +1013,7 @@ function Pagination({ page, pageSize, total, onPage, onPageSize }: { page: numbe
 
 function Orders() {
   const { push } = useToast(); const navigate = useNavigate(); const [items, setItems] = useState<(AdminOrder & { vendor_names: string[]; has_food_items: boolean })[]>([]); const [confirmationTarget, setConfirmationTarget] = useState<(AdminOrder & { vendor_names: string[]; has_food_items: boolean }) | null>(null); const [deliveryDate, setDeliveryDate] = useState(new Date().toLocaleDateString('en-CA')); const [deliveryStart, setDeliveryStart] = useState(''); const [deliveryEnd, setDeliveryEnd] = useState(''); const [deliveryNote, setDeliveryNote] = useState(''); const [confirmationDetails, setConfirmationDetails] = useState<Awaited<ReturnType<typeof getAdminOrderDetail>>[]>([]); const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]); const [readyItemIds, setReadyItemIds] = useState<string[]>([]); const [defaultDeliveryFee, setDefaultDeliveryFee] = useState(0); const [existingDeliveryBatchOrderIds, setExistingDeliveryBatchOrderIds] = useState<string[]>([]); const [deliveryFeeOverride, setDeliveryFeeOverride] = useState(''); const [feeAdjustmentReason, setFeeAdjustmentReason] = useState(''); const [confirmationLoading, setConfirmationLoading] = useState(false); const [search, setSearch] = useState(''); const [status, setStatus] = useState('all'); const [vendorId, setVendorId] = useState('all'); const [vendors, setVendors] = useState<AdminOrderVendor[]>([]); const [sort, setSort] = useState('created_at.desc'); const [page, setPage] = useState(0); const [pageSize, setPageSize] = useState(12); const [total, setTotal] = useState(0); const [error, setError] = useState<string | null>(null); const [loading, setLoading] = useState(true); const [updatingIds, setUpdatingIds] = useState<string[]>([]); const [deliveryCollectionTarget, setDeliveryCollectionTarget] = useState<(AdminOrder & { vendor_names: string[]; has_food_items: boolean }) | null>(null); const [deliveryCollectionItems, setDeliveryCollectionItems] = useState<{ id: string; name: string; quantity: number; amount: string }[]>([]); const [deliveryCollectionUnpaid, setDeliveryCollectionUnpaid] = useState(false); const [deliveryCollectionReason, setDeliveryCollectionReason] = useState('')
-  const [driverAssignments, setDriverAssignments] = useState<Record<string, { driver_name: string; driver_phone: string; assignment_status: string; delivery_batch_number: string | null; products: { name: string; quantity: number }[] }>>({})
+  const [driverAssignments, setDriverAssignments] = useState<Record<string, { driver_name: string; driver_phone: string; assignment_status: string; delivery_batch_number: string | null; products: { name: string; quantity: number }[] }[]>>({})
   const [driverAssignmentError, setDriverAssignmentError] = useState<string | null>(null)
   const [expandedFulfilmentOrderId, setExpandedFulfilmentOrderId] = useState<string | null>(null)
   const [orderPickupRows, setOrderPickupRows] = useState<Record<string, any[]>>({})
@@ -1062,16 +1062,18 @@ function Orders() {
           rows.push({ name: item.product_name_snapshot || 'Product', quantity: Number(item.quantity) || 0 })
           productsByOrder.set(item.order_id, rows)
         }
-        const nextAssignments: Record<string, { driver_name: string; driver_phone: string; assignment_status: string; delivery_batch_number: string | null; products: { name: string; quantity: number }[] }> = {}
+        const nextAssignments: Record<string, { driver_name: string; driver_phone: string; assignment_status: string; delivery_batch_number: string | null; products: { name: string; quantity: number }[] }[]> = {}
         for (const assignment of assignmentResult.data ?? []) {
           if (assignment.assignment_status === 'cancelled') continue
-          nextAssignments[assignment.order_id] = {
+          const rows = nextAssignments[assignment.order_id] ?? []
+          rows.push({
             driver_name: assignment.driver_name || 'Driver',
             driver_phone: assignment.driver_phone || '',
             assignment_status: assignment.assignment_status,
             delivery_batch_number: assignment.delivery_batch_number ?? null,
             products: productsByOrder.get(assignment.order_id) ?? []
-          }
+          })
+          nextAssignments[assignment.order_id] = rows
         }
         setDriverAssignments(nextAssignments)
         setDriverAssignmentError(null)
@@ -1418,7 +1420,7 @@ function Orders() {
                 <td><Link className="admin-link-button" to={`/admin/orders/${order.id}`}><strong>{order.order_number}</strong></Link><small style={{ display: 'block', whiteSpace: 'nowrap' }}>{formatDate(order.created_at)}</small></td>
                 <td><strong>{order.customer_name}</strong><small style={{ display: 'block', whiteSpace: 'nowrap' }}>{order.customer_phone}</small></td>
                 <td style={{ minWidth: 140, maxWidth: 220, whiteSpace: 'normal' }}>{order.vendor_names.length ? order.vendor_names.join(', ') : 'Platform / no vendor'}</td>
-                <td style={{ minWidth: 130 }}>{assignment ? <><strong>{assignment.driver_name}</strong>{assignment.driver_phone && <small style={{ display: 'block' }}>{assignment.driver_phone}</small>}<small style={{ display: 'block' }}>{assignment.assignment_status.replace(/_/g, ' ')}</small>{assignment.delivery_batch_number && <small style={{ display: 'block' }}>{assignment.delivery_batch_number}</small>}</> : 'Not assigned'}</td>
+                <td style={{ minWidth: 150 }}>{assignment?.length ? assignment.map((row, rowIndex) => <div key={row.delivery_batch_number || rowIndex} style={{ paddingBottom: rowIndex < assignment.length - 1 ? 6 : 0, marginBottom: rowIndex < assignment.length - 1 ? 6 : 0, borderBottom: rowIndex < assignment.length - 1 ? '1px solid var(--adm-border)' : 'none' }}><strong>{row.driver_name}</strong>{row.driver_phone && <small style={{ display: 'block' }}>{row.driver_phone}</small>}<small style={{ display: 'block' }}>{row.assignment_status.replace(/_/g, ' ')}</small>{row.delivery_batch_number && <small style={{ display: 'block' }}>{row.delivery_batch_number}</small>}</div>) : 'Not assigned'}</td>
                 <td style={{ whiteSpace: 'nowrap' }}><strong>{formatMoney(order.total)}</strong></td>
                 <td><em className={statusClass(order.payment_status)}>{order.payment_status}</em></td>
                 <td><em className={statusClass(order.order_status)}>{order.order_status.replace(/_/g, ' ')}</em>{updatingIds.includes(order.id) && <small style={{ display: 'block' }}>Saving…</small>}</td>

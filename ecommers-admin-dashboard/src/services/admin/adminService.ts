@@ -579,14 +579,19 @@ export async function listAdminOrders(search = '', status = 'all', page = 0, pag
 
 export async function getAdminOrderDetail(id: string) {
   const client = getSupabase()
-  const [order, items, notes, history, pickups] = await Promise.all([
+  const [order, items, notes, history] = await Promise.all([
     client.from('orders').select('id, order_number, customer_id, customer_name, customer_phone, customer_email, shipping_address_snapshot, customer_note, currency, subtotal, delivery_fee, discount_amount, total, order_status, payment_method, payment_status, delivery_lat, delivery_lng, delivery_location_name, delivery_location_captured_at, expected_delivery_date, delivery_window_start, delivery_window_end, delivery_note, delivery_timing_confirmed_at, delivery_timing_confirmed_by, created_at, updated_at').eq('id', id).single(),
     client.from('order_items').select('id, order_id, product_id, variant_id, seller_id, seller_name_snapshot, product_name_snapshot, sku_snapshot, variant_snapshot, product_snapshot, quantity, unit_price, line_total, vendor_fulfillment_status, delivery_status, stock_unavailable_at, stock_arranged_deadline_at, stock_unavailable_note, tracking_number, tracking_url, vendor_note, vendor_updated_at, created_at').eq('order_id', id).order('created_at').limit(100),
     client.from('admin_order_notes').select('id, order_id, created_by, note, created_at').eq('order_id', id).order('created_at', { ascending: false }).limit(100),
     client.from('admin_audit_logs').select('id, action, entity, entity_id, details, created_at').eq('entity', 'orders').eq('entity_id', id).order('created_at', { ascending: false }).limit(100),
-    (client as any).from('vendor_order_pickups').select('order_id, seller_id, status').eq('order_id', id),
   ])
-  assertError(order.error); assertError(items.error); assertError(pickups.error)
+  assertError(order.error); assertError(items.error)
+  // Platform-only orders do not need vendor-pickup table access. Avoid letting
+  // vendor MFA/RLS restrictions block the admin's core order and driver workflow.
+  const sellerIds = [...new Set((items.data ?? []).map((item: any) => item.seller_id).filter((value): value is string => Boolean(value)))]
+  const pickups = sellerIds.length
+    ? await (client as any).from('vendor_order_pickups').select('order_id, seller_id, status').eq('order_id', id)
+    : { data: [], error: null }
   const pickupStatusBySeller = new Map(((pickups.data ?? []) as { seller_id: string; status: string }[]).map((pickup) => [pickup.seller_id, pickup.status]))
   const productIds = [...new Set((items.data ?? []).map((item) => item.product_id).filter((value): value is string => Boolean(value)))]
   const productRows = productIds.length ? await (client as any).from('products').select('id, food_product_type, categories(name)').in('id', productIds) : { data: [], error: null }
@@ -597,7 +602,7 @@ export async function getAdminOrderDetail(id: string) {
     const category = Array.isArray(product?.categories) ? product.categories[0] : product?.categories
     return { ...item, food_product_type: product?.food_product_type ?? null, product_category_name: category?.name ?? null, vendor_pickup_status: item.seller_id ? pickupStatusBySeller.get(item.seller_id) ?? null : null }
   })
-  const warnings = [notes.error && `Admin notes unavailable: ${notes.error.message}`, history.error && `Status history unavailable: ${history.error.message}`].filter((message): message is string => Boolean(message))
+  const warnings = [notes.error && `Admin notes unavailable: ${notes.error.message}`, history.error && `Status history unavailable: ${history.error.message}`, pickups.error && `Vendor pickup information unavailable: ${pickups.error.message}`].filter((message): message is string => Boolean(message))
   return { order: order.data as AdminOrder, items: enrichedItems, notes: notes.data ?? [], history: history.data ?? [], warnings }
 }
 

@@ -24,6 +24,9 @@ export function DriverManagement() {
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
   const [cashRows, setCashRows] = useState<DriverCashRow[]>([])
   const [orderId, setOrderId] = useState('')
+  const [selectedOrderItems, setSelectedOrderItems] = useState<any[]>([])
+  const [orderItemsLoading, setOrderItemsLoading] = useState(false)
+  const [orderItemsError, setOrderItemsError] = useState<string | null>(null)
   const [orderSearch, setOrderSearch] = useState('')
   const [driverId, setDriverId] = useState('')
   const [notes, setNotes] = useState<Record<string, string>>({})
@@ -59,6 +62,34 @@ export function DriverManagement() {
   }
 
   useEffect(() => { void load().catch(e => setError(e.message || 'Could not load driver operations.')).finally(() => setLoading(false)) }, [])
+
+  useEffect(() => {
+    let active = true
+    if (!orderId) {
+      setSelectedOrderItems([])
+      setOrderItemsError(null)
+      setOrderItemsLoading(false)
+      return
+    }
+    setOrderItemsLoading(true)
+    setOrderItemsError(null)
+    void db.from('order_items')
+      .select('id,product_name_snapshot,quantity,delivery_status,vendor_fulfillment_status,seller_id,unit_price,line_total')
+      .eq('order_id', orderId)
+      .order('created_at', { ascending: true })
+      .then(({ data, error: queryError }: any) => {
+        if (!active) return
+        if (queryError) throw queryError
+        setSelectedOrderItems(data ?? [])
+      })
+      .catch((cause: any) => {
+        if (!active) return
+        setSelectedOrderItems([])
+        setOrderItemsError(cause?.message || 'Products for this order could not be loaded.')
+      })
+      .finally(() => { if (active) setOrderItemsLoading(false) })
+    return () => { active = false }
+  }, [orderId])
 
   // Keep the delivery control center in sync with driver/customer/order changes
   // without requiring an admin to press Refresh after every status update.
@@ -291,8 +322,27 @@ export function DriverManagement() {
               </select>
             </label>
           </div>
-          <button className="admin-button" disabled={busy || !orderId || !driverId} onClick={() => void assignDriver()}><Truck size={16}/> Assign delivery</button>
-          {orders.length === 0 && <p className="driver-empty">No confirmed orders are ready for driver assignment.</p>}
+          {orderId && <div className="admin-panel" style={{ margin: '12px 0', padding: 14, background: 'var(--admin-surface, #fff)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
+              <strong>Products in this order</strong>
+              <span className="admin-copy">{selectedOrderItems.length} product{selectedOrderItems.length === 1 ? '' : 's'}</span>
+            </div>
+            {orderItemsLoading ? <p className="driver-empty">Loading products…</p> : orderItemsError ? <p className="driver-empty" role="alert">{orderItemsError}</p> : selectedOrderItems.length === 0 ? <p className="driver-empty">No products were found for this order.</p> : <div style={{ display: 'grid', gap: 8 }}>
+              {selectedOrderItems.map((item: any) => {
+                const cancelled = item.vendor_fulfillment_status === 'cancelled' || item.delivery_status === 'cancelled'
+                const ready = item.delivery_status === 'ready' || item.delivery_status === 'delivered'
+                return <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '9px 10px', border: '1px solid var(--admin-border, #e5e7eb)', borderRadius: 8, opacity: cancelled ? 0.55 : 1 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <strong style={{ display: 'block', textDecoration: cancelled ? 'line-through' : 'none' }}>{item.product_name_snapshot || 'Product'}</strong>
+                    <small className="admin-copy">Qty {Number(item.quantity) || 0} · {item.seller_id ? 'Vendor product' : 'JTBazar product'}</small>
+                  </div>
+                  <span className="admin-copy" style={{ whiteSpace: 'nowrap', fontWeight: 600 }}>{cancelled ? 'Cancelled' : item.delivery_status === 'delivered' ? 'Delivered' : ready ? 'Ready' : item.vendor_fulfillment_status || item.delivery_status || 'Pending'}</span>
+                </div>
+              })}
+            </div>}
+          </div>}
+          <button className="admin-button" disabled={busy || !orderId || !driverId || orderItemsLoading || !!orderItemsError || selectedOrderItems.length === 0} onClick={() => void assignDriver()}><Truck size={16}/> Assign delivery</button>
+          {orders.length === 0 && <p className="driver-empty">No eligible confirmed orders are available. Confirm the order and make sure every active product is ready; JTBazar must also collect all vendor products before assigning a rider.</p>}
           {orders.length > 0 && filteredOrders.length === 0 && <p className="driver-empty">No orders match your search.</p>}
         </section>
 

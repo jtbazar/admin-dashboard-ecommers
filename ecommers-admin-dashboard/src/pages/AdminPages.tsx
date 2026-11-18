@@ -1025,6 +1025,9 @@ function Orders() {
   const [combinedBatches, setCombinedBatches] = useState<Record<string, string>>({})
   const [orderDetailRows, setOrderDetailRows] = useState<Record<string, any[]>>({})
   const [followupItemSelections, setFollowupItemSelections] = useState<Record<string, string[]>>({})
+  const [followupDeliveryDates, setFollowupDeliveryDates] = useState<Record<string, string>>({})
+  const [followupDeliveryStarts, setFollowupDeliveryStarts] = useState<Record<string, string>>({})
+  const [followupDeliveryEnds, setFollowupDeliveryEnds] = useState<Record<string, string>>({})
   const [cancelItemTarget, setCancelItemTarget] = useState<{ orderId: string; item: any } | null>(null)
   const [cancelItemReason, setCancelItemReason] = useState('')
   const [cancelItemBusy, setCancelItemBusy] = useState(false)
@@ -1295,15 +1298,21 @@ function Orders() {
       push('Vendor products can only be scheduled after JTBazar confirms collection.', 'error'); return
     }
     const containsFood = selected.some((item: any) => /food|grocery/i.test(item.product_category_name ?? '') || Boolean(item.food_product_type))
+    const deliveryDate = followupDeliveryDates[order.id] ?? ''
+    const deliveryStart = followupDeliveryStarts[order.id] ?? ''
+    const deliveryEnd = followupDeliveryEnds[order.id] ?? ''
+    if (containsFood && (!deliveryDate || !deliveryStart || !deliveryEnd || deliveryEnd <= deliveryStart)) {
+      push('Food products ke liye valid delivery date aur time window select karein.', 'error'); return
+    }
     setFulfilmentBusy('schedule-' + order.id)
     try {
       const batchId = await createFollowupDeliveryBatch({
         order_id: order.id,
         item_ids: selectedIds,
-        expected_delivery_date: null,
-        delivery_window_start: null,
-        delivery_window_end: null,
-        delivery_note: containsFood ? 'Food delivery timing must be confirmed in the order confirmation workflow.' : null
+        expected_delivery_date: containsFood ? deliveryDate : null,
+        delivery_window_start: containsFood ? deliveryStart : null,
+        delivery_window_end: containsFood ? deliveryEnd : null,
+        delivery_note: null
       })
       setFollowupItemSelections(current => ({ ...current, [order.id]: [] }))
       const detail = await getAdminOrderDetail(order.id)
@@ -1401,6 +1410,7 @@ function Orders() {
               {expandedFulfilmentOrderId === order.id && <tr key={order.id + '-fulfilment'}><td colSpan={9} style={{ background: 'var(--admin-surface, #f8fafc)', padding: 16 }}>
                 <div style={{ display: 'grid', gap: 14 }}>
                   <div><strong>Order items & status</strong>{(orderDetailRows[order.id] ?? []).map((item: any) => <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '9px 0', borderTop: '1px solid var(--admin-border, #e5e7eb)' }}><div style={{ minWidth: 240 }}><strong>{item.product_name_snapshot}</strong><small style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}><em className={statusClass(item.vendor_fulfillment_status || 'pending')}>Vendor: {item.vendor_fulfillment_status || 'pending'}</em><em className={statusClass(item.delivery_status || 'pending')}>Delivery: {item.delivery_status || 'pending'}</em><em className={statusClass(item.vendor_pickup_status || 'not-applicable')}>Pickup: {item.vendor_pickup_status || 'not applicable'}</em></small>{order.order_status === 'confirmed' && item.delivery_status !== 'delivered' && item.delivery_status !== 'cancelled' && item.vendor_fulfillment_status !== 'cancelled' && (!item.seller_id || item.vendor_pickup_status === 'picked_up') && <label className="admin-check" style={{ display: 'inline-flex', gap: 6, marginTop: 7 }}><input type="checkbox" checked={(followupItemSelections[order.id] ?? []).includes(item.id)} onChange={event => setFollowupItemSelections(current => ({ ...current, [order.id]: event.target.checked ? [...new Set([...(current[order.id] ?? []), item.id])] : (current[order.id] ?? []).filter(id => id !== item.id) }))}/><span>Add to delivery batch</span></label>}</div><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><button type="button" className="admin-small-button admin-small-button--danger" disabled={item.delivery_status === 'delivered' || (item.delivery_status as string) === 'cancelled' || (item.vendor_fulfillment_status as string) === 'cancelled'} onClick={() => void openCancelItem(order.id, item)}>Cancel item</button></div></div>)}</div>
+                  {order.order_status === 'confirmed' && (orderDetailRows[order.id] ?? []).some((item: any) => (followupItemSelections[order.id] ?? []).includes(item.id) && (/food|grocery/i.test(item.product_category_name ?? '') || Boolean(item.food_product_type))) && <div className="food-timing-fields"><label className="food-timing-field food-timing-field--date"><span>Food delivery date</span><input type="date" min={new Date().toLocaleDateString('en-CA')} value={followupDeliveryDates[order.id] ?? ''} onChange={event => setFollowupDeliveryDates(current => ({ ...current, [order.id]: event.target.value }))}/></label><div className="food-timing-field"><span>Delivery window</span><div className="food-timing-time-range"><label><small>From</small><input type="time" value={followupDeliveryStarts[order.id] ?? ''} onChange={event => setFollowupDeliveryStarts(current => ({ ...current, [order.id]: event.target.value }))}/></label><span className="food-timing-to">to</span><label><small>Until</small><input type="time" min={followupDeliveryStarts[order.id] ?? ''} value={followupDeliveryEnds[order.id] ?? ''} onChange={event => setFollowupDeliveryEnds(current => ({ ...current, [order.id]: event.target.value }))}/></label></div></div></div>}
                   {order.order_status === 'confirmed' && (followupItemSelections[order.id] ?? []).length > 0 && <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}><button type="button" className="admin-button admin-button--outline" disabled={fulfilmentBusy === 'schedule-' + order.id} onClick={() => void scheduleReadyOrderItems(order)}>{fulfilmentBusy === 'schedule-' + order.id ? 'Adding…' : 'Add selected products to delivery batch'}</button><small className="admin-copy">Only select products that are physically ready for delivery.</small></div>}
                   <div><strong>Vendor pickups</strong><p className="admin-copy" style={{ margin: '4px 0 10px' }}>Vendor ke ready karne ke baad yahin se parcel collection confirm karein.</p>
                     {(orderPickupRows[order.id] ?? []).length === 0 ? <p className="admin-copy">Is order mein vendor pickup nahi hai. Platform products ki readiness assign karte waqt automatically check hogi.</p> : (orderPickupRows[order.id] ?? []).map((pickup: any) => <div key={pickup.pickup_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '10px 0', borderTop: '1px solid var(--admin-border, #e5e7eb)' }}>

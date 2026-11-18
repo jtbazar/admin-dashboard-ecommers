@@ -1572,19 +1572,6 @@ function OrderDetailPage({ orderId }: { orderId: string }) {
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Order details could not be loaded.') }
     finally { setLoading(false) }
   }
-  async function scheduleFollowupDelivery() {
-    if (!detail || !selectedFollowupItemIds.length) return
-    const selectedItemsContainFood = detail.items.some((item: any) => (item.vendor_fulfillment_status as string) !== 'cancelled' && selectedFollowupItemIds.includes(item.id) && (/food|grocery/i.test(item.product_category_name ?? '') || Boolean(item.food_product_type)))
-    if (selectedItemsContainFood && (!followupDate || !followupStart || !followupEnd || followupEnd <= followupStart)) { setError('Food products require a valid delivery date and time window.'); return }
-    setFollowupSaving(true); setError(null)
-    try {
-      await createFollowupDeliveryBatch({ order_id: orderId, item_ids: selectedFollowupItemIds, expected_delivery_date: selectedItemsContainFood ? followupDate : null, delivery_window_start: selectedItemsContainFood ? followupStart : null, delivery_window_end: selectedItemsContainFood ? followupEnd : null, delivery_note: followupNote })
-      setSelectedFollowupItemIds([])
-      setFollowupNote('')
-      await load()
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Follow-up delivery could not be scheduled.') }
-    finally { setFollowupSaving(false) }
-  }
 
   useEffect(() => { void load() }, [orderId])
   if (loading) return <div className="admin-content"><Loading /></div>

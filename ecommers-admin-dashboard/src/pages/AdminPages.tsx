@@ -501,7 +501,6 @@ function VendorProductsOverview() {
   }, [])
   const load = (quiet = false) => {
     if (!quiet) setLoading(true)
-    setDriverCashLoaded(false)
     setError(null)
     void Promise.all([
       listAdminProductDeletionRequests(),
@@ -1047,6 +1046,7 @@ function Orders() {
   const [waitedOverdueRows, setWaitedOverdueRows] = useState<string[]>([])
   const load = (quiet = false) => {
     if (!quiet) setLoading(true)
+    setDriverCashLoaded(false)
     setError(null)
     void (async () => {
       const result = await listAdminOrders(search, status, page, pageSize, sort, vendorId)

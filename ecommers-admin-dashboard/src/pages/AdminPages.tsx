@@ -1261,7 +1261,7 @@ function Orders() {
       setApprovedOrderDrivers(driversResult.data ?? [])
       if (!combinedCandidates[orderId]) {
         const candidates = await findCustomerDeliveryOrders(orderId)
-        setCombinedCandidates(current => ({ ...current, [orderId]: candidates.filter((candidate: any) => candidate.order_status === 'confirmed' && candidate.id !== orderId) }))
+        setCombinedCandidates(current => ({ ...current, [orderId]: candidates.filter((candidate: any) => ['confirmed', 'partially_delivered'].includes(candidate.order_status) && candidate.id !== orderId) }))
         setCombinedSelections(current => ({ ...current, [orderId]: [orderId] }))
       }
     } catch (cause) {
@@ -1446,7 +1446,7 @@ function Orders() {
                   <div style={{ borderTop: '1px solid var(--admin-border, #e5e7eb)', paddingTop: 12 }}>
                     <strong>Combine this customer's orders</strong>
                     <p className="admin-copy" style={{ margin: '4px 0 8px' }}>Sirf same customer ke confirmed orders select karein. Database same delivery address, vendor collection aur product readiness verify karega. Ek batch par ek rider assign hoga.</p>
-                    {order.order_status !== 'confirmed' ? <small className="admin-copy">Combined rider delivery ke liye pehle order confirm karein.</small> : <>
+                    {!['confirmed', 'partially_delivered'].includes(order.order_status) ? <small className="admin-copy">Combined rider delivery ke liye pehle order confirm karein.</small> : <>
                       {(combinedCandidates[order.id] ?? []).length === 0 ? <small className="admin-copy">Is customer ke doosre confirmed orders nahi mile.</small> : (combinedCandidates[order.id] ?? []).map((candidate: any) => <label key={candidate.id} className="admin-check" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
                         <input type="checkbox" checked={(combinedSelections[order.id] ?? [order.id]).includes(candidate.id)} onChange={event => toggleCombinedOrder(order.id, candidate.id, event.target.checked)} disabled={Boolean(combinedBatches[order.id])}/>
                         <span><strong>{candidate.order_number}</strong> · {formatMoney(candidate.total)}<small>{candidate.order_status} · {formatDate(candidate.created_at)}</small></span>

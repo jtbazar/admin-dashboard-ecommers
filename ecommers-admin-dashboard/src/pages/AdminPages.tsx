@@ -1047,6 +1047,7 @@ function Orders() {
   const load = (quiet = false) => {
     if (!quiet) setLoading(true)
     setDriverCashLoaded(false)
+    setDriverCashByOrder({})
     setError(null)
     void (async () => {
       const result = await listAdminOrders(search, status, page, pageSize, sort, vendorId)

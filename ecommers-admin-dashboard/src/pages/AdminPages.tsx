@@ -1231,28 +1231,32 @@ function Orders() {
     </div>
     {error ? <ErrorState message={error} retry={load} /> : loading ? <Loading /> : items.length === 0 ? <Empty title="No matching orders" detail="Try clearing the search or choosing a different status." /> : <>
       {driverAssignmentError && <p className="admin-copy">Rider details unavailable: {driverAssignmentError}</p>}
-      <div style={{ display: 'grid', gap: 12 }}>
-        {items.map((order, index) => <article key={order.id} className="admin-panel" style={{ padding: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-            <div><p className="admin-kicker" style={{ marginBottom: 4 }}>ORDER {page * pageSize + index + 1}</p><Link className="admin-link-button" to={`/admin/orders/${order.id}`}><strong style={{ fontSize: 17 }}>{order.order_number}</strong></Link><small style={{ display: 'block' }}>{formatDate(order.created_at)}</small></div>
-            <em className={statusClass(order.order_status)}>{order.order_status.replace(/_/g, ' ')}</em>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12, margin: '14px 0' }}>
-            <div><small className="admin-copy">CUSTOMER</small><strong style={{ display: 'block' }}>{order.customer_name}</strong><small>{order.customer_phone}</small></div>
-            <div><small className="admin-copy">VENDOR</small><strong style={{ display: 'block' }}>{order.vendor_names.length ? order.vendor_names.join(', ') : 'Platform / no vendor'}</strong></div>
-            <div><small className="admin-copy">ORDER TOTAL</small><strong style={{ display: 'block' }}>{formatMoney(order.total)}</strong><small>Payment: {order.payment_status}</small></div>
-            <div><small className="admin-copy">RIDER</small><strong style={{ display: 'block' }}>{driverAssignments[order.id]?.driver_name ?? 'Not assigned'}</strong>{driverAssignments[order.id]?.driver_phone && <small>{driverAssignments[order.id].driver_phone}</small>}</div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', borderTop: '1px solid var(--admin-border, #e5e7eb)', paddingTop: 12 }}>
-            <Link className="admin-button admin-button--outline" to={`/admin/orders/${order.id}`}>View order details</Link>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <label style={{ fontSize: 12, fontWeight: 600 }}>Order status</label>
-              <select aria-label={`Update status for ${order.order_number}`} className="admin-order-status-select" value={order.order_status} disabled={updatingIds.includes(order.id) || order.order_status === 'cancelled' || order.order_status === 'delivered'} onChange={(event) => void changeStatus(order, event.target.value as Database['public']['Tables']['orders']['Row']['order_status'])}>{(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'] as const).filter((value) => value === order.order_status || (value === 'cancelled' ? !['delivered', 'cancelled'].includes(order.order_status) : ['pending', 'confirmed', 'processing', 'shipped', 'delivered'].indexOf(value) > ['pending', 'confirmed', 'processing', 'shipped', 'delivered'].indexOf(order.order_status))).map((value) => <option key={value} value={value}>{value.charAt(0).toUpperCase() + value.slice(1)}</option>)}</select>
-              {order.order_status === 'pending' && <button type="button" className="admin-small-button admin-small-button--danger" disabled={updatingIds.includes(order.id)} onClick={() => void rejectPendingOrder(order)}>Reject order</button>}
-              {updatingIds.includes(order.id) && <small>Saving…</small>}
-            </div>
-          </div>
-        </article>)}
+      <div className="admin-table-wrap" style={{ overflowX: 'auto' }}>
+        <table className="admin-table" style={{ minWidth: 1080 }}>
+          <thead><tr><th>#</th><th>Order / Date</th><th>Customer</th><th>Vendor</th><th>Rider</th><th>Total</th><th>Payment</th><th>Order status</th><th>Actions</th></tr></thead>
+          <tbody>
+            {items.map((order, index) => {
+              const assignment = driverAssignments[order.id]
+              return <tr key={order.id}>
+                <td>{page * pageSize + index + 1}</td>
+                <td><Link className="admin-link-button" to={`/admin/orders/${order.id}`}><strong>{order.order_number}</strong></Link><small style={{ display: 'block', whiteSpace: 'nowrap' }}>{formatDate(order.created_at)}</small></td>
+                <td><strong>{order.customer_name}</strong><small style={{ display: 'block', whiteSpace: 'nowrap' }}>{order.customer_phone}</small></td>
+                <td style={{ minWidth: 140, maxWidth: 220, whiteSpace: 'normal' }}>{order.vendor_names.length ? order.vendor_names.join(', ') : 'Platform / no vendor'}</td>
+                <td style={{ minWidth: 130 }}>{assignment ? <><strong>{assignment.driver_name}</strong>{assignment.driver_phone && <small style={{ display: 'block' }}>{assignment.driver_phone}</small>}<small style={{ display: 'block' }}>{assignment.assignment_status.replace(/_/g, ' ')}</small></> : 'Not assigned'}</td>
+                <td style={{ whiteSpace: 'nowrap' }}><strong>{formatMoney(order.total)}</strong></td>
+                <td><em className={statusClass(order.payment_status)}>{order.payment_status}</em></td>
+                <td><em className={statusClass(order.order_status)}>{order.order_status.replace(/_/g, ' ')}</em>{updatingIds.includes(order.id) && <small style={{ display: 'block' }}>Saving…</small>}</td>
+                <td><div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, minWidth: 140 }}>
+                  <Link className="admin-link-button" to={`/admin/orders/${order.id}`}>View details</Link>
+                  <select aria-label={`Update status for ${order.order_number}`} className="admin-order-status-select" value={order.order_status} disabled={updatingIds.includes(order.id) || order.order_status === 'cancelled' || order.order_status === 'delivered'} onChange={(event) => void changeStatus(order, event.target.value as Database['public']['Tables']['orders']['Row']['order_status'])}>
+                    {(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'] as const).filter((value) => value === order.order_status || (value === 'cancelled' ? !['delivered', 'cancelled'].includes(order.order_status) : ['pending', 'confirmed', 'processing', 'shipped', 'delivered'].indexOf(value) > ['pending', 'confirmed', 'processing', 'shipped', 'delivered'].indexOf(order.order_status))).map((value) => <option key={value} value={value}>{value.charAt(0).toUpperCase() + value.slice(1)}</option>)}
+                  </select>
+                  {order.order_status === 'pending' && <button type="button" className="admin-small-button admin-small-button--danger" disabled={updatingIds.includes(order.id)} onClick={() => void rejectPendingOrder(order)}>Reject order</button>}
+                </div></td>
+              </tr>
+            })}
+          </tbody>
+        </table>
       </div>
       <Pagination page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(size) => { setPage(0); setPageSize(size) }} />
     </>}

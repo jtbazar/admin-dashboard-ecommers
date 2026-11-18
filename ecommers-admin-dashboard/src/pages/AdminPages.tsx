@@ -24,7 +24,7 @@ const nav = [
   { section: 'Product catalogue & merchandising', to: '/admin/reviews', label: 'Customer reviews', icon: Star },
   { section: 'Orders & fulfilment', to: '/admin/finance', label: 'Refunds & Settlements', icon: Wallet },
   { section: 'Orders & fulfilment', to: '/admin/orders', label: 'Orders', icon: ClipboardList },
-  { section: 'Orders & fulfilment', to: '/admin/vendor-pickups', label: 'Vendor Pickups', icon: Package },
+
   { section: 'Orders & fulfilment', to: '/admin/manual-orders', label: 'Manual Orders', icon: Plus },
   { section: 'Orders & fulfilment', to: '/admin/inventory', label: 'Inventory', icon: Boxes },
   { section: 'People & marketplace', to: '/admin/sellers', label: 'Sellers', icon: Store },
@@ -1013,6 +1013,11 @@ function Orders() {
   const { push } = useToast(); const [items, setItems] = useState<(AdminOrder & { vendor_names: string[]; has_food_items: boolean })[]>([]); const [confirmationTarget, setConfirmationTarget] = useState<(AdminOrder & { vendor_names: string[]; has_food_items: boolean }) | null>(null); const [deliveryDate, setDeliveryDate] = useState(new Date().toLocaleDateString('en-CA')); const [deliveryStart, setDeliveryStart] = useState(''); const [deliveryEnd, setDeliveryEnd] = useState(''); const [deliveryNote, setDeliveryNote] = useState(''); const [confirmationDetails, setConfirmationDetails] = useState<Awaited<ReturnType<typeof getAdminOrderDetail>>[]>([]); const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]); const [readyItemIds, setReadyItemIds] = useState<string[]>([]); const [defaultDeliveryFee, setDefaultDeliveryFee] = useState(0); const [existingDeliveryBatchOrderIds, setExistingDeliveryBatchOrderIds] = useState<string[]>([]); const [deliveryFeeOverride, setDeliveryFeeOverride] = useState(''); const [feeAdjustmentReason, setFeeAdjustmentReason] = useState(''); const [confirmationLoading, setConfirmationLoading] = useState(false); const [search, setSearch] = useState(''); const [status, setStatus] = useState('all'); const [vendorId, setVendorId] = useState('all'); const [vendors, setVendors] = useState<AdminOrderVendor[]>([]); const [sort, setSort] = useState('created_at.desc'); const [page, setPage] = useState(0); const [pageSize, setPageSize] = useState(12); const [total, setTotal] = useState(0); const [error, setError] = useState<string | null>(null); const [loading, setLoading] = useState(true); const [updatingIds, setUpdatingIds] = useState<string[]>([]); const [deliveryCollectionTarget, setDeliveryCollectionTarget] = useState<(AdminOrder & { vendor_names: string[]; has_food_items: boolean }) | null>(null); const [deliveryCollectionItems, setDeliveryCollectionItems] = useState<{ id: string; name: string; quantity: number; amount: string }[]>([]); const [deliveryCollectionUnpaid, setDeliveryCollectionUnpaid] = useState(false); const [deliveryCollectionReason, setDeliveryCollectionReason] = useState('')
   const [driverAssignments, setDriverAssignments] = useState<Record<string, { driver_name: string; driver_phone: string; assignment_status: string; products: { name: string; quantity: number }[] }>>({})
   const [driverAssignmentError, setDriverAssignmentError] = useState<string | null>(null)
+  const [expandedFulfilmentOrderId, setExpandedFulfilmentOrderId] = useState<string | null>(null)
+  const [orderPickupRows, setOrderPickupRows] = useState<Record<string, any[]>>({})
+  const [approvedOrderDrivers, setApprovedOrderDrivers] = useState<any[]>([])
+  const [orderDriverChoice, setOrderDriverChoice] = useState<Record<string, string>>({})
+  const [fulfilmentBusy, setFulfilmentBusy] = useState<string | null>(null)
   const load = (quiet = false) => {
     if (!quiet) setLoading(true)
     setError(null)
@@ -1209,6 +1214,47 @@ function Orders() {
       setUpdatingIds((current) => current.filter((id) => id !== order.id))
     }
   }
+  async function toggleOrderFulfilment(orderId: string) {
+    if (expandedFulfilmentOrderId === orderId) { setExpandedFulfilmentOrderId(null); return }
+    setExpandedFulfilmentOrderId(orderId)
+    try {
+      const [pickups, driversResult] = await Promise.all([
+        listAdminVendorPickups(orderId),
+        approvedOrderDrivers.length ? Promise.resolve({ data: approvedOrderDrivers, error: null }) : (getSupabase() as any).rpc('admin_list_approved_drivers')
+      ])
+      if (driversResult.error) throw new Error(driversResult.error.message)
+      setOrderPickupRows(current => ({ ...current, [orderId]: pickups }))
+      setApprovedOrderDrivers(driversResult.data ?? [])
+    } catch (cause) {
+      push(cause instanceof Error ? cause.message : 'Order fulfilment could not be loaded.', 'error')
+    }
+  }
+  async function collectOrderVendorPickup(orderId: string, pickupId: string) {
+    setFulfilmentBusy(pickupId)
+    try {
+      await markAdminVendorPickedUp(pickupId)
+      const pickups = await listAdminVendorPickups(orderId)
+      setOrderPickupRows(current => ({ ...current, [orderId]: pickups }))
+      push('Vendor parcel collection confirmed. You can now continue delivery planning.', 'success')
+      load(true)
+    } catch (cause) {
+      push(cause instanceof Error ? cause.message : 'Vendor pickup could not be confirmed.', 'error')
+    } finally { setFulfilmentBusy(null) }
+  }
+  async function assignOrderDriver(orderId: string) {
+    const driverId = orderDriverChoice[orderId]
+    if (!driverId) return
+    setFulfilmentBusy(orderId)
+    try {
+      const { error: rpcError } = await (getSupabase() as any).rpc('admin_assign_driver_to_order', { p_order_id: orderId, p_driver_user_id: driverId })
+      if (rpcError) throw new Error(rpcError.message)
+      push('Rider assigned successfully. Delivery is now visible in driver tracking.', 'success')
+      setOrderDriverChoice(current => ({ ...current, [orderId]: '' }))
+      load(true)
+    } catch (cause) {
+      push(cause instanceof Error ? cause.message : 'Rider could not be assigned. Check product and vendor readiness.', 'error')
+    } finally { setFulfilmentBusy(null) }
+  }
   const deliveryCollectionTotal = deliveryCollectionItems.reduce((sum,item)=>sum+(Number(item.amount)||0),0)
   const deliveryCollectionPartial = !!deliveryCollectionTarget && deliveryCollectionTotal < Number(deliveryCollectionTarget.total) - 0.01
   return <section className="admin-content">
@@ -1247,6 +1293,7 @@ function Orders() {
                 <td><em className={statusClass(order.payment_status)}>{order.payment_status}</em></td>
                 <td><em className={statusClass(order.order_status)}>{order.order_status.replace(/_/g, ' ')}</em>{updatingIds.includes(order.id) && <small style={{ display: 'block' }}>Saving…</small>}</td>
                 <td><div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, minWidth: 140 }}>
+                  <button type="button" className="admin-link-button" onClick={() => void toggleOrderFulfilment(order.id)}>{expandedFulfilmentOrderId === order.id ? 'Close fulfilment' : 'Manage fulfilment'}</button>
                   <Link className="admin-link-button" to={`/admin/orders/${order.id}`}>View details</Link>
                   <select aria-label={`Update status for ${order.order_number}`} className="admin-order-status-select" value={order.order_status} disabled={updatingIds.includes(order.id) || order.order_status === 'cancelled' || order.order_status === 'delivered'} onChange={(event) => void changeStatus(order, event.target.value as Database['public']['Tables']['orders']['Row']['order_status'])}>
                     {(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'] as const).filter((value) => value === order.order_status || (value === 'cancelled' ? !['delivered', 'cancelled'].includes(order.order_status) : ['pending', 'confirmed', 'processing', 'shipped', 'delivered'].indexOf(value) > ['pending', 'confirmed', 'processing', 'shipped', 'delivered'].indexOf(order.order_status))).map((value) => <option key={value} value={value}>{value.charAt(0).toUpperCase() + value.slice(1)}</option>)}
@@ -1254,6 +1301,24 @@ function Orders() {
                   {order.order_status === 'pending' && <button type="button" className="admin-small-button admin-small-button--danger" disabled={updatingIds.includes(order.id)} onClick={() => void rejectPendingOrder(order)}>Reject order</button>}
                 </div></td>
               </tr>
+              {expandedFulfilmentOrderId === order.id && <tr key={order.id + '-fulfilment'}><td colSpan={9} style={{ background: 'var(--admin-surface, #f8fafc)', padding: 16 }}>
+                <div style={{ display: 'grid', gap: 14 }}>
+                  <div><strong>Vendor pickups</strong><p className="admin-copy" style={{ margin: '4px 0 10px' }}>Vendor ke ready karne ke baad yahin se parcel collection confirm karein.</p>
+                    {(orderPickupRows[order.id] ?? []).length === 0 ? <p className="admin-copy">Is order mein vendor pickup nahi hai. Platform products ki readiness assign karte waqt automatically check hogi.</p> : (orderPickupRows[order.id] ?? []).map((pickup: any) => <div key={pickup.pickup_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '10px 0', borderTop: '1px solid var(--admin-border, #e5e7eb)' }}>
+                      <div><strong>{pickup.shop_name || 'Vendor'}</strong><small style={{ display: 'block' }}>{(pickup.items ?? []).map((item: any) => `${item.product_name} × ${item.quantity}`).join(', ')}</small></div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}><em className={statusClass(pickup.pickup_status)}>{String(pickup.pickup_status || 'awaiting_vendor').replace(/_/g, ' ')}</em><button type="button" className="admin-button admin-button--outline" disabled={fulfilmentBusy === pickup.pickup_id || pickup.pickup_status !== 'ready_for_pickup'} onClick={() => void collectOrderVendorPickup(order.id, pickup.pickup_id)}>{fulfilmentBusy === pickup.pickup_id ? 'Saving…' : 'Confirm collected'}</button></div>
+                    </div>)}
+                  </div>
+                  <div style={{ borderTop: '1px solid var(--admin-border, #e5e7eb)', paddingTop: 12 }}>
+                    <strong>Assign rider</strong><p className="admin-copy" style={{ margin: '4px 0 10px' }}>System check karega ke order confirmed hai, platform products ready hain aur vendor products JTBazar collect kar chuka hai.</p>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <select aria-label={`Select rider for ${order.order_number}`} value={orderDriverChoice[order.id] ?? ''} onChange={event => setOrderDriverChoice(current => ({ ...current, [order.id]: event.target.value }))} style={{ minWidth: 240 }}><option value="">Select approved rider</option>{approvedOrderDrivers.map((driver: any) => <option key={driver.user_id} value={driver.user_id}>{driver.full_name} · {driver.phone}</option>)}</select>
+                      <button type="button" className="admin-button" disabled={fulfilmentBusy === order.id || !orderDriverChoice[order.id] || order.order_status !== 'confirmed'} onClick={() => void assignOrderDriver(order.id)}><Truck size={15}/> {fulfilmentBusy === order.id ? 'Assigning…' : 'Assign rider'}</button>
+                    </div>
+                    {order.order_status !== 'confirmed' && <small className="admin-copy">Rider assignment ke liye order pehle confirmed hona chahiye.</small>}
+                  </div>
+                </div>
+              </td></tr>}
             })}
           </tbody>
         </table>

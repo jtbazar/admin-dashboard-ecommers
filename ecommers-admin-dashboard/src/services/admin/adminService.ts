@@ -544,12 +544,13 @@ export async function listAdminOrders(search = '', status = 'all', page = 0, pag
     // This is an item-level marketplace filter, not the generic "confirmed"
     // order status. Platform/JTBazar stock has seller_id = NULL and must never
     // appear in the vendor-waiting queue.
-    const { data: matchingItems, error: itemError } = await client.from('order_items')
+    let waitingItemsQuery = client.from('order_items')
       .select('order_id')
       .not('seller_id', 'is', null)
       .in('vendor_fulfillment_status', ['pending', 'accepted', 'processing'])
       .in('delivery_status', ['pending', 'ready'])
-      .limit(10000)
+    if (vendorId !== 'all') waitingItemsQuery = waitingItemsQuery.eq('seller_id', vendorId)
+    const { data: matchingItems, error: itemError } = await waitingItemsQuery.limit(10000)
     assertError(itemError)
     vendorOrderIds = [...new Set((matchingItems ?? []).map((item) => item.order_id).filter((id): id is string => Boolean(id)))]
     if (vendorOrderIds.length === 0) return { items: [], count: 0 }

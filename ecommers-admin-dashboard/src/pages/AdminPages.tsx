@@ -1372,9 +1372,7 @@ function Orders() {
                 <td><div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, minWidth: 140 }}>
                   <button type="button" className="admin-link-button" onClick={() => void toggleOrderFulfilment(order.id)}>{expandedFulfilmentOrderId === order.id ? 'Close fulfilment' : 'Manage fulfilment'}</button>
                   <Link className="admin-link-button" to={`/admin/orders/${order.id}`}>View details</Link>
-                  <select aria-label={`Update status for ${order.order_number}`} className="admin-order-status-select" value={order.order_status} disabled={updatingIds.includes(order.id) || order.order_status === 'cancelled' || order.order_status === 'delivered'} onChange={(event) => void changeStatus(order, event.target.value as Database['public']['Tables']['orders']['Row']['order_status'])}>
-                    {(['pending', 'confirmed', 'processing', 'shipped', 'cancelled'] as const).filter((value) => value === order.order_status || (value === 'cancelled' ? !['delivered', 'cancelled'].includes(order.order_status) : ['pending', 'confirmed', 'processing', 'shipped'].indexOf(value) > ['pending', 'confirmed', 'processing', 'shipped'].indexOf(order.order_status))).map((value) => <option key={value} value={value}>{value.charAt(0).toUpperCase() + value.slice(1)}</option>)}
-                  </select>
+                  {order.order_status === 'pending' && <button type="button" className="admin-button admin-button--outline" disabled={updatingIds.includes(order.id)} onClick={() => void openOrderConfirmation(order)}>Confirm &amp; plan delivery</button>}
                   {order.order_status === 'pending' && <button type="button" className="admin-small-button admin-small-button--danger" disabled={updatingIds.includes(order.id)} onClick={() => void rejectPendingOrder(order)}>Reject order</button>}
                 </div></td>
               </tr>

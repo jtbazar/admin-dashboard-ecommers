@@ -605,7 +605,14 @@ export type AdminDeliveryTiming = { expected_delivery_date: string; delivery_win
 
 export async function updateOrder(id: string, order_status: Database['public']['Tables']['orders']['Row']['order_status'], deliveryTiming?: AdminDeliveryTiming, paymentStatus?: 'paid' | 'pending') {
   const client = getSupabase()
-  if (order_status === 'confirmed') {
+  if (order_status === 'delivered') {
+    // Delivery completion is exclusively owned by the delivery-batch/driver workflow.
+    // Preserve the existing COD collection behavior by updating payment status only.
+    if (paymentStatus) {
+      const { error } = await client.from('orders').update({ payment_status: paymentStatus }).eq('id', id)
+      assertError(error)
+    }
+  } else if (order_status === 'confirmed') {
     if (!deliveryTiming?.expected_delivery_date) throw new Error('Delivery date is required before confirming an order.')
     const { error: timingError } = await client.from('orders').update({
       expected_delivery_date: deliveryTiming.expected_delivery_date,
@@ -620,17 +627,12 @@ export async function updateOrder(id: string, order_status: Database['public']['
     })
     assertError(error)
   } else {
-    const update = order_status === 'delivered' ? { order_status, payment_status: paymentStatus ?? 'paid' as const } : { order_status }
-    const { error } = await client.from('orders').update(update).eq('id', id)
-    assertError(error)
+    throw new Error('Order status is controlled by the database fulfilment workflow. Use the relevant delivery or cancellation action.')
   }
 
-  if (['confirmed', 'processing', 'shipped', 'delivered', 'cancelled'].includes(order_status)) {
-    const { data: updatedOrder, error: lookupError } = await (client as any).from('orders').select('confirmation_status').eq('id', id).maybeSingle()
-    assertError(lookupError)
-    const emailStatus = order_status === 'cancelled' && updatedOrder?.confirmation_status === 'not_reachable' ? 'rejected' : order_status
+  if (['confirmed', 'delivered'].includes(order_status)) {
     const { data, error: emailError } = await client.functions.invoke('commerce-email', {
-      body: { event: 'order_status', order_id: id, status: emailStatus },
+      body: { event: 'order_status', order_id: id, status: order_status },
     })
     if (emailError) { console.error('Order status email invocation failed:', emailError.message); return false }
     if (!data?.sent) { console.warn('Order status email was not sent:', data); return false }

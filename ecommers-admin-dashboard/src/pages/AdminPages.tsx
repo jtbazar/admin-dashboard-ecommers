@@ -1331,6 +1331,7 @@ function Orders() {
         <label className="admin-search" style={{ flex: '1 1 280px' }}><Search size={16} /><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(0) }} placeholder="Search order number, customer or phone" /></label>
         
         <button className="admin-button admin-button--outline" onClick={() => load()}><RefreshCw size={15} /> Refresh</button>
+        <button type="button" className="admin-button admin-button--outline" disabled={!search.trim() && status === 'all' && vendorId === 'all' && sort === 'created_at.desc'} onClick={() => { setSearch(''); setStatus('all'); setVendorId('all'); setSort('created_at.desc'); setPage(0) }}>Clear filters</button>
       </div>
       <details style={{ marginTop: 12 }}><summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>More filters and sorting</summary>
         <div className="admin-toolbar" style={{ marginTop: 12, marginBottom: 0 }}>

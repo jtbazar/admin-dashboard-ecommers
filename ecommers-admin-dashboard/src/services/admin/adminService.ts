@@ -581,7 +581,7 @@ export async function getAdminOrderDetail(id: string) {
   const client = getSupabase()
   const [order, items, notes, history, pickups] = await Promise.all([
     client.from('orders').select('id, order_number, customer_id, customer_name, customer_phone, customer_email, shipping_address_snapshot, customer_note, currency, subtotal, delivery_fee, discount_amount, total, order_status, payment_method, payment_status, delivery_lat, delivery_lng, delivery_location_name, delivery_location_captured_at, expected_delivery_date, delivery_window_start, delivery_window_end, delivery_note, delivery_timing_confirmed_at, delivery_timing_confirmed_by, created_at, updated_at').eq('id', id).single(),
-    client.from('order_items').select('id, order_id, product_id, variant_id, seller_id, seller_name_snapshot, product_name_snapshot, sku_snapshot, variant_snapshot, product_snapshot, quantity, unit_price, line_total, vendor_fulfillment_status, delivery_status, tracking_number, tracking_url, vendor_note, vendor_updated_at, created_at').eq('order_id', id).order('created_at').limit(100),
+    client.from('order_items').select('id, order_id, product_id, variant_id, seller_id, seller_name_snapshot, product_name_snapshot, sku_snapshot, variant_snapshot, product_snapshot, quantity, unit_price, line_total, vendor_fulfillment_status, delivery_status, stock_unavailable_at, stock_arranged_deadline_at, stock_unavailable_note, tracking_number, tracking_url, vendor_note, vendor_updated_at, created_at').eq('order_id', id).order('created_at').limit(100),
     client.from('admin_order_notes').select('id, order_id, created_by, note, created_at').eq('order_id', id).order('created_at', { ascending: false }).limit(100),
     client.from('admin_audit_logs').select('id, action, entity, entity_id, details, created_at').eq('entity', 'orders').eq('entity_id', id).order('created_at', { ascending: false }).limit(100),
     (client as any).from('vendor_order_pickups').select('order_id, seller_id, status').eq('order_id', id),
@@ -1256,7 +1256,7 @@ export async function listAdminAuditLogsPage(filters: AdminAuditFilters = {}, pa
   return { items: data ?? [], count: count ?? 0 }
 }
 
-export type AdminRefundRecord = { id: string; case_id: string; order_id: string; amount: number; method: string; status: string; reference: string | null; admin_note: string; created_at: string }
+export type AdminRefundRecord = { id: string; case_id: string | null; order_id: string; amount: number; method: string; status: string; reference: string | null; admin_note: string; created_at: string }
 export type AdminSettlementBalance = { seller_id: string; shop_name: string; eligible_items: number; eligible_amount: number; paid_amount: number }
 export type AdminSettlementCandidate = { order_item_id: string; order_id: string; order_number: string; product_name: string; quantity: number; gross_amount: number; commission_amount: number; payout_amount: number; delivered_at: string | null; total_count: number }
 
@@ -1294,6 +1294,14 @@ export async function recordAdminCaseRefund(input: { caseId: string; amount: num
 export async function updateAdminRefundStatus(input: { refundId: string; status: 'completed' | 'failed' | 'cancelled'; reference?: string; note?: string }) {
   const { data, error } = await (getSupabase() as any).rpc('admin_update_refund_status', {
     p_refund_id: input.refundId, p_status: input.status, p_reference: input.reference ?? null, p_admin_note: input.note ?? null,
+  })
+  assertError(error)
+  return data as AdminRefundRecord
+}
+
+export async function setAdminRefundMethod(input: { refundId: string; method: string; reference?: string }) {
+  const { data, error } = await (getSupabase() as any).rpc('admin_set_refund_method', {
+    p_refund_id: input.refundId, p_method: input.method, p_reference: input.reference ?? null,
   })
   assertError(error)
   return data as AdminRefundRecord

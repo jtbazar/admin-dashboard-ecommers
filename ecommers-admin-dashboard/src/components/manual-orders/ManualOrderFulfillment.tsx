@@ -126,7 +126,7 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
       })
       if (otpError) throw new Error(otpError.message)
       const code = String(data ?? '').replace(/^"|"$/g, '')
-      if (!/^\\d{6}$/.test(code)) throw new Error('A valid 6-digit code was not returned.')
+      if (!/^\d{6}$/.test(code)) throw new Error('A valid 6-digit code was not returned.')
       setOtpCodes(current => ({ ...current, [row.assignment_id]: code }))
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Delivery code could not be generated.')

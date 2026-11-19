@@ -58,6 +58,7 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
   const [otpCodes, setOtpCodes] = useState<Record<string, string>>({})
   const [otpBusyId, setOtpBusyId] = useState<string | null>(null)
   const [orderStatus, setOrderStatus] = useState('pending')
+  const [statusDraft, setStatusDraft] = useState('pending')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -82,6 +83,7 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
       setDrivers((driversResult.data ?? []) as Driver[])
       setAssignments((assignmentsResult.data ?? []) as Assignment[])
       setOrderStatus(String(orderResult.data?.order_status ?? 'pending'))
+      setStatusDraft(String(orderResult.data?.order_status ?? 'pending'))
       setSelectedItems(current => current.filter(id => nextItems.some(item => item.id === id && ['ready','failed'].includes(item.delivery_readiness_status))))
       setDriverId(current => current || String((driversResult.data ?? [])[0]?.driver_user_id ?? ''))
     } catch (cause) {
@@ -92,6 +94,31 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
   }, [orderId])
 
   useEffect(() => { void load() }, [load])
+
+  async function saveOrderStatus() {
+    if (!statusDraft || statusDraft === orderStatus) return
+    const labels: Record<string, string> = { pending: 'Pending', processing: 'Processing', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled' }
+    if (!window.confirm(`Change this manual order status from ${labels[orderStatus] ?? orderStatus} to ${labels[statusDraft] ?? statusDraft}? This only updates the order status; totals, payment, delivery fee, stock and vendor approval stay unchanged.`)) return
+    setSaving(true)
+    setError(null)
+    try {
+      const client = getSupabase() as any
+      const { data, error: updateError } = await client.from('manual_orders')
+        .update({ order_status: statusDraft, updated_at: new Date().toISOString() })
+        .eq('id', orderId)
+        .select('order_status')
+        .single()
+      if (updateError) throw new Error(updateError.message)
+      const savedStatus = String(data?.order_status ?? statusDraft)
+      setOrderStatus(savedStatus)
+      setStatusDraft(savedStatus)
+      await load()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Manual order status could not be updated.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   async function updateItem(item: ManualItem, action: 'vendor_approved' | 'vendor_rejected' | 'mark_ready') {
     const prompts: Record<string, string> = {
@@ -169,6 +196,17 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
     </div>
     {error && <div className="admin-state admin-state--error"><CircleAlert size={17}/>{error}</div>}
     {loading ? <div className="admin-state"><RefreshCw size={17} className="spin"/> Loading fulfilment…</div> : <>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'end', flexWrap: 'wrap', padding: 12, marginBottom: 14, border: '1px solid var(--admin-border,#d9dee7)', borderRadius: 10 }}>
+        <label style={{ display: 'grid', gap: 6, minWidth: 220, flex: 1, fontSize: 13, fontWeight: 600 }}>Manual order status
+          <select style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--admin-border,#d9dee7)', borderRadius: 8, background: 'var(--admin-surface,#fff)', color: 'inherit', font: 'inherit' }} value={statusDraft} onChange={event => setStatusDraft(event.target.value)} disabled={saving}>
+            {[[ 'pending', 'Pending' ], [ 'processing', 'Processing' ], [ 'shipped', 'Shipped' ], [ 'delivered', 'Delivered' ], [ 'cancelled', 'Cancelled' ]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+        <button type="button" className="admin-button" onClick={() => void saveOrderStatus()} disabled={saving || statusDraft === orderStatus}>
+          {saving ? <><RefreshCw size={14} className="spin"/> Saving…</> : 'Update order status'}
+        </button>
+        <span className="admin-copy">Current status: {orderStatus}</span>
+      </div>
       <div style={{ display: 'grid', gap: 10 }}>
         {items.map(item => {
           const canSelect = ['ready','failed'].includes(item.delivery_readiness_status)

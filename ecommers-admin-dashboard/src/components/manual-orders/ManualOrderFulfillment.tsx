@@ -81,7 +81,14 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
       const nextItems = (itemsResult.data ?? []) as ManualItem[]
       setItems(nextItems)
       setDrivers((driversResult.data ?? []) as Driver[])
-      setAssignments((assignmentsResult.data ?? []) as Assignment[])
+      const nextAssignments = (assignmentsResult.data ?? []) as Assignment[]
+      setAssignments(nextAssignments)
+      const otpEntries = await Promise.all(nextAssignments.filter(row => row.assignment_status === 'picked_up').map(async row => {
+        const { data } = await client.rpc('admin_get_manual_order_delivery_otp', { p_assignment_id: row.assignment_id })
+        const code = String(data ?? '').replace(/^"|"$/g, '')
+        return /^\d{6}$/.test(code) ? [row.assignment_id, code] as const : null
+      }))
+      setOtpCodes(Object.fromEntries(otpEntries.filter((entry): entry is readonly [string, string] => Boolean(entry))))
       setOrderStatus(String(orderResult.data?.order_status ?? 'pending'))
       setStatusDraft(String(orderResult.data?.order_status ?? 'pending'))
       setSelectedItems(current => current.filter(id => nextItems.some(item => item.id === id && ['ready','failed'].includes(item.delivery_readiness_status))))
@@ -94,6 +101,17 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
   }, [orderId])
 
   useEffect(() => { void load() }, [load])
+
+  useEffect(() => {
+    const client = getSupabase() as any
+    const channel = client.channel(`manual-order-otp-${orderId}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'manual_order_driver_assignments',
+        filter: `manual_order_id=eq.${orderId}`,
+      }, () => { void load() })
+      .subscribe()
+    return () => { void client.removeChannel(channel) }
+  }, [orderId, load])
 
   async function saveOrderStatus() {
     if (!statusDraft || statusDraft === orderStatus) return
@@ -264,7 +282,7 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
                   <strong style={{ letterSpacing: 2 }}>{otpCodes[row.assignment_id]}</strong>
                   <button type="button" className="admin-small-button" onClick={() => { void navigator.clipboard?.writeText(otpCodes[row.assignment_id]).catch(() => window.prompt('Copy this customer OTP', otpCodes[row.assignment_id])) }}>Copy</button>
                 </div>}
-                <small>Share this code with the customer. It expires in 30 minutes.</small>
+                <small>Automatically generated when the driver picks up the parcel. Share this code with the customer on WhatsApp. It expires in 30 minutes.</small>
               </div>}
             </td>
           </tr>)}

@@ -22,6 +22,9 @@ export function DriverManagement() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'deliveries' | 'drivers' | 'cash'>('deliveries')
+  const [trackingDriver, setTrackingDriver] = useState('all')
+  const [trackingPage, setTrackingPage] = useState(1)
+  const trackingPageSize = 12
 
   async function load() {
     setError(null)
@@ -185,6 +188,11 @@ export function DriverManagement() {
     return !q || [c.full_name, c.email, c.phone].some(v => (v ?? '').toLowerCase().includes(q))
   })
   const selected = customers.find(c => c.user_id === selectedCustomer)
+  const trackingDrivers = Array.from(new Map(assignments.map(a => [a.driver_user_id, { id: a.driver_user_id, name: a.driver_name || 'Driver', phone: a.driver_phone || '' }])).values()).sort((a, b) => a.name.localeCompare(b.name))
+  const filteredAssignments = trackingDriver === 'all' ? assignments : assignments.filter(a => a.driver_user_id === trackingDriver)
+  const trackingPageCount = Math.max(1, Math.ceil(filteredAssignments.length / trackingPageSize))
+  const safeTrackingPage = Math.min(trackingPage, trackingPageCount)
+  const visibleAssignments = filteredAssignments.slice((safeTrackingPage - 1) * trackingPageSize, safeTrackingPage * trackingPageSize)
   return (
     <main className="admin-content driver-management">
       <div className="admin-page-heading driver-page-heading">
@@ -207,9 +215,17 @@ export function DriverManagement() {
 
       {activeTab === 'deliveries' && <section className="admin-panel driver-panel driver-simple-panel">
         <div className="admin-section-heading"><div><h2>Delivery tracking</h2><p>Read-only tracking. All batch creation, assignment and pickup actions are handled from Orders.</p></div><PackageCheck size={22}/></div>
+        <div className="driver-access-fields" style={{ gridTemplateColumns: 'minmax(220px, 1fr) auto', alignItems: 'end', marginBottom: 14 }}>
+          <label htmlFor="delivery-tracking-driver">Filter by driver</label>
+          <select id="delivery-tracking-driver" className="driver-control" value={trackingDriver} onChange={e => { setTrackingDriver(e.target.value); setTrackingPage(1) }}>
+            <option value="all">All drivers ({assignments.length})</option>
+            {trackingDrivers.map(driver => <option key={driver.id} value={driver.id}>{driver.name}{driver.phone ? ` — ${driver.phone}` : ''}</option>)}
+          </select>
+          <span className="driver-empty" style={{ margin: 0 }}>Showing {filteredAssignments.length === 0 ? 0 : (safeTrackingPage - 1) * trackingPageSize + 1}–{Math.min(safeTrackingPage * trackingPageSize, filteredAssignments.length)} of {filteredAssignments.length}</span>
+        </div>
         <div className="admin-table-wrap driver-table-wrap"><table className="admin-table driver-table">
           <thead><tr><th>Order</th><th>Customer</th><th>Driver</th><th>Status</th><th>Assigned</th></tr></thead>
-          <tbody>{assignments.map(a => <tr key={a.assignment_id}>
+          <tbody>{visibleAssignments.map(a => <tr key={a.assignment_id}>
             <td><strong>{a.order_number}</strong>{a.order_type === 'manual' ? <small>Manual Order</small> : null}{a.delivery_batch_number ? <><br/><small>{a.delivery_batch_number}</small></> : null}</td>
             <td>{a.customer_name}</td>
             <td><strong>{a.driver_name || 'Driver'}</strong><br/><small>{a.driver_phone}</small></td>
@@ -217,7 +233,12 @@ export function DriverManagement() {
             <td>{new Date(a.assigned_at).toLocaleDateString()}</td>
           </tr>)}</tbody>
         </table></div>
-        {assignments.length === 0 && <p className="driver-empty">No deliveries assigned yet.</p>}
+        {filteredAssignments.length === 0 && <p className="driver-empty">{assignments.length === 0 ? 'No deliveries assigned yet.' : 'No deliveries found for this driver.'}</p>}
+        {filteredAssignments.length > trackingPageSize && <div className="driver-review-actions" style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+          <button type="button" className="admin-button admin-button--outline" disabled={safeTrackingPage <= 1} onClick={() => setTrackingPage(p => Math.max(1, p - 1))}>Previous</button>
+          <span className="driver-empty" style={{ margin: 0 }}>Page {safeTrackingPage} of {trackingPageCount} · 12 per page</span>
+          <button type="button" className="admin-button admin-button--outline" disabled={safeTrackingPage >= trackingPageCount} onClick={() => setTrackingPage(p => Math.min(trackingPageCount, p + 1))}>Next</button>
+        </div>}
       </section>}
 
       {activeTab === 'drivers' && <>

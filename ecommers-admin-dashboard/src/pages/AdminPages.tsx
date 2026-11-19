@@ -39,7 +39,7 @@ const nav = [
 ]
 function isOrderNotification(item: AdminNotification): boolean {
   const text = `${item.title} ${item.body}`.toLowerCase()
-  return item.kind === 'order' || /\\border\\b/.test(text)
+  return item.kind === 'order' || /\border\b/.test(text)
 }
 
 function notificationSectionPath(item: AdminNotification): string | null {

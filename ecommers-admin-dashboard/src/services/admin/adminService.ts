@@ -391,6 +391,11 @@ export async function deleteAdminProductPermanently(productId: string): Promise<
   assertError(error)
 }
 
+export async function deleteAdminProductDeletionRequest(requestId: string): Promise<void> {
+  const { error } = await getSupabase().from('product_deletion_requests').delete().eq('id', requestId)
+  assertError(error)
+}
+
 export async function reviewAdminProductDeletion(requestId: string, approve: boolean, note?: string): Promise<void> {
   if (!approve && (note ?? '').trim().length < 3) throw new Error('A reason is required when declining a deletion request.')
   if (approve) {

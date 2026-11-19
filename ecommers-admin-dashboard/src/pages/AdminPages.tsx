@@ -37,9 +37,12 @@ const nav = [
   { section: 'System', to: '/admin/settings', label: 'Store settings', icon: Settings },
   { section: 'System', to: '/admin/audit', label: 'Audit log', icon: ShieldAlert },
 ]
-function isOrderNotification(item: AdminNotification): boolean {
-  const text = `${item.title} ${item.body}`.toLowerCase()
-  return item.kind === 'order' || /\border\b/.test(text)
+function isPriorityAdminNotification(item: AdminNotification): boolean {
+  const section = notificationSectionPath(item)
+  return section === '/admin/vendor-products'
+    || section === '/admin/orders'
+    || section === '/admin/sellers'
+    || section === '/admin/drivers'
 }
 
 function notificationSectionPath(item: AdminNotification): string | null {
@@ -61,6 +64,7 @@ function notificationSectionPath(item: AdminNotification): string | null {
   if (title.includes('case') || title.includes('complaint') || title.includes('return') || title.includes('refund')) return '/admin/cases'
   if (title.includes('review') || title.includes('rating')) return '/admin/reviews'
   if (title.includes('ticket') || title.includes('support')) return '/admin/tickets'
+  if (title.includes('driver') || title.includes('rider') || title.includes('delivery partner')) return '/admin/drivers'
   if (title.includes('customer')) return '/admin/customers'
   return null
 }
@@ -194,7 +198,7 @@ function AdminShell({ children }: { children: ReactNode }) {
   const loadNotifications = () => { void listAdminNotifications().then((items) => {
     const incomingIds = new Set(items.map((item) => item.id))
     if (notificationsInitializedRef.current) {
-      const newUnreadOrders = items.filter((item) => !knownNotificationIdsRef.current.has(item.id) && !item.read_at && isOrderNotification(item))
+      const newUnreadOrders = items.filter((item) => !knownNotificationIdsRef.current.has(item.id) && !item.read_at && isPriorityAdminNotification(item))
       if (newUnreadOrders.length > 0) {
         playAdminNotificationSound()
         if (document.visibilityState === 'hidden' && 'Notification' in window && Notification.permission === 'granted') {

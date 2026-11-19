@@ -204,7 +204,7 @@ BEGIN
   v_first_assignment:=NOT EXISTS(SELECT 1 FROM public.manual_order_driver_assignments a WHERE a.manual_order_id=p_manual_order_id);
   IF v_order.payment_method IN('cod','cash') THEN
     v_total_due:=greatest(0,v_order.total-v_order.paid_amount);
-    v_delivery_due:=CASE WHEN v_first_assignment THEN least(v_order.delivery_fee,v_total_due) ELSE 0 END;
+    v_delivery_due:=least(v_order.delivery_fee,v_total_due);
     v_merchandise_due:=greatest(0,v_total_due-v_delivery_due);
   END IF;
   INSERT INTO public.manual_order_driver_assignments(manual_order_id,driver_user_id,assigned_by,status)

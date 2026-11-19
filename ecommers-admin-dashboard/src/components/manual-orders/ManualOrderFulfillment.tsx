@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Check, CircleAlert, RefreshCw, Truck } from 'lucide-react'
 import { getSupabase } from '../../lib/supabase'
-import { formatMoney } from '../../utils/format'
 
 type ManualItem = {
   id: string
@@ -166,7 +165,7 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
       </div>
       <div style={{ display: 'flex', gap: 10, alignItems: 'end', flexWrap: 'wrap', marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--admin-border,#d9dee7)' }}>
         <label style={{ display: 'grid', gap: 6, minWidth: 220, flex: 1, fontSize: 13, fontWeight: 600 }}>Approved driver
-          <select className="admin-select" value={driverId} onChange={event => setDriverId(event.target.value)} disabled={!drivers.length || saving}>
+          <select style={{ width: "100%", padding: "10px 12px", border: "1px solid var(--admin-border,#d9dee7)", borderRadius: 8, background: "var(--admin-surface,#fff)", color: "inherit", font: "inherit" }} value={driverId} onChange={event => setDriverId(event.target.value)} disabled={!drivers.length || saving}>
             {drivers.length === 0 ? <option value="">No approved drivers available</option> : drivers.map(driver => <option key={driver.driver_user_id} value={driver.driver_user_id}>{driver.driver_name} · {driver.driver_phone}</option>)}
           </select>
         </label>

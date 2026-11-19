@@ -130,8 +130,34 @@ function AdminShell({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<AdminNotification[]>([])
   const [overdueVendorCount, setOverdueVendorCount] = useState(0)
   const [notificationError, setNotificationError] = useState<string | null>(null)
-  const [soundEnabled, setSoundEnabled] = useState(() => { try { return window.localStorage.getItem('jtbazar-admin-notification-sound') === 'on' } catch { return true } })
-  const audioContextRef = useRef<AudioContext | null>(null)
+  const [soundEnabled, setSoundEnabled] = useState(() => { try { return window.localStorage.getItem('jtbazar-admin-notification-sound') !== 'off' } catch { return true } })
+  const notificationAudioRef = useRef<HTMLAudioElement | null>(null)
+  const notificationAudioUnlockedRef = useRef(false)
+  useEffect(() => {
+    const audio = new Audio('/notification-doorbell.mp3')
+    audio.preload = 'auto'
+    notificationAudioRef.current = audio
+    const unlockAudio = () => {
+      if (notificationAudioUnlockedRef.current) return
+      audio.muted = true
+      void audio.play().then(() => {
+        audio.pause()
+        audio.currentTime = 0
+        audio.muted = false
+        notificationAudioUnlockedRef.current = true
+        window.removeEventListener('pointerdown', unlockAudio)
+        window.removeEventListener('keydown', unlockAudio)
+      }).catch(() => { audio.muted = false })
+    }
+    window.addEventListener('pointerdown', unlockAudio)
+    window.addEventListener('keydown', unlockAudio)
+    return () => {
+      window.removeEventListener('pointerdown', unlockAudio)
+      window.removeEventListener('keydown', unlockAudio)
+      audio.pause()
+      notificationAudioRef.current = null
+    }
+  }, [])
   const notificationsInitializedRef = useRef(false)
   const knownNotificationIdsRef = useRef<Set<string>>(new Set())
   const navigate = useNavigate()
@@ -150,35 +176,15 @@ function AdminShell({ children }: { children: ReactNode }) {
   }
   function playAdminNotificationSound() {
     if (!soundEnabled) return
-    const context = audioContextRef.current
-    if (!context || context.state !== 'running') return
-    const now = context.currentTime
-    ;[0, 0.19].forEach((offset) => {
-      const oscillator = context.createOscillator()
-      const gain = context.createGain()
-      oscillator.type = 'sine'
-      oscillator.frequency.setValueAtTime(offset === 0 ? 880 : 1174, now + offset)
-      gain.gain.setValueAtTime(0.0001, now + offset)
-      gain.gain.exponentialRampToValueAtTime(0.16, now + offset + 0.018)
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.14)
-      oscillator.connect(gain)
-      gain.connect(context.destination)
-      oscillator.start(now + offset)
-      oscillator.stop(now + offset + 0.15)
-    })
+    const audio = notificationAudioRef.current
+    if (!audio || !notificationAudioUnlockedRef.current) return
+    audio.currentTime = 0
+    void audio.play().catch(() => { /* Browser audio permissions may require a user interaction first. */ })
   }
   function toggleNotificationSound() {
     const next = !soundEnabled
     setSoundEnabled(next)
     try { window.localStorage.setItem('jtbazar-admin-notification-sound', next ? 'on' : 'off') } catch {}
-    if (next) {
-      const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-      if (AudioContextClass) {
-        const context = audioContextRef.current ?? new AudioContextClass()
-        audioContextRef.current = context
-        void context.resume()
-      }
-    }
   }
   const loadNotifications = () => { void listAdminNotifications().then((items) => {
     const incomingIds = new Set(items.map((item) => item.id))

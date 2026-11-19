@@ -278,11 +278,31 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
                 <button type="button" className="admin-small-button" disabled={otpBusyId === row.assignment_id || saving} onClick={() => void generateDeliveryOtp(row)}>
                   {otpBusyId === row.assignment_id ? 'Generating…' : otpCodes[row.assignment_id] ? 'Generate new OTP' : 'Generate customer OTP'}
                 </button>
-                {otpCodes[row.assignment_id] && <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                  <strong style={{ letterSpacing: 2 }}>{otpCodes[row.assignment_id]}</strong>
-                  <button type="button" className="admin-small-button" onClick={() => { void navigator.clipboard?.writeText(otpCodes[row.assignment_id]).catch(() => window.prompt('Copy this customer OTP', otpCodes[row.assignment_id])) }}>Copy</button>
+                {otpCodes[row.assignment_id] && <div style={{ display: 'grid', gap: 8, marginTop: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <strong style={{ letterSpacing: 2 }}>{otpCodes[row.assignment_id]}</strong>
+                    <button type="button" className="admin-small-button" onClick={() => {
+                      const code = otpCodes[row.assignment_id]
+                      void navigator.clipboard?.writeText(code).catch(() => window.prompt('Copy this customer OTP', code))
+                    }}>Copy OTP</button>
+                  </div>
+                  <button type="button" className="admin-small-button" onClick={() => {
+                    const code = otpCodes[row.assignment_id]
+                    const message = `Assalam-o-Alaikum!
+
+Your JTBazar order is out for delivery.
+
+Your delivery verification OTP is: ${code}
+
+Please share this OTP with our delivery rider when you receive your parcel.
+
+For your security, do not share this code with anyone else.
+
+Thank you for shopping with JTBazar!`
+                    void navigator.clipboard?.writeText(message).catch(() => window.prompt('Copy this complete customer message', message))
+                  }}>Copy Customer Message</button>
                 </div>}
-                <small>Automatically generated when the driver picks up the parcel. Share this code with the customer on WhatsApp. It expires in 30 minutes.</small>
+                <small>Automatically generated when the driver picks up the parcel. Copy the OTP or complete message and share it with the customer on WhatsApp. The code expires in 30 minutes; expired codes are not returned by the secure admin lookup.</small>
               </div>}
             </td>
           </tr>)}

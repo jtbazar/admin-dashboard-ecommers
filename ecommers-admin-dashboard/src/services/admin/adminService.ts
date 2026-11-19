@@ -392,7 +392,7 @@ export async function deleteAdminProductPermanently(productId: string): Promise<
 }
 
 export async function deleteAdminProductDeletionRequest(requestId: string): Promise<void> {
-  const { error } = await getSupabase().from('product_deletion_requests').delete().eq('id', requestId)
+  const { error } = await (getSupabase() as any).from('product_deletion_requests').delete().eq('id', requestId)
   assertError(error)
 }
 

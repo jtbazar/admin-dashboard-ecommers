@@ -212,7 +212,7 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
           {assignments.map(row => <tr key={row.assignment_id}>
             <td><strong>{row.driver_name || 'Driver'}</strong><small>{row.driver_phone}</small></td>
             <td>{row.item_count}</td>
-            <td><em className={\`admin-status admin-status--\${row.assignment_status}\`}>{statusLabel[row.assignment_status] ?? row.assignment_status}</em></td>
+            <td><em className={'admin-status admin-status--' + row.assignment_status}>{statusLabel[row.assignment_status] ?? row.assignment_status}</em></td>
             <td>{money(row.cod_due_amount)}</td>
             <td>{row.cod_collected_amount == null ? '—' : money(row.cod_collected_amount)}</td>
             <td>{row.cash_reconciled_amount == null ? 'Pending' : money(row.cash_reconciled_amount)}</td>

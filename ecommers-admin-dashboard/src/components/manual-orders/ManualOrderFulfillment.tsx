@@ -23,6 +23,10 @@ type Assignment = {
   assignment_status: string
   cod_due_amount: number
   cod_collected_amount: number | null
+  cash_reconciled_amount: number | null
+  cash_reconciled_at: string | null
+  cash_reconciliation_note: string | null
+  delivery_proof_path: string | null
   assigned_at: string
   picked_up_at: string | null
   delivered_at: string | null
@@ -51,6 +55,8 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [selectedItems, setSelectedItems] = useState<string[]>([])
   const [driverId, setDriverId] = useState('')
+  const [otpCodes, setOtpCodes] = useState<Record<string, string>>({})
+  const [otpBusyId, setOtpBusyId] = useState<string | null>(null)
   const [orderStatus, setOrderStatus] = useState('pending')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -64,7 +70,7 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
       const [itemsResult, driversResult, assignmentsResult, orderResult] = await Promise.all([
         client.from('manual_order_items').select('*').eq('manual_order_id', orderId).order('created_at'),
         client.rpc('admin_list_manual_order_drivers'),
-        client.rpc('admin_list_manual_order_driver_assignments', { p_order_id: orderId }),
+        client.rpc('admin_list_manual_order_driver_assignments_v2', { p_order_id: orderId }),
         client.from('manual_orders').select('order_status').eq('id', orderId).single(),
       ])
       if (itemsResult.error) throw new Error(itemsResult.error.message)
@@ -106,6 +112,26 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
       setError(cause instanceof Error ? cause.message : 'Item status could not be updated.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function generateDeliveryOtp(row: Assignment) {
+    if (!window.confirm("Generate a new 6-digit delivery code? Share it with the customer by phone or WhatsApp.")) return
+    setOtpBusyId(row.assignment_id)
+    setError(null)
+    try {
+      const client = getSupabase() as any
+      const { data, error: otpError } = await client.rpc('admin_generate_manual_order_delivery_otp', {
+        p_assignment_id: row.assignment_id,
+      })
+      if (otpError) throw new Error(otpError.message)
+      const code = String(data ?? '').replace(/^"|"$/g, '')
+      if (!/^\d{6}$/.test(code)) throw new Error('A valid 6-digit code was not returned.')
+      setOtpCodes(current => ({ ...current, [row.assignment_id]: code }))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Delivery code could not be generated.')
+    } finally {
+      setOtpBusyId(null)
     }
   }
 
@@ -182,8 +208,28 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
       {!canAssign && <p className="admin-callout" style={{ marginTop: 12 }}>Driver assign karne se pehle order status ko Processing ya Shipped karein. Assignment status ko khud change nahi karegi.</p>}
       <div style={{ marginTop: 18 }}>
         <div className="admin-panel-heading"><div><p className="admin-kicker">Assignment history</p><h3>{assignments.length} driver assignment(s)</h3></div></div>
-        {assignments.length === 0 ? <p className="admin-copy">No driver assigned yet.</p> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Driver</th><th>Items</th><th>Status</th><th>COD due</th><th>Assigned</th></tr></thead><tbody>
-          {assignments.map(row => <tr key={row.assignment_id}><td><strong>{row.driver_name || 'Driver'}</strong><small>{row.driver_phone}</small></td><td>{row.item_count}</td><td><em className={`admin-status admin-status--${row.assignment_status}`}>{statusLabel[row.assignment_status] ?? row.assignment_status}</em></td><td>{money(row.cod_due_amount)}</td><td>{new Date(row.assigned_at).toLocaleString()}</td></tr>)}
+        {assignments.length === 0 ? <p className="admin-copy">No driver assigned yet.</p> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Driver</th><th>Items</th><th>Status</th><th>COD due</th><th>Collected</th><th>Reconciled</th><th>Assigned / OTP</th></tr></thead><tbody>
+          {assignments.map(row => <tr key={row.assignment_id}>
+            <td><strong>{row.driver_name || 'Driver'}</strong><small>{row.driver_phone}</small></td>
+            <td>{row.item_count}</td>
+            <td><em className={'admin-status admin-status--' + row.assignment_status}>{statusLabel[row.assignment_status] ?? row.assignment_status}</em></td>
+            <td>{money(row.cod_due_amount)}</td>
+            <td>{row.cod_collected_amount == null ? '—' : money(row.cod_collected_amount)}</td>
+            <td>{row.cash_reconciled_amount == null ? 'Pending' : money(row.cash_reconciled_amount)}</td>
+            <td>
+              <small>{new Date(row.assigned_at).toLocaleString()}</small>
+              {row.assignment_status === 'picked_up' && <div style={{ marginTop: 6 }}>
+                <button type="button" className="admin-small-button" disabled={otpBusyId === row.assignment_id || saving} onClick={() => void generateDeliveryOtp(row)}>
+                  {otpBusyId === row.assignment_id ? 'Generating…' : otpCodes[row.assignment_id] ? 'Generate new OTP' : 'Generate customer OTP'}
+                </button>
+                {otpCodes[row.assignment_id] && <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                  <strong style={{ letterSpacing: 2 }}>{otpCodes[row.assignment_id]}</strong>
+                  <button type="button" className="admin-small-button" onClick={() => { void navigator.clipboard?.writeText(otpCodes[row.assignment_id]).catch(() => window.prompt('Copy this customer OTP', otpCodes[row.assignment_id])) }}>Copy</button>
+                </div>}
+                <small>Share this code with the customer. It expires in 30 minutes.</small>
+              </div>}
+            </td>
+          </tr>)}
         </tbody></table></div>}
       </div>
       <p className="admin-copy" style={{ marginTop: 12 }}>Assigning a driver does not confirm the order or change its total, delivery fee, payment, inventory, or order status. Vendor approval above is recorded by admin only after confirmation from the vendor; the ready action records JTBazar collection and readiness for driver pickup.</p>

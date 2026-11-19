@@ -4,8 +4,8 @@ import { getSupabase } from '../lib/supabase'
 
 type DriverApplication = { id: string; user_id: string; full_name: string; phone: string; vehicle_type: string; status: string; admin_note: string | null; created_at: string; current_address: string | null; cnic_front_path: string | null; cnic_back_path: string | null; vehicle_plate_image_path: string | null; company_name: string | null }
 type DriverCustomer = { user_id: string; email: string; full_name: string; phone: string; driver_enabled: boolean }
-type DriverAssignment = { assignment_id: string; order_id: string; order_number: string; customer_name: string; driver_user_id: string; driver_name: string; driver_phone: string; assignment_status: string; assigned_at: string; picked_up_at: string | null; delivered_at: string | null; driver_company_name: string | null; failed_reason: string | null; failed_note: string | null; delivery_batch_number: string | null; delivery_proof_path: string | null; cod_collected_amount: number | null; cash_reconciled_amount: number | null }
-type DriverCashRow = { assignment_id: string; order_id: string; order_number: string; customer_name: string; driver_user_id: string; driver_name: string; payment_method: string; order_total: number; collected_amount: number | null; reconciled_amount: number | null; reconciled_at: string | null; reconciliation_note: string | null; delivered_at: string | null }
+type DriverAssignment = { assignment_id: string; order_id: string; order_number: string; customer_name: string; driver_user_id: string; driver_name: string; driver_phone: string; assignment_status: string; assigned_at: string; picked_up_at: string | null; delivered_at: string | null; driver_company_name: string | null; failed_reason: string | null; failed_note: string | null; delivery_batch_number: string | null; delivery_proof_path: string | null; cod_collected_amount: number | null; cash_reconciled_amount: number | null; order_type?: string }
+type DriverCashRow = { assignment_id: string; order_id: string; order_number: string; customer_name: string; driver_user_id: string; driver_name: string; payment_method: string; order_total: number; collected_amount: number | null; reconciled_amount: number | null; reconciled_at: string | null; reconciliation_note: string | null; delivered_at: string | null; order_type?: string }
 
 export function DriverManagement() {
   const db = getSupabase() as any
@@ -25,18 +25,26 @@ export function DriverManagement() {
 
   async function load() {
     setError(null)
-    const [settings, apps, assignmentRows, cashResults] = await Promise.all([
+    const [settings, apps, assignmentRows, manualAssignmentRows, cashResults, manualCashResults] = await Promise.all([
       db.rpc('admin_list_driver_customers'),
       db.rpc('admin_list_driver_applications'),
       db.rpc('admin_list_driver_assignments_v2'),
-      db.rpc('admin_list_driver_cash_reconciliation')
+      db.rpc('admin_list_all_manual_order_driver_assignments'),
+      db.rpc('admin_list_driver_cash_reconciliation'),
+      db.rpc('admin_list_manual_order_driver_cash_reconciliation')
     ])
-    const failure = settings.error || apps.error || assignmentRows.error || cashResults.error
+    const failure = settings.error || apps.error || assignmentRows.error || manualAssignmentRows.error || cashResults.error || manualCashResults.error
     if (failure) throw new Error(failure.message)
     setCustomers(settings.data ?? [])
     setApplications(apps.data ?? [])
-    setAssignments(assignmentRows.data ?? [])
-    setCashRows(cashResults.data ?? [])
+    setAssignments([
+      ...(assignmentRows.data ?? []).map((row: DriverAssignment) => ({ ...row, order_type: 'online' })),
+      ...(manualAssignmentRows.data ?? []).map((row: DriverAssignment) => ({ ...row, order_type: 'manual' }))
+    ].sort((a, b) => new Date(b.assigned_at).getTime() - new Date(a.assigned_at).getTime()))
+    setCashRows([
+      ...(cashResults.data ?? []).map((row: DriverCashRow) => ({ ...row, order_type: 'online' })),
+      ...(manualCashResults.data ?? []).map((row: DriverCashRow) => ({ ...row, order_type: 'manual' }))
+    ].sort((a, b) => new Date(b.delivered_at ?? '').getTime() - new Date(a.delivered_at ?? '').getTime()))
     setNotes(Object.fromEntries((apps.data ?? []).map((a: DriverApplication) => [a.id, a.admin_note ?? ''])))
     setCompanyNames(Object.fromEntries((apps.data ?? []).map((a: DriverApplication) => [a.id, a.company_name ?? ''])))
   }
@@ -55,6 +63,12 @@ export function DriverManagement() {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_assignments' }, () => {
         void load().catch(e => setError(e.message || 'Could not refresh driver assignments.'))
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'manual_order_driver_assignments' }, () => {
+        void load().catch(e => setError(e.message || 'Could not refresh manual driver assignments.'))
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'manual_orders' }, () => {
+        void load().catch(e => setError(e.message || 'Could not refresh manual orders.'))
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_batches' }, () => {
         void load().catch(e => setError(e.message || 'Could not refresh delivery batches.'))
@@ -140,7 +154,8 @@ export function DriverManagement() {
     if (amount !== Number(row.collected_amount ?? 0) && !note.trim()) { setError('A note is required when the cash amount differs.'); return }
     setBusy(true); setError(null); setSuccess(null)
     try {
-      const { error: rpcError } = await db.rpc('admin_reconcile_driver_cash', { p_assignment_id: row.assignment_id, p_amount: amount, p_note: note.trim() || null })
+      const reconcileRpc = row.order_type === 'manual' ? 'admin_reconcile_manual_order_driver_cash' : 'admin_reconcile_driver_cash'
+      const { error: rpcError } = await db.rpc(reconcileRpc, { p_assignment_id: row.assignment_id, p_amount: amount, p_note: note.trim() || null })
       if (rpcError) throw rpcError
       setSuccess(`Cash reconciliation saved for ${row.order_number}.`)
       await load()
@@ -151,7 +166,8 @@ export function DriverManagement() {
   async function openDeliveryProof(row: DriverCashRow) {
     const tab = window.open('about:blank', '_blank')
     try {
-      const { data: path, error: rpcError } = await db.rpc('admin_get_driver_delivery_proof_path', { p_assignment_id: row.assignment_id })
+      const proofRpc = row.order_type === 'manual' ? 'admin_get_manual_order_delivery_proof_path' : 'admin_get_driver_delivery_proof_path'
+      const { data: path, error: rpcError } = await db.rpc(proofRpc, { p_assignment_id: row.assignment_id })
       if (rpcError) throw rpcError
       if (!path) throw new Error('No delivery photo proof was uploaded for this order.')
       const proofBucket = String(path).includes('/delivery_proofs/') ? 'delivery-proofs' : 'driver-documents'
@@ -194,7 +210,7 @@ export function DriverManagement() {
         <div className="admin-table-wrap driver-table-wrap"><table className="admin-table driver-table">
           <thead><tr><th>Order</th><th>Customer</th><th>Driver</th><th>Status</th><th>Assigned</th></tr></thead>
           <tbody>{assignments.map(a => <tr key={a.assignment_id}>
-            <td><strong>{a.order_number}</strong>{a.delivery_batch_number ? <><br/><small>{a.delivery_batch_number}</small></> : null}</td>
+            <td><strong>{a.order_number}</strong>{a.order_type === 'manual' ? <small>Manual Order</small> : null}{a.delivery_batch_number ? <><br/><small>{a.delivery_batch_number}</small></> : null}</td>
             <td>{a.customer_name}</td>
             <td><strong>{a.driver_name || 'Driver'}</strong><br/><small>{a.driver_phone}</small></td>
             <td><span className="admin-status">{a.assignment_status.replaceAll('_',' ')}</span>{a.failed_reason ? <small><br/>{a.failed_reason.replaceAll('_',' ')}{a.failed_note ? ' — ' + a.failed_note : ''}</small> : null}</td>
@@ -237,7 +253,7 @@ export function DriverManagement() {
         <div className="admin-table-wrap driver-table-wrap"><table className="admin-table driver-table">
           <thead><tr><th>Order</th><th>Customer / driver</th><th>Order total</th><th>Driver collected</th><th>Received by admin</th><th>Status</th><th>Proof / action</th></tr></thead>
           <tbody>{cashRows.map(row => <tr key={row.assignment_id}>
-            <td><strong>{row.order_number}</strong></td><td>{row.customer_name}<br/><small>{row.driver_name}</small></td>
+            <td><strong>{row.order_number}</strong>{row.order_type === 'manual' ? <small>Manual Order</small> : null}</td><td>{row.customer_name}<br/><small>{row.driver_name}</small></td>
             <td>PKR {Number(row.order_total).toLocaleString()}</td><td>{row.collected_amount == null ? 'Not recorded' : 'PKR ' + Number(row.collected_amount).toLocaleString()}</td>
             <td>{row.reconciled_amount == null ? 'Not received' : 'PKR ' + Number(row.reconciled_amount).toLocaleString()}</td>
             <td><span className="admin-status">{row.reconciled_at ? 'Reconciled' : row.collected_amount == null ? 'Awaiting driver' : 'Cash pending'}</span>{row.reconciliation_note ? <small><br/>{row.reconciliation_note}</small> : null}</td>

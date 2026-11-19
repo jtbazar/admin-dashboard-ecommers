@@ -51,6 +51,7 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [selectedItems, setSelectedItems] = useState<string[]>([])
   const [driverId, setDriverId] = useState('')
+  const [orderStatus, setOrderStatus] = useState('pending')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -60,19 +61,22 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
     setError(null)
     try {
       const client = getSupabase() as any
-      const [itemsResult, driversResult, assignmentsResult] = await Promise.all([
+      const [itemsResult, driversResult, assignmentsResult, orderResult] = await Promise.all([
         client.from('manual_order_items').select('*').eq('manual_order_id', orderId).order('created_at'),
         client.rpc('admin_list_manual_order_drivers'),
         client.rpc('admin_list_manual_order_driver_assignments', { p_order_id: orderId }),
+        client.from('manual_orders').select('order_status').eq('id', orderId).single(),
       ])
       if (itemsResult.error) throw new Error(itemsResult.error.message)
       if (driversResult.error) throw new Error(driversResult.error.message)
       if (assignmentsResult.error) throw new Error(assignmentsResult.error.message)
+      if (orderResult.error) throw new Error(orderResult.error.message)
       const nextItems = (itemsResult.data ?? []) as ManualItem[]
       setItems(nextItems)
       setDrivers((driversResult.data ?? []) as Driver[])
       setAssignments((assignmentsResult.data ?? []) as Assignment[])
-      setSelectedItems(current => current.filter(id => nextItems.some(item => item.id === id && item.delivery_readiness_status === 'ready')))
+      setOrderStatus(String(orderResult.data?.order_status ?? 'pending'))
+      setSelectedItems(current => current.filter(id => nextItems.some(item => item.id === id && ['ready','failed'].includes(item.delivery_readiness_status))))
       setDriverId(current => current || String((driversResult.data ?? [])[0]?.driver_user_id ?? ''))
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Manual order fulfilment could not be loaded.')
@@ -87,7 +91,7 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
     const prompts: Record<string, string> = {
       vendor_approved: 'Record vendor approval only after the vendor has confirmed this item. Continue?',
       vendor_rejected: 'Record that the vendor rejected this item?',
-      mark_ready: 'Confirm this item is physically ready for driver pickup?',
+      mark_ready: 'Confirm JTBazar has collected this vendor item and it is physically ready for driver pickup?',
     }
     if (!window.confirm(prompts[action])) return
     setSaving(true)
@@ -127,20 +131,21 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
     }
   }
 
-  const readyItems = items.filter(item => item.delivery_readiness_status === 'ready')
+  const readyItems = items.filter(item => ['ready','failed'].includes(item.delivery_readiness_status))
+  const canAssign = orderStatus === 'processing' || orderStatus === 'shipped'
   const money = (value: number | string | null) => `PKR ${Number(value ?? 0).toLocaleString('en-PK', { maximumFractionDigits: 2 })}`
 
   return <section className="admin-panel" style={{ marginBottom: 20 }}>
     <div className="admin-panel-heading">
       <div><p className="admin-kicker">Manual order fulfilment</p><h3>Vendor approval & driver assignment</h3>
-        <p className="admin-copy">Vendor items must be approved and marked ready. JTBazar items need no vendor approval.</p></div>
+        <p className="admin-copy">Vendor items must be approved, collected by JTBazar and marked ready. JTBazar items need no vendor approval.</p></div>
       <button type="button" className="admin-button admin-button--outline" onClick={() => void load()} disabled={loading || saving}><RefreshCw size={15}/> Refresh</button>
     </div>
     {error && <div className="admin-state admin-state--error"><CircleAlert size={17}/>{error}</div>}
     {loading ? <div className="admin-state"><RefreshCw size={17} className="spin"/> Loading fulfilment…</div> : <>
       <div style={{ display: 'grid', gap: 10 }}>
         {items.map(item => {
-          const canSelect = item.delivery_readiness_status === 'ready'
+          const canSelect = ['ready','failed'].includes(item.delivery_readiness_status)
           return <div key={item.id} style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr) auto', alignItems: 'center', gap: 12, padding: 12, border: '1px solid var(--admin-border,#d9dee7)', borderRadius: 10 }}>
             <input type="checkbox" aria-label={`Select ${item.product_name_snapshot} for driver assignment`} checked={selectedItems.includes(item.id)} disabled={!canSelect || saving} onChange={event => setSelectedItems(current => event.target.checked ? [...current, item.id] : current.filter(id => id !== item.id))}/>
             <div style={{ minWidth: 0 }}>
@@ -157,7 +162,7 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
                 <button type="button" className="admin-small-button admin-small-button--danger" disabled={saving} onClick={() => void updateItem(item, 'vendor_rejected')}>Reject</button>
               </>}
               {item.vendor_approval_status === 'approved' && item.delivery_readiness_status === 'not_ready' &&
-                <button type="button" className="admin-small-button" disabled={saving} onClick={() => void updateItem(item, 'mark_ready')}>Mark ready for pickup</button>}
+                <button type="button" className="admin-small-button" disabled={saving} onClick={() => void updateItem(item, 'mark_ready')}>Mark collected & ready for driver</button>}
             </div>
           </div>
         })}
@@ -169,18 +174,19 @@ export function ManualOrderFulfillment({ orderId }: { orderId: string }) {
             {drivers.length === 0 ? <option value="">No approved drivers available</option> : drivers.map(driver => <option key={driver.driver_user_id} value={driver.driver_user_id}>{driver.driver_name} · {driver.driver_phone}</option>)}
           </select>
         </label>
-        <div className="admin-copy">{readyItems.length} ready item(s) · {selectedItems.length} selected</div>
-        <button type="button" className="admin-button" onClick={() => void assignDriver()} disabled={saving || !driverId || !selectedItems.length}>
+        <div className="admin-copy">{readyItems.length} eligible item(s) · {selectedItems.length} selected · Order: {orderStatus}</div>
+        <button type="button" className="admin-button" onClick={() => void assignDriver()} disabled={saving || !driverId || !selectedItems.length || !canAssign}>
           {saving ? <><RefreshCw size={14} className="spin"/> Saving…</> : <><Truck size={14}/> Assign driver to selected items</>}
         </button>
       </div>
+      {!canAssign && <p className="admin-callout" style={{ marginTop: 12 }}>Driver assign karne se pehle order status ko Processing ya Shipped karein. Assignment status ko khud change nahi karegi.</p>}
       <div style={{ marginTop: 18 }}>
         <div className="admin-panel-heading"><div><p className="admin-kicker">Assignment history</p><h3>{assignments.length} driver assignment(s)</h3></div></div>
         {assignments.length === 0 ? <p className="admin-copy">No driver assigned yet.</p> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Driver</th><th>Items</th><th>Status</th><th>COD due</th><th>Assigned</th></tr></thead><tbody>
           {assignments.map(row => <tr key={row.assignment_id}><td><strong>{row.driver_name || 'Driver'}</strong><small>{row.driver_phone}</small></td><td>{row.item_count}</td><td><em className={`admin-status admin-status--${row.assignment_status}`}>{statusLabel[row.assignment_status] ?? row.assignment_status}</em></td><td>{money(row.cod_due_amount)}</td><td>{new Date(row.assigned_at).toLocaleString()}</td></tr>)}
         </tbody></table></div>}
       </div>
-      <p className="admin-copy" style={{ marginTop: 12 }}>Assigning a driver does not confirm the order or change its total, delivery fee, payment, inventory, or order status. Vendor approval above is an admin record of confirmation received from the vendor.</p>
+      <p className="admin-copy" style={{ marginTop: 12 }}>Assigning a driver does not confirm the order or change its total, delivery fee, payment, inventory, or order status. Vendor approval above is recorded by admin only after confirmation from the vendor; the ready action records JTBazar collection and readiness for driver pickup.</p>
     </>}
   </section>
 }

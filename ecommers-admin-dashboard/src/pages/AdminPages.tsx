@@ -37,6 +37,11 @@ const nav = [
   { section: 'System', to: '/admin/settings', label: 'Store settings', icon: Settings },
   { section: 'System', to: '/admin/audit', label: 'Audit log', icon: ShieldAlert },
 ]
+function isOrderNotification(item: AdminNotification): boolean {
+  const text = `${item.title} ${item.body}`.toLowerCase()
+  return item.kind === 'order' || /\\border\\b/.test(text)
+}
+
 function notificationSectionPath(item: AdminNotification): string | null {
   const title = `${item.title} ${item.body}`.toLowerCase()
   if (title.includes('ready for pickup') || title.includes('vendor pickup')) return '/admin/vendor-pickups'
@@ -189,8 +194,20 @@ function AdminShell({ children }: { children: ReactNode }) {
   const loadNotifications = () => { void listAdminNotifications().then((items) => {
     const incomingIds = new Set(items.map((item) => item.id))
     if (notificationsInitializedRef.current) {
-      const hasNewUnread = items.some((item) => !knownNotificationIdsRef.current.has(item.id) && !item.read_at)
-      if (hasNewUnread) playAdminNotificationSound()
+      const newUnreadOrders = items.filter((item) => !knownNotificationIdsRef.current.has(item.id) && !item.read_at && isOrderNotification(item))
+      if (newUnreadOrders.length > 0) {
+        playAdminNotificationSound()
+        if (document.visibilityState === 'hidden' && 'Notification' in window && Notification.permission === 'granted') {
+          const latest = newUnreadOrders[0]
+          try {
+            new Notification(latest.title || 'New JTBazar order', {
+              body: latest.body || 'A new order needs your attention.',
+              icon: '/jtbazar-logo.webp',
+              tag: latest.id,
+            })
+          } catch { /* Browser desktop notifications may be unavailable. */ }
+        }
+      }
     } else {
       notificationsInitializedRef.current = true
     }
@@ -244,7 +261,7 @@ function AdminShell({ children }: { children: ReactNode }) {
       <div className="admin-sidebar-footer"><Link to="/"><ArrowLeft size={15} /> View storefront</Link><button onClick={() => void logout()}><LogOut size={15} /> Sign out</button></div>
     </aside>
     {open && <button className="admin-overlay" aria-label="Close navigation" onClick={() => setOpen(false)} />}
-    <main className="admin-main"><header className="admin-topbar"><button className="admin-menu" aria-label="Open navigation" onClick={() => setOpen(true)}><Menu size={20} /></button><div><span className="admin-kicker">JTBazar operations</span><h1>{location.pathname.startsWith('/admin/manual-orders/') ? 'Manual order detail' : location.pathname.startsWith('/admin/orders/') ? 'Order detail' : nav.find((item) => location.pathname === item.to)?.label ?? 'Admin studio'}</h1></div><div className="admin-topbar-actions"><button type="button" className="admin-notification-button" aria-label={soundEnabled ? "Mute notification sound" : "Enable notification sound"} title={soundEnabled ? "Mute notification sound" : "Enable notification sound"} aria-pressed={soundEnabled} onClick={toggleNotificationSound}>{soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}</button><div className="admin-notification-wrap"><button type="button" className="admin-notification-button" aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`} aria-expanded={notificationsOpen} onClick={() => { setNotificationsOpen((value) => !value); loadNotifications() }}><Bell size={19} />{unreadCount > 0 && <span className="admin-notification-count">{unreadCount > 9 ? '9+' : unreadCount}</span>}</button>{notificationsOpen && <div className="admin-notification-popover" role="dialog" aria-label="Admin notifications"><div className="admin-notification-heading"><strong>Notifications</strong><button type="button" onClick={() => void markAllRead()} disabled={!unreadCount}><CheckCheck size={14} /> Mark all read</button></div>{notificationError && <p className="admin-notification-error">{notificationError}</p>}{notifications.length === 0 ? <p className="admin-notification-empty">No activity notifications yet.</p> : notifications.map((item) => <button type="button" key={item.id} className={`admin-notification-item${item.read_at ? '' : ' is-unread'}`} onClick={() => void openNotification(item)}><span><strong>{item.title}</strong><small>{item.body}</small><small>{formatDate(item.created_at)}</small></span>{!item.read_at && <i aria-label="Unread" />}</button>)}</div>}</div><div className="admin-user"><span>{displayName ?? 'Administrator'}</span><span className="admin-avatar">{(displayName ?? 'A').slice(0, 1).toUpperCase()}</span></div></div></header>{children}</main>
+    <main className="admin-main"><header className="admin-topbar"><button className="admin-menu" aria-label="Open navigation" onClick={() => setOpen(true)}><Menu size={20} /></button><div><span className="admin-kicker">JTBazar operations</span><h1>{location.pathname.startsWith('/admin/manual-orders/') ? 'Manual order detail' : location.pathname.startsWith('/admin/orders/') ? 'Order detail' : nav.find((item) => location.pathname === item.to)?.label ?? 'Admin studio'}</h1></div><div className="admin-topbar-actions"><button type="button" className="admin-notification-button" aria-label={soundEnabled ? "Mute notification sound" : "Enable notification sound"} title={soundEnabled ? "Mute notification sound" : "Enable notification sound"} aria-pressed={soundEnabled} onClick={toggleNotificationSound}>{soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}</button><div className="admin-notification-wrap"><button type="button" className="admin-notification-button" aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`} aria-expanded={notificationsOpen} onClick={() => { setNotificationsOpen((value) => !value); if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission(); loadNotifications() }}><Bell size={19} />{unreadCount > 0 && <span className="admin-notification-count">{unreadCount > 9 ? '9+' : unreadCount}</span>}</button>{notificationsOpen && <div className="admin-notification-popover" role="dialog" aria-label="Admin notifications"><div className="admin-notification-heading"><strong>Notifications</strong><button type="button" onClick={() => void markAllRead()} disabled={!unreadCount}><CheckCheck size={14} /> Mark all read</button></div>{notificationError && <p className="admin-notification-error">{notificationError}</p>}{notifications.length === 0 ? <p className="admin-notification-empty">No activity notifications yet.</p> : notifications.map((item) => <button type="button" key={item.id} className={`admin-notification-item${item.read_at ? '' : ' is-unread'}`} onClick={() => void openNotification(item)}><span><strong>{item.title}</strong><small>{item.body}</small><small>{formatDate(item.created_at)}</small></span>{!item.read_at && <i aria-label="Unread" />}</button>)}</div>}</div><div className="admin-user"><span>{displayName ?? 'Administrator'}</span><span className="admin-avatar">{(displayName ?? 'A').slice(0, 1).toUpperCase()}</span></div></div></header>{children}</main>
   </div>
 }
 

@@ -1185,6 +1185,9 @@ function Orders() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_batches' }, scheduleRefresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_batch_orders' }, scheduleRefresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_batch_items' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_assignments' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_assignment_history' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_delivery_events' }, scheduleRefresh)
       .subscribe()
     return () => {
       active = false

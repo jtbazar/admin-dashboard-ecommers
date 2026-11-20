@@ -307,9 +307,47 @@ function Overview() {
   const [finance, setFinance] = useState<{ total: number; collected: number; outstanding: number; orderCount: number; cancelled: number; rows: { date: string; number: string; customer: string; source: string; status: string; paymentStatus: string; total: number; paid: number; outstanding: number }[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [reportLoading, setReportLoading] = useState(false)
-  const load = () => { setError(null); void Promise.all([getAdminSummary(), listAdminOrders('', 'all', 0, 6)]).then(([nextSummary, nextOrders]) => { setSummary(nextSummary); setOrders(nextOrders.items) }).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'The overview could not be loaded.')) }
+  const loadRequestRef = useRef(0)
+  const load = () => {
+    const requestId = ++loadRequestRef.current
+    setError(null)
+    void Promise.all([getAdminSummary(), listAdminOrders('', 'all', 0, 6)])
+      .then(([nextSummary, nextOrders]) => {
+        if (requestId !== loadRequestRef.current) return
+        setSummary(nextSummary)
+        setOrders(nextOrders.items)
+      })
+      .catch((cause: unknown) => {
+        if (requestId === loadRequestRef.current) setError(cause instanceof Error ? cause.message : 'The overview could not be loaded.')
+      })
+  }
+  const loadRef = useRef(load)
+  loadRef.current = load
   useEffect(load, [])
   useAutoRefresh(load)
+  useEffect(() => {
+    let active = true
+    let refreshTimer: number | null = null
+    const scheduleRefresh = () => {
+      if (!active) return
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer)
+      refreshTimer = window.setTimeout(() => {
+        refreshTimer = null
+        loadRef.current()
+      }, 250)
+    }
+    const channel = getSupabase().channel('admin-overview-order-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_batches' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_assignments' }, scheduleRefresh)
+      .subscribe()
+    return () => {
+      active = false
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer)
+      void getSupabase().removeChannel(channel)
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -1072,13 +1110,16 @@ function Orders() {
   const [overdueVendorRows, setOverdueVendorRows] = useState<any[]>([])
   const [overdueVendorError, setOverdueVendorError] = useState<string | null>(null)
   const [waitedOverdueRows, setWaitedOverdueRows] = useState<string[]>([])
+  const loadRequestRef = useRef(0)
   const load = (quiet = false) => {
+    const requestId = ++loadRequestRef.current
     if (!quiet) setLoading(true)
     setDriverCashLoaded(false)
     setDriverCashByOrder({})
     setError(null)
     void (async () => {
       const result = await listAdminOrders(search, status, page, pageSize, sort, vendorId)
+      if (requestId !== loadRequestRef.current) return
       setItems(result.items)
       setTotal(result.count)
       const orderIds = result.items.map((order) => order.id)
@@ -1095,6 +1136,7 @@ function Orders() {
           client.rpc('admin_list_order_driver_assignments_v2', { p_order_ids: orderIds }),
           client.from('order_items').select('order_id, product_name_snapshot, quantity').in('order_id', orderIds).limit(10000)
         ])
+        if (requestId !== loadRequestRef.current) return
         if (assignmentResult.error) throw new Error(assignmentResult.error.message)
         if (productResult.error) throw new Error(productResult.error.message)
         const productsByOrder = new Map<string, { name: string; quantity: number }[]>()
@@ -1120,6 +1162,7 @@ function Orders() {
         // Driver COD is recorded on the delivery assignment. Keep it separate
         // from admin reconciliation so the Orders page never asks to record it twice.
         const cashResult = await client.rpc('admin_list_driver_cash_reconciliation')
+        if (requestId !== loadRequestRef.current) return
         setDriverCashLoaded(!cashResult.error)
         if (!cashResult.error) {
           const cashByOrder: Record<string, any[]> = {}
@@ -1128,14 +1171,21 @@ function Orders() {
         }
         setDriverAssignmentError(null)
       } catch (cause) {
+        if (requestId !== loadRequestRef.current) return
         setDriverAssignments({})
         setDriverCashByOrder({})
         setDriverCashLoaded(false)
         setDriverAssignmentError(cause instanceof Error ? cause.message : 'Rider assignments could not be loaded.')
       }
-    })().catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Orders could not be loaded.')).finally(() => { if (!quiet) setLoading(false) })
+    })().catch((cause: unknown) => {
+      if (requestId === loadRequestRef.current) setError(cause instanceof Error ? cause.message : 'Orders could not be loaded.')
+    }).finally(() => {
+      if (requestId === loadRequestRef.current) setLoading(false)
+    })
   }
   const refreshOrders = (quiet = false) => { load(quiet); setWorkflowCountRevision((revision) => revision + 1) }
+  const refreshOrdersRef = useRef(refreshOrders)
+  refreshOrdersRef.current = refreshOrders
   useEffect(load, [search, status, vendorId, sort, page, pageSize]); useAutoRefresh(load)
   useEffect(() => {
     let current = true
@@ -1152,6 +1202,37 @@ function Orders() {
     catch (cause) { setOverdueVendorError(cause instanceof Error ? cause.message : 'Late vendor pickups could not be loaded.') }
   }
   useEffect(() => { void loadOverdueVendors(); const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void loadOverdueVendors() }, 60000); return () => window.clearInterval(timer) }, [])
+  const loadOverdueVendorsRef = useRef(loadOverdueVendors)
+  loadOverdueVendorsRef.current = loadOverdueVendors
+  useEffect(() => {
+    let active = true
+    let refreshTimer: number | null = null
+    const scheduleRefresh = () => {
+      if (!active) return
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer)
+      refreshTimer = window.setTimeout(() => {
+        refreshTimer = null
+        refreshOrdersRef.current(true)
+        void loadOverdueVendorsRef.current()
+      }, 250)
+    }
+    const channel = getSupabase().channel('admin-order-delivery-center-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vendor_order_pickups' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_batches' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_batch_orders' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_batch_items' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_assignments' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_assignment_history' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_delivery_events' }, scheduleRefresh)
+      .subscribe()
+    return () => {
+      active = false
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer)
+      void getSupabase().removeChannel(channel)
+    }
+  }, [])
   async function openCancelItem(orderId: string, item: any) { setCancelItemTarget({ orderId, item }); setCancelItemReason(''); setCancelItemResult(null) }
   async function confirmCancelItem() {
     if (!cancelItemTarget || cancelItemBusy) return

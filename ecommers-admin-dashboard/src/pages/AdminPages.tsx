@@ -307,9 +307,47 @@ function Overview() {
   const [finance, setFinance] = useState<{ total: number; collected: number; outstanding: number; orderCount: number; cancelled: number; rows: { date: string; number: string; customer: string; source: string; status: string; paymentStatus: string; total: number; paid: number; outstanding: number }[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [reportLoading, setReportLoading] = useState(false)
-  const load = () => { setError(null); void Promise.all([getAdminSummary(), listAdminOrders('', 'all', 0, 6)]).then(([nextSummary, nextOrders]) => { setSummary(nextSummary); setOrders(nextOrders.items) }).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'The overview could not be loaded.')) }
+  const loadRequestRef = useRef(0)
+  const load = () => {
+    const requestId = ++loadRequestRef.current
+    setError(null)
+    void Promise.all([getAdminSummary(), listAdminOrders('', 'all', 0, 6)])
+      .then(([nextSummary, nextOrders]) => {
+        if (requestId !== loadRequestRef.current) return
+        setSummary(nextSummary)
+        setOrders(nextOrders.items)
+      })
+      .catch((cause: unknown) => {
+        if (requestId === loadRequestRef.current) setError(cause instanceof Error ? cause.message : 'The overview could not be loaded.')
+      })
+  }
+  const loadRef = useRef(load)
+  loadRef.current = load
   useEffect(load, [])
   useAutoRefresh(load)
+  useEffect(() => {
+    let active = true
+    let refreshTimer: number | null = null
+    const scheduleRefresh = () => {
+      if (!active) return
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer)
+      refreshTimer = window.setTimeout(() => {
+        refreshTimer = null
+        loadRef.current()
+      }, 250)
+    }
+    const channel = getSupabase().channel('admin-overview-order-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_batches' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_assignments' }, scheduleRefresh)
+      .subscribe()
+    return () => {
+      active = false
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer)
+      void getSupabase().removeChannel(channel)
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
